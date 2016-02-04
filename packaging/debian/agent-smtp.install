@@ -1,0 +1,5 @@
+debian/tmp/usr/bin/bios-agent-smtp
+debian/tmp/usr/lib/systemd/system/bios-agent-smtp*.service
+
+
+
