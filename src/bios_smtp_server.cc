@@ -79,8 +79,11 @@ struct ElementDetails_ {
 
 class EmailConfiguration {
 public:
-    EmailConfiguration() {
-        _configured = false;
+    explicit EmailConfiguration() :
+        _smtp{},
+        _configured{false}
+
+    {
     }
 
     bool empty(void) const {
@@ -91,6 +94,12 @@ public:
     std::string _emailFrom;
     std::string _smtpPassword;
     std::string _smtpServer;
+
+    void host (const std::string &host) {_smtp.host (host); }
+    void from (const std::string &from) {_smtp.host (from); }
+
+    //TODO: make private
+    Smtp _smtp;
 
     static std::string
         generateBody (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
@@ -376,10 +385,9 @@ void AlertList::
     if ( needNotify )
     {
         zsys_debug ("Want to notify");
-        Smtp smtp{ emailConfiguration._smtpServer, emailConfiguration._emailFrom };
         try {
 
-            smtp.sendmail(
+            emailConfiguration._smtp.sendmail(
                 assetDetailes._contactEmail,
                 EmailConfiguration::generateBody (alertDescription, assetDetailes, ruleName),
                 EmailConfiguration::generateSubject (alertDescription, assetDetailes, ruleName)
@@ -529,6 +537,12 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     zsys_error ("%s: can't set consumer on stream '%s', '%s'", name, stream, pattern);
                 zstr_free (&pattern);
                 zstr_free (&stream);
+            }
+            else
+            if (streq (cmd, "MSMTP_PATH")) {
+                char* path = zmsg_popstr (msg);
+                emailConfiguration._smtp.msmtp_path (path);
+                zstr_free (&path);
             }
             else
             if (streq (cmd, "CONFIG")) {
