@@ -68,6 +68,7 @@ struct AlertDescription_ {
     {
     };
 };
+typedef struct AlertDescription_ AlertDescription;
 
 struct ElementDetails_ {
     char _priority;
@@ -77,8 +78,26 @@ struct ElementDetails_ {
     std::string _contactEmail;
 };
 
+typedef struct ElementDetails_ ElementDetails;
+
+
+/*
+ * \brief Class that represents an email configutration and
+ * is sesponsible for sending the mail
+ *
+ * TECHNICAL NOTE:
+ * All necessary configure information should be immediately
+ * propagated to the Smtp class
+ */
 class EmailConfiguration {
 public:
+
+
+    /*
+     * \brief Create an empty configuration
+     *
+     * State is "unconfigured"
+     */
     explicit EmailConfiguration() :
         _smtp{},
         _configured{false}
@@ -86,47 +105,150 @@ public:
     {
     }
 
-    bool empty(void) const {
+
+    /*
+     * \brief if the confuguration is already usable
+     *
+     * \return true  - if it is possible to send email
+     *         false - if at least one parameter is missing
+     */
+    bool isConfigured(void) const {
         return _configured;
     }
 
-    std::string _body;
-    std::string _emailFrom;
-    std::string _smtpPassword;
-    std::string _smtpServer;
 
-    void host (const std::string &host) {_smtp.host (host); }
-    void from (const std::string &from) {_smtp.host (from); }
+    /* \brief Set the host
+     *
+     * \param host - a host name
+     */
+    void host (const std::string &host) {
+        // TODO set the indicator, that it was configured
+        _smtp.host (host);
+    }
 
-    //TODO: make private
+
+    /* \brief Set the sender
+     *
+     * \param from - a sender's email
+     */
+    void from (const std::string &from) {
+        // TODO set the indicator, that it was configured
+        _smtp.host (from);
+    }
+
+
+    //TODO: make me private
     Smtp _smtp;
 
-    static std::string
-        generateBody (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
 
+    /*
+     * \brief Generate an email body supposed to be send
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the body of the email
+     */
     static std::string
-        generateSubject (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateBody (const AlertDescription &alert,
+            const ElementDetails &asset,
+            const std::string &ruleName);
+
+
+    /*
+     * \brief Generate an email subject supposed to be send
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the subject of the email
+     */
+    static std::string
+        generateSubject (const AlertDescription &alert,
+            const ElementDetails &asset,
+            const std::string &ruleName);
+
 private:
-    static std::string
-        generateEmailBodyActive (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
 
+    /*
+     * \brief Generate an email body supposed to be send
+     * for active alert
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the body of the email
+     */
     static std::string
-        generateEmailBodyResolved (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateEmailBodyActive (const AlertDescription &alert,
+            const ElementDetails &asset,
+            const std::string &ruleName);
 
+
+    /*
+     * \brief Generate an email body supposed to be send
+     * for resolved alert
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the body of the email
+     */
     static std::string
-        generateEmailSubjectResolved (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateEmailBodyResolved (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName);
 
+
+    /*
+     * \brief Generate an email subject supposed to be send
+     * for active alert
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the subject of the email
+     */
     static  std::string
-        generateEmailSubjectActive (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateEmailSubjectActive (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName);
 
-    static const std::string _emailBodyAlertActive;
-    static const std::string _emailSubjectActiveAlert;
-    static const std::string _emailBodyAlertResolved;
-    static const std::string _emailSubjectAlertResolved;
+
+    /*
+     * \brief Generate an email subject supposed to be send
+     * for resolved alert
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the subject of the email
+     */
+    static std::string
+        generateEmailSubjectResolved (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName);
+
+    static const std::string _emailBodyActiveAlertTemplate;
+    static const std::string _emailSubjectActiveAlertTemplate;
+    static const std::string _emailBodyResolvedAlertTemplate;
+    static const std::string _emailSubjectResolvedAlertTemplate;
+
+    // flag, that shows if everythinmg is configured
     bool _configured;
 };
 
-static std::string replaceTokens (const std::string &text, const std::string &pattern, const std::string &replacement)
+
+static std::string
+    replaceTokens (const std::string &text,
+        const std::string &pattern,
+        const std::string &replacement)
 {
     std::string result = text;
     size_t pos = 0;
@@ -137,81 +259,117 @@ static std::string replaceTokens (const std::string &text, const std::string &pa
     return result;
 }
 
+
 std::string EmailConfiguration::
-    generateEmailBodyResolved (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateEmailBodyResolved (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName)
 {
-    std::string result = _emailBodyAlertResolved;
+    std::string result = _emailBodyResolvedAlertTemplate;
     replaceTokens (result, "${rulename}", ruleName);
     replaceTokens (result, "${assetname}", asset._name);
-    replaceTokens (result, "${description}", description._description);
+    replaceTokens (result, "${description}", alert._description);
     return result;
 }
+
+
 std::string EmailConfiguration::
-    generateEmailBodyActive (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateEmailBodyActive (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName)
 {
-    std::string result = _emailBodyAlertActive;
+    std::string result = _emailBodyActiveAlertTemplate;
     replaceTokens (result, "${rulename}", ruleName);
     replaceTokens (result, "${assetname}", asset._name);
-    replaceTokens (result, "${description}", description._description);
+    replaceTokens (result, "${description}", alert._description);
     replaceTokens (result, "${priority}", std::to_string(asset._priority));
-    replaceTokens (result, "${severity}", description._severity);
-    replaceTokens (result, "${state}", description._state);
+    replaceTokens (result, "${severity}", alert._severity);
+    replaceTokens (result, "${state}", alert._state);
     return result;
 }
+
+
 std::string EmailConfiguration::
-    generateEmailSubjectResolved (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateEmailSubjectResolved (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName)
 {
-    std::string result = _emailSubjectAlertResolved;
+    std::string result = _emailSubjectResolvedAlertTemplate;
     replaceTokens (result, "${rulename}", ruleName);
     replaceTokens (result, "${assetname}", asset._name);
     return result;
 }
+
+
 std::string EmailConfiguration::
-    generateEmailSubjectActive (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateEmailSubjectActive (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName)
 {
-    std::string result = _emailBodyAlertActive;
+    std::string result = _emailSubjectActiveAlertTemplate;
     replaceTokens (result, "${rulename}", ruleName);
     replaceTokens (result, "${assetname}", asset._name);
-    replaceTokens (result, "${description}", description._description);
+    replaceTokens (result, "${description}", alert._description);
     replaceTokens (result, "${priority}", std::to_string(asset._priority));
-    replaceTokens (result, "${severity}", description._severity);
-    replaceTokens (result, "${state}", description._state);
+    replaceTokens (result, "${severity}", alert._severity);
+    replaceTokens (result, "${state}", alert._state);
     return result;
 }
+
+
 std::string EmailConfiguration::
-    generateBody (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateBody (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName)
 {
-    if ( description._state == "RESOLVED" ) {
-        return generateEmailBodyResolved (description, asset, ruleName);
+    if ( alert._state == "RESOLVED" ) {
+        return generateEmailBodyResolved (alert, asset, ruleName);
     }
     else {
-        return generateEmailBodyActive (description, asset, ruleName);
+        return generateEmailBodyActive (alert, asset, ruleName);
     }
 }
+
 
 std::string EmailConfiguration::
-    generateSubject (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateSubject (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName)
 {
-    if ( description._state == "RESOLVED" ) {
-        return generateEmailSubjectResolved (description, asset, ruleName);
+    if ( alert._state == "RESOLVED" ) {
+        return generateEmailSubjectResolved (alert, asset, ruleName);
     }
     else {
-        return generateEmailSubjectActive (description, asset, ruleName);
+        return generateEmailSubjectActive (alert, asset, ruleName);
     }
 }
 
 
-const std::string EmailConfiguration::_emailBodyAlertActive = "In the system an alert was detected. \n Source rule: ${rulename}\n Asset: ${assetname}\n Alert priority: P${priority}\n Alert severity: ${severity}\n Alert description: ${description}\n Alert state: ${state}";
-const std::string EmailConfiguration::_emailSubjectActiveAlert = "${severity} alert on ${assetname} from the rule ${rulename} is active!";
-const std::string EmailConfiguration::_emailBodyAlertResolved = "In the system an alert was resolved. \n Source rule: ${rulename}\n Asset: ${assetname}\n Alert description: ${description}";
-const std::string EmailConfiguration::_emailSubjectAlertResolved = "Alert on ${assetname} from the rule ${rulename} was resolved";
+const std::string EmailConfiguration::
+    _emailBodyAlertActive = "In the system an alert was detected. \n"
+        " Source rule: ${rulename}\n"
+        " Asset: ${assetname}\n"
+        " Alert priority: P${priority}\n"
+        " Alert severity: ${severity}\n"
+        " Alert description: ${description}\n"
+        " Alert state: ${state}";
 
 
-typedef struct AlertDescription_ AlertDescription;
-typedef struct ElementDetails_ ElementDetails;
+const std::string EmailConfiguration::
+    _emailSubjectActiveAlert = "${severity} alert on ${assetname} from the rule ${rulename} is active!";
+
+
+const std::string EmailConfiguration::
+    _emailBodyAlertResolved = "In the system an alert was resolved. \n Source rule: ${rulename}\n Asset: ${assetname}\n Alert description: ${description}";
+
+
+const std::string EmailConfiguration::
+    _emailSubjectAlertResolved = "Alert on ${assetname} from the rule ${rulename} was resolved";
+
 
 class ElementList {
 public:
+
     ElementList() {};
 
     size_t count (const std::string &assetName) const {
@@ -223,12 +381,16 @@ public:
     };
 
     // throws
-    const ElementDetails& getElementDetails (const std::string &assetName) const {
+    const ElementDetails& getElementDetails
+        (const std::string &assetName) const
+    {
         return _assets.at(assetName);
     };
 
 
-    void setElementDetails (const std::string &assetName, const ElementDetails &elementDetails) {
+    void setElementDetails (const std::string &assetName,
+        const ElementDetails &elementDetails)
+    {
         auto it = _assets.find(assetName);
         if ( it == _assets.cend() ) {
             _assets.emplace (assetName, elementDetails);
@@ -346,7 +508,7 @@ void AlertList::
         const ElementList &elementList)
 {
     //pid_t tmptmp = getpid();
-    if ( emailConfiguration.empty() ) {
+    if ( emailConfiguration.isConfigured() ) {
         zsys_error("Mail system is not configured!");
         return;
     }
@@ -354,7 +516,7 @@ void AlertList::
     bool needNotify = false;
     int64_t nowTimestamp = ::time(NULL);
     auto &ruleName = it->first.first;
-    ElementDetails_ assetDetailes;
+    ElementDetails assetDetailes;
     try {
         assetDetailes = elementList.getElementDetails(it->first.second);
     }
@@ -437,7 +599,7 @@ void onAlertReceive (
         return;
     }
     // information was found
-    ElementDetails_ assetDetailes = elementList.getElementDetails (asset);
+    ElementDetails assetDetailes = elementList.getElementDetails (asset);
 
     // 2. add alert to the list of alerts
     auto it = alertList.add (ruleName, asset, description, state, severity, timestamp, actions);
@@ -475,7 +637,7 @@ void onAssetReceive (
     // TODO insert here a code to handle multiple contacts
     char *contact_name = (char *) zhash_lookup (ext, "contact_name");
     char *contact_email = (char *) zhash_lookup (ext, "contact_email");
-    ElementDetails_ newAsset;
+    ElementDetails newAsset;
     newAsset._priority = priority[0];
     newAsset._name = assetName;
     newAsset._contactName = contact_name;
