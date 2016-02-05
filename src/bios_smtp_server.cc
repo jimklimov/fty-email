@@ -68,6 +68,7 @@ struct AlertDescription_ {
     {
     };
 };
+typedef struct AlertDescription_ AlertDescription;
 
 struct ElementDetails_ {
     char _priority;
@@ -77,6 +78,7 @@ struct ElementDetails_ {
     std::string _contactEmail;
 };
 
+typedef struct ElementDetails_ ElementDetails;
 class EmailConfiguration {
 public:
     EmailConfiguration() {
@@ -93,22 +95,22 @@ public:
     std::string _smtpServer;
 
     static std::string
-        generateBody (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateBody (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
 
     static std::string
-        generateSubject (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateSubject (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
 private:
     static std::string
-        generateEmailBodyActive (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateEmailBodyActive (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
 
     static std::string
-        generateEmailBodyResolved (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateEmailBodyResolved (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
 
     static std::string
-        generateEmailSubjectResolved (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateEmailSubjectResolved (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
 
     static  std::string
-        generateEmailSubjectActive (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName);
+        generateEmailSubjectActive (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
 
     static const std::string _emailBodyAlertActive;
     static const std::string _emailSubjectActiveAlert;
@@ -129,7 +131,7 @@ static std::string replaceTokens (const std::string &text, const std::string &pa
 }
 
 std::string EmailConfiguration::
-    generateEmailBodyResolved (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateEmailBodyResolved (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName)
 {
     std::string result = _emailBodyAlertResolved;
     replaceTokens (result, "${rulename}", ruleName);
@@ -138,7 +140,7 @@ std::string EmailConfiguration::
     return result;
 }
 std::string EmailConfiguration::
-    generateEmailBodyActive (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateEmailBodyActive (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName)
 {
     std::string result = _emailBodyAlertActive;
     replaceTokens (result, "${rulename}", ruleName);
@@ -150,7 +152,7 @@ std::string EmailConfiguration::
     return result;
 }
 std::string EmailConfiguration::
-    generateEmailSubjectResolved (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateEmailSubjectResolved (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName)
 {
     std::string result = _emailSubjectAlertResolved;
     replaceTokens (result, "${rulename}", ruleName);
@@ -158,7 +160,7 @@ std::string EmailConfiguration::
     return result;
 }
 std::string EmailConfiguration::
-    generateEmailSubjectActive (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateEmailSubjectActive (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName)
 {
     std::string result = _emailBodyAlertActive;
     replaceTokens (result, "${rulename}", ruleName);
@@ -170,7 +172,7 @@ std::string EmailConfiguration::
     return result;
 }
 std::string EmailConfiguration::
-    generateBody (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateBody (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName)
 {
     if ( description._state == "RESOLVED" ) {
         return generateEmailBodyResolved (description, asset, ruleName);
@@ -181,7 +183,7 @@ std::string EmailConfiguration::
 }
 
 std::string EmailConfiguration::
-    generateSubject (const AlertDescription_ &description, const ElementDetails_ &asset, const std::string &ruleName)
+    generateSubject (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName)
 {
     if ( description._state == "RESOLVED" ) {
         return generateEmailSubjectResolved (description, asset, ruleName);
@@ -198,8 +200,6 @@ const std::string EmailConfiguration::_emailBodyAlertResolved = "In the system a
 const std::string EmailConfiguration::_emailSubjectAlertResolved = "Alert on ${assetname} from the rule ${rulename} was resolved";
 
 
-typedef struct AlertDescription_ AlertDescription;
-typedef struct ElementDetails_ ElementDetails;
 
 class ElementList {
 public:
@@ -345,7 +345,7 @@ void AlertList::
     bool needNotify = false;
     int64_t nowTimestamp = ::time(NULL);
     auto &ruleName = it->first.first;
-    ElementDetails_ assetDetailes;
+    ElementDetails assetDetailes;
     try {
         assetDetailes = elementList.getElementDetails(it->first.second);
     }
@@ -429,7 +429,7 @@ void onAlertReceive (
         return;
     }
     // information was found
-    ElementDetails_ assetDetailes = elementList.getElementDetails (asset);
+    ElementDetails assetDetailes = elementList.getElementDetails (asset);
 
     // 2. add alert to the list of alerts
     auto it = alertList.add (ruleName, asset, description, state, severity, timestamp, actions);
@@ -467,7 +467,7 @@ void onAssetReceive (
     // TODO insert here a code to handle multiple contacts
     char *contact_name = (char *) zhash_lookup (ext, "contact_name");
     char *contact_email = (char *) zhash_lookup (ext, "contact_email");
-    ElementDetails_ newAsset;
+    ElementDetails newAsset;
     newAsset._priority = priority[0];
     newAsset._name = assetName;
     newAsset._contactName = contact_name;
