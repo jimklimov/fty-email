@@ -79,35 +79,74 @@ struct ElementDetails_ {
 };
 
 typedef struct ElementDetails_ ElementDetails;
+
+/*
+ * \brief Class that represents an email configutration and
+ * is sesponsible for sending the mail
+ */
 class EmailConfiguration {
 public:
-    EmailConfiguration() {
+    /*
+     * \brief Create an empty configuration
+     *
+     * State is "unconfigured"
+     */
+    explicit EmailConfiguration() {
         _configured = false;
     }
 
-    bool empty(void) const {
+    /*
+     * \brief if the confuguration is already usable
+     *
+     * \return true  - if it is possible to send email
+     *         false - if at least one parameter is missing
+     */
+    bool isConfigured(void) const {
         return _configured;
     }
 
-    std::string _body;
+    // TODO make us private
     std::string _emailFrom;
     std::string _smtpPassword;
     std::string _smtpServer;
 
+    /*
+     * \brief Generate an email body supposed to be send
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the body of the email
+     */
     static std::string
-        generateBody (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
+        generateBody (const AlertDescription &alert,
+            const ElementDetails &asset,
+            const std::string &ruleName);
 
+    /*
+     * \brief Generate an email subject supposed to be send
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the body of the email
+     */
     static std::string
-        generateSubject (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
+        generateSubject (const AlertDescription &alert,
+            const ElementDetails &asset,
+            const std::string &ruleName);
+
 private:
     static std::string
-        generateEmailBodyActive (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
+        generateEmailBodyActive (const AlertDescription &alert, const ElementDetails &asset, const std::string &ruleName);
 
     static std::string
-        generateEmailBodyResolved (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
+        generateEmailBodyResolved (const AlertDescription &alert, const ElementDetails &asset, const std::string &ruleName);
 
     static std::string
-        generateEmailSubjectResolved (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
+        generateEmailSubjectResolved (const AlertDescription &alert, const ElementDetails &asset, const std::string &ruleName);
 
     static  std::string
         generateEmailSubjectActive (const AlertDescription &description, const ElementDetails &asset, const std::string &ruleName);
@@ -337,7 +376,7 @@ void AlertList::
         const ElementList &elementList)
 {
     //pid_t tmptmp = getpid();
-    if ( emailConfiguration.empty() ) {
+    if ( emailConfiguration.isConfigured() ) {
         zsys_error("Mail system is not configured!");
         return;
     }
