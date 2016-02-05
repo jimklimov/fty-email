@@ -70,7 +70,7 @@ struct AlertDescription_ {
 };
 
 struct ElementDetails_ {
-    int _priority;
+    char _priority;
     std::string _name;
     // TODO be ready for the list of alerts
     std::string _contactName;
@@ -302,25 +302,25 @@ AlertList::AlertsConfig::iterator AlertList::
     return it;
 }
 
-static int getNotificationInterval (const std::string &severity, int priority)
+static int getNotificationInterval (const std::string &severity, char priority)
 {
     // According Aplha document (severity, priority) is mapped onto the time interval [s]
-    static const std::map < std::pair<std::string, int>, int> times = {
-        { {"CRITICAL", 1}, 5  * 60},
-        { {"CRITICAL", 2}, 15 * 60},
-        { {"CRITICAL", 3}, 15 * 60},
-        { {"CRITICAL", 4}, 15 * 60},
-        { {"CRITICAL", 5}, 15 * 60},
-        { {"WARNING", 1}, 1 * 60 * 60},
-        { {"WARNING", 2}, 4 * 60 * 60},
-        { {"WARNING", 3}, 4 * 60 * 60},
-        { {"WARNING", 4}, 4 * 60 * 60},
-        { {"WARNING", 5}, 4 * 60 * 60},
-        { {"INFO", 1}, 8 * 60 * 60},
-        { {"INFO", 2}, 24 * 60 * 60},
-        { {"INFO", 3}, 24 * 60 * 60},
-        { {"INFO", 4}, 24 * 60 * 60},
-        { {"INFO", 5}, 24 * 60 * 60}
+    static const std::map < std::pair<std::string, char>, int> times = {
+        { {"CRITICAL", '1'}, 5  * 60},
+        { {"CRITICAL", '2'}, 15 * 60},
+        { {"CRITICAL", '3'}, 15 * 60},
+        { {"CRITICAL", '4'}, 15 * 60},
+        { {"CRITICAL", '5'}, 15 * 60},
+        { {"WARNING", '1'}, 1 * 60 * 60},
+        { {"WARNING", '2'}, 4 * 60 * 60},
+        { {"WARNING", '3'}, 4 * 60 * 60},
+        { {"WARNING", '4'}, 4 * 60 * 60},
+        { {"WARNING", '5'}, 4 * 60 * 60},
+        { {"INFO", '1'}, 8 * 60 * 60},
+        { {"INFO", '2'}, 24 * 60 * 60},
+        { {"INFO", '3'}, 24 * 60 * 60},
+        { {"INFO", '4'}, 24 * 60 * 60},
+        { {"INFO", '5'}, 24 * 60 * 60}
     };
     auto it = times.find(std::make_pair (severity, priority));
     if ( it == times.cend() ) {
@@ -385,6 +385,7 @@ void AlertList::
                 EmailConfiguration::generateSubject (alertDescription, assetDetailes, ruleName)
             );
             alertDescription._lastNotification = nowTimestamp;
+            zsys_debug ("notification send at %d", nowTimestamp);
         }
         catch (const std::runtime_error& e) {
             zsys_error ("Error: %s", e.what());
@@ -395,7 +396,6 @@ void AlertList::
 
 
 void onAlertReceive (
-    mlm_client_t *client,
     bios_proto_t **message,
     AlertList &alertList,
     ElementList &elementList,
@@ -406,7 +406,7 @@ void onAlertReceive (
     // check one more time to be sure, that it is an alert message
     if ( bios_proto_id (messageAlert) != BIOS_PROTO_ALERT )
     {
-        zsys_error ("mesaage bios_proto is not ALERT!");
+        zsys_error ("message bios_proto is not ALERT!");
         return;
     }
     // decode alert message
@@ -422,17 +422,15 @@ void onAlertReceive (
     const char *actions = bios_proto_action (messageAlert);
 
     // 1. Find out information about the element
-    ElementDetails_ assetDetailes ;
-    {
-        if ( elementList.count(asset) != 0 ) {
-         assetDetailes = elementList.getElementDetails (asset);
-        };
-
-      // try to findout information about the asset
+    if ( elementList.count(asset) == 0 ) {
+        zsys_error ("no information is known about the asset, REQ-REP not implemented");
+        // try to findout information about the asset
         // TODO
-        // return if information can't be obtained
+        return;
     }
     // information was found
+    ElementDetails_ assetDetailes = elementList.getElementDetails (asset);
+
     // 2. add alert to the list of alerts
     auto it = alertList.add (ruleName, asset, description, state, severity, timestamp, actions);
     // notify user about alert
@@ -443,14 +441,38 @@ void onAlertReceive (
 }
 
 void onAssetReceive (
-    mlm_client_t *client,
     bios_proto_t **message,
     ElementList &elementList)
 {
-    assert (client != NULL );
+    // when some asset message received
     assert (message != NULL );
     assert (elementList.empty() || true );
-    return;
+
+    bios_proto_t *messageAsset = *message;
+    // check one more time to be sure, that it is an asset message
+    if ( bios_proto_id (messageAsset) != BIOS_PROTO_ASSET )
+    {
+        zsys_error ("message bios_proto is not ASSET!");
+        return;
+    }
+    // decode alert message
+    // the other fields in the messages are not important
+    const char *assetName = bios_proto_name (messageAsset);
+    zhash_t *ext = bios_proto_ext (messageAsset);
+    zhash_t *aux = bios_proto_aux (messageAsset);
+
+    char *priority = (char *) zhash_lookup (aux, "priority");
+
+    // now, we need to get the contact information
+    // TODO insert here a code to handle multiple contacts
+    char *contact_name = (char *) zhash_lookup (ext, "contact_name");
+    char *contact_email = (char *) zhash_lookup (ext, "contact_email");
+    ElementDetails_ newAsset;
+    newAsset._priority = priority[0];
+    newAsset._name = assetName;
+    newAsset._contactName = contact_name;
+    newAsset._contactEmail = contact_email;
+    elementList.setElementDetails (assetName, newAsset);
 }
 
 void
@@ -542,10 +564,10 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 continue;
             }
             if ( bios_proto_id (bmessage) == BIOS_PROTO_ALERT )  {
-                onAlertReceive (client, &bmessage, alertList, elementList, emailConfiguration);
+                onAlertReceive (&bmessage, alertList, elementList, emailConfiguration);
             }
             else if ( bios_proto_id (bmessage) == BIOS_PROTO_ASSET )  {
-                onAssetReceive (client, &bmessage, elementList);
+                onAssetReceive (&bmessage, elementList);
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
