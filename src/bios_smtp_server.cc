@@ -82,7 +82,7 @@ typedef struct ElementDetails_ ElementDetails;
 
 
 /*
- * \brief Class that represents an email configutration and
+ * \brief Class that represents an email configuration and
  * is sesponsible for sending the mail
  *
  * TECHNICAL NOTE:
@@ -107,7 +107,7 @@ public:
 
 
     /*
-     * \brief if the confuguration is already usable
+     * \brief if the configuration is already usable
      *
      * \return true  - if it is possible to send email
      *         false - if at least one parameter is missing
@@ -346,7 +346,7 @@ std::string EmailConfiguration::
 
 
 const std::string EmailConfiguration::
-    _emailBodyAlertActive = "In the system an alert was detected. \n"
+    _emailBodyActiveAlertTemplate = "In the system an alert was detected. \n"
         " Source rule: ${rulename}\n"
         " Asset: ${assetname}\n"
         " Alert priority: P${priority}\n"
@@ -356,15 +356,20 @@ const std::string EmailConfiguration::
 
 
 const std::string EmailConfiguration::
-    _emailSubjectActiveAlert = "${severity} alert on ${assetname} from the rule ${rulename} is active!";
+    _emailSubjectActiveAlertTemplate = "${severity} alert on ${assetname} "
+        "from the rule ${rulename} is active!";
 
 
 const std::string EmailConfiguration::
-    _emailBodyAlertResolved = "In the system an alert was resolved. \n Source rule: ${rulename}\n Asset: ${assetname}\n Alert description: ${description}";
+    _emailBodyResolvedAlertTemplate = "In the system an alert was resolved."
+        " \n Source rule: ${rulename}\n"
+        " Asset: ${assetname}\n "
+        " Alert description: ${description}";
 
 
 const std::string EmailConfiguration::
-    _emailSubjectAlertResolved = "Alert on ${assetname} from the rule ${rulename} was resolved";
+    _emailSubjectResolvedAlertTemplate = "Alert on ${assetname} "
+        "from the rule ${rulename} was resolved";
 
 
 class ElementList {
@@ -407,9 +412,18 @@ class AlertList {
 public :
     AlertList(){};
 
-    typedef typename std::map <std::pair<std::string, std::string>, AlertDescription> AlertsConfig;
+    typedef typename std::map
+        <std::pair<std::string, std::string>, AlertDescription> AlertsConfig;
 
-    AlertsConfig::iterator add(const char *ruleName, const char *asset, const char *description, const char *state, const char *severity, int64_t timestamp, const char *actions);
+    AlertsConfig::iterator add(
+        const char *ruleName,
+        const char *asset,
+        const char *description,
+        const char *state,
+        const char *severity,
+        int64_t timestamp,
+        const char *actions);
+
     void notify(
         const AlertsConfig::iterator it,
         const EmailConfiguration &emailConfiguration,
@@ -434,7 +448,8 @@ AlertList::AlertsConfig::iterator AlertList::
     auto alertKey = std::make_pair(ruleName, asset);
     std::set<std::string> actionList;
     std::set<std::string>::iterator actit = actionList.begin();
-    cxxtools::split( '/', std::string(actions), std::inserter(actionList, actit) );
+    cxxtools::split( '/', std::string(actions),
+        std::inserter(actionList, actit) );
 
     // try to insert a new alert
     auto newAlert = _alerts.emplace(alertKey, AlertDescription (
@@ -444,7 +459,8 @@ AlertList::AlertsConfig::iterator AlertList::
             actionList,
             timestamp
         ));
-    // newAlert = pair (iterator, bool). true = inserted , false = not inserted
+    // newAlert = pair (iterator, bool). true = inserted,
+    // false = not inserted
     if ( newAlert.second == true ) {
         // it is the first time we see this alert
         // bacause in the map "alertKey" wasn't found
@@ -473,9 +489,14 @@ AlertList::AlertsConfig::iterator AlertList::
     return it;
 }
 
-static int getNotificationInterval (const std::string &severity, char priority)
+
+static int
+    getNotificationInterval(
+        const std::string &severity,
+        char priority)
 {
-    // According Aplha document (severity, priority) is mapped onto the time interval [s]
+    // According Aplha document (severity, priority)
+    // is mapped onto the time interval [s]
     static const std::map < std::pair<std::string, char>, int> times = {
         { {"CRITICAL", '1'}, 5  * 60},
         { {"CRITICAL", '2'}, 15 * 60},
@@ -501,6 +522,8 @@ static int getNotificationInterval (const std::string &severity, char priority)
         return it->second;
     }
 }
+
+
 void AlertList::
     notify(
         const AlertsConfig::iterator it,
@@ -525,18 +548,22 @@ void AlertList::
         return;
     }
     auto &alertDescription = it->second;
-    if  ( alertDescription._lastUpdate > alertDescription._lastNotification ) {
-        // Last notification was send BEFORE last important change take place -> need to notify
+    if ( alertDescription._lastUpdate > alertDescription._lastNotification ) {
+        // Last notification was send BEFORE last
+        // important change take place -> need to notify
         needNotify = true;
     }
     else {
-        // so, no important changes, but may be we need to notify according the schedule
+        // so, no important changes, but may be we need to
+        // notify according the schedule
         if ( alertDescription._state == "RESOLVED" ) {
             // but only for active alerts
             needNotify = false;
         }
         else if ( ( nowTimestamp - alertDescription._lastNotification ) >
-                    getNotificationInterval(alertDescription._severity, assetDetailes._priority ) )
+                    getNotificationInterval (alertDescription._severity,
+                                             assetDetailes._priority)
+                )
              // If  lastNotification + interval < NOW
         {
             // so, we found out that we need to notify according the schedule
@@ -551,8 +578,10 @@ void AlertList::
 
             emailConfiguration._smtp.sendmail(
                 assetDetailes._contactEmail,
-                EmailConfiguration::generateBody (alertDescription, assetDetailes, ruleName),
-                EmailConfiguration::generateSubject (alertDescription, assetDetailes, ruleName)
+                EmailConfiguration::generateBody
+                    (alertDescription, assetDetailes, ruleName),
+                EmailConfiguration::generateSubject
+                    (alertDescription, assetDetailes, ruleName)
             );
             alertDescription._lastNotification = nowTimestamp;
             zsys_debug ("notification send at %d", nowTimestamp);
@@ -602,7 +631,14 @@ void onAlertReceive (
     ElementDetails assetDetailes = elementList.getElementDetails (asset);
 
     // 2. add alert to the list of alerts
-    auto it = alertList.add (ruleName, asset, description, state, severity, timestamp, actions);
+    auto it = alertList.add(
+        ruleName,
+        asset,
+        description,
+        state,
+        severity,
+        timestamp,
+        actions);
     // notify user about alert
     alertList.notify(it, emailConfiguration, elementList);
 
@@ -654,7 +690,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
 
     mlm_client_t *client = mlm_client_new ();
 
-    zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe (client), NULL);
+    zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe(client), NULL);
 
     zsock_signal (pipe, 0);
 
@@ -680,34 +716,35 @@ bios_smtp_server (zsock_t *pipe, void* args)
             else if (streq (cmd, "CONNECT")) {
                 char* endpoint = zmsg_popstr (msg);
                 int rv = mlm_client_connect (client, endpoint, 1000, name);
-                if (rv == -1)
+                if (rv == -1) {
                     zsys_error ("%s: can't connect to malamute endpoint '%s'", name, endpoint);
+                }
                 zstr_free (&endpoint);
             }
             else if (streq (cmd, "PRODUCER")) {
                 char* stream = zmsg_popstr (msg);
                 int rv = mlm_client_set_producer (client, stream);
-                if (rv == -1)
+                if (rv == -1) {
                     zsys_error ("%s: can't set producer on stream '%s'", name, stream);
+                }
                 zstr_free (&stream);
             }
             else if (streq (cmd, "CONSUMER")) {
                 char* stream = zmsg_popstr (msg);
                 char* pattern = zmsg_popstr (msg);
                 int rv = mlm_client_set_consumer (client, stream, pattern);
-                if (rv == -1)
+                if (rv == -1) {
                     zsys_error ("%s: can't set consumer on stream '%s', '%s'", name, stream, pattern);
+                }
                 zstr_free (&pattern);
                 zstr_free (&stream);
             }
-            else
-            if (streq (cmd, "MSMTP_PATH")) {
+            else if (streq (cmd, "MSMTP_PATH")) {
                 char* path = zmsg_popstr (msg);
                 emailConfiguration._smtp.msmtp_path (path);
                 zstr_free (&path);
             }
-            else
-            if (streq (cmd, "CONFIG")) {
+            else if (streq (cmd, "CONFIG")) {
                 //char* filename = zmsg_popstr (msg);
                 // TODO read configuration SMTP
                 /*
@@ -740,7 +777,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 continue;
             }
             if ( bios_proto_id (bmessage) == BIOS_PROTO_ALERT )  {
-                onAlertReceive (&bmessage, alertList, elementList, emailConfiguration);
+                onAlertReceive (&bmessage, alertList, elementList,
+                    emailConfiguration);
             }
             else if ( bios_proto_id (bmessage) == BIOS_PROTO_ASSET )  {
                 onAssetReceive (&bmessage, elementList);
@@ -760,7 +798,7 @@ exit:
 }
 
 
-//  --------------------------------------------------------------------------
+//  -------------------------------------------------------------------------
 //  Self test of this class
 
 void
@@ -784,7 +822,7 @@ bios_smtp_server_test (bool verbose)
     rv = mlm_client_set_producer (producer, "ALERTS");
     assert( rv != -1 );
 
-    zactor_t *ag_server = zactor_new (bios_smtp_server, (void*) "agent-smtp");
+    zactor_t *ag_server = zactor_new (bios_smtp_server, (void*)"agent-smtp");
 
     if (verbose) {
         zstr_send (ag_server, "VERBOSE");
@@ -794,7 +832,8 @@ bios_smtp_server_test (bool verbose)
     zstr_sendx (ag_server, "CONSUMER", "ALERTS",".*", NULL);
     zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
 
-    zmsg_t *msg = bios_proto_encode_alert (NULL, "NY_RULE", "QWERTY", "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    zmsg_t *msg = bios_proto_encode_alert (NULL, "NY_RULE", "QWERTY",
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     std::string atopic = "NY_RULE/CRITICAL@QWERTY";
     mlm_client_send (producer, atopic.c_str(), &msg);
