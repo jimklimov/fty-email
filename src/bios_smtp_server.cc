@@ -84,6 +84,10 @@ typedef struct ElementDetails_ ElementDetails;
 /*
  * \brief Class that represents an email configutration and
  * is sesponsible for sending the mail
+ *
+ * TECHNICAL NOTE:
+ * All necessary configure information should be immediately
+ * propagated to the Smtp class
  */
 class EmailConfiguration {
 public:
@@ -117,14 +121,20 @@ public:
      *
      * \param host - a host name
      */
-    void host (const std::string &host) {_smtp.host (host); }
+    void host (const std::string &host) {
+        // TODO set the indicator, that it was configured
+        _smtp.host (host);
+    }
 
 
     /* \brief Set the sender
      *
      * \param from - a sender's email
      */
-    void from (const std::string &from) {_smtp.host (from); }
+    void from (const std::string &from) {
+        // TODO set the indicator, that it was configured
+        _smtp.host (from);
+    }
 
 
     //TODO: make me private
@@ -153,7 +163,7 @@ public:
      * \param asset - an information about the asset
      * \param ruleName - a rule name
      *
-     * \return string that contains the the body of the email
+     * \return string that contains the the subject of the email
      */
     static std::string
         generateSubject (const AlertDescription &alert,
@@ -161,34 +171,74 @@ public:
             const std::string &ruleName);
 
 private:
+
+    /*
+     * \brief Generate an email body supposed to be send
+     * for active alert
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the body of the email
+     */
     static std::string
         generateEmailBodyActive (const AlertDescription &alert,
             const ElementDetails &asset,
             const std::string &ruleName);
 
+
+    /*
+     * \brief Generate an email body supposed to be send
+     * for resolved alert
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the body of the email
+     */
     static std::string
         generateEmailBodyResolved (const AlertDescription &alert,
         const ElementDetails &asset,
         const std::string &ruleName);
 
-    static std::string
-        generateEmailSubjectResolved (const AlertDescription &alert,
-        const ElementDetails &asset,
-        const std::string &ruleName);
 
+    /*
+     * \brief Generate an email subject supposed to be send
+     * for active alert
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the subject of the email
+     */
     static  std::string
         generateEmailSubjectActive (const AlertDescription &alert,
         const ElementDetails &asset,
         const std::string &ruleName);
 
-    static const std::string _emailBodyAlertActive;
-    static const std::string _emailSubjectActiveAlert;
-    static const std::string _emailBodyAlertResolved;
-    static const std::string _emailSubjectAlertResolved;
 
-    std::string _emailFrom;
-    std::string _smtpPassword;
-    std::string _smtpServer;
+    /*
+     * \brief Generate an email subject supposed to be send
+     * for resolved alert
+     *
+     * \param alert - an information about the alert
+     * \param asset - an information about the asset
+     * \param ruleName - a rule name
+     *
+     * \return string that contains the the subject of the email
+     */
+    static std::string
+        generateEmailSubjectResolved (const AlertDescription &alert,
+        const ElementDetails &asset,
+        const std::string &ruleName);
+
+    static const std::string _emailBodyActiveAlertTemplate;
+    static const std::string _emailSubjectActiveAlertTemplate;
+    static const std::string _emailBodyResolvedAlertTemplate;
+    static const std::string _emailSubjectResolvedAlertTemplate;
 
     // flag, that shows if everythinmg is configured
     bool _configured;
@@ -215,7 +265,7 @@ std::string EmailConfiguration::
         const ElementDetails &asset,
         const std::string &ruleName)
 {
-    std::string result = _emailBodyAlertResolved;
+    std::string result = _emailBodyResolvedAlertTemplate;
     replaceTokens (result, "${rulename}", ruleName);
     replaceTokens (result, "${assetname}", asset._name);
     replaceTokens (result, "${description}", alert._description);
@@ -228,7 +278,7 @@ std::string EmailConfiguration::
         const ElementDetails &asset,
         const std::string &ruleName)
 {
-    std::string result = _emailBodyAlertActive;
+    std::string result = _emailBodyActiveAlertTemplate;
     replaceTokens (result, "${rulename}", ruleName);
     replaceTokens (result, "${assetname}", asset._name);
     replaceTokens (result, "${description}", alert._description);
@@ -244,7 +294,7 @@ std::string EmailConfiguration::
         const ElementDetails &asset,
         const std::string &ruleName)
 {
-    std::string result = _emailSubjectAlertResolved;
+    std::string result = _emailSubjectResolvedAlertTemplate;
     replaceTokens (result, "${rulename}", ruleName);
     replaceTokens (result, "${assetname}", asset._name);
     return result;
@@ -256,7 +306,7 @@ std::string EmailConfiguration::
         const ElementDetails &asset,
         const std::string &ruleName)
 {
-    std::string result = _emailBodyAlertActive;
+    std::string result = _emailSubjectActiveAlertTemplate;
     replaceTokens (result, "${rulename}", ruleName);
     replaceTokens (result, "${assetname}", asset._name);
     replaceTokens (result, "${description}", alert._description);
