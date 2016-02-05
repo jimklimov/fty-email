@@ -209,6 +209,10 @@ public:
         return _assets.count(assetName);
     };
 
+    bool empty () const {
+        return _assets.empty();
+    };
+
     // throws
     const ElementDetails& getElementDetails (const std::string &assetName) const {
         return _assets.at(assetName);
@@ -438,6 +442,17 @@ void onAlertReceive (
     bios_proto_destroy (message);
 }
 
+void onAssetReceive (
+    mlm_client_t *client,
+    bios_proto_t **message,
+    ElementList &elementList)
+{
+    assert (client != NULL );
+    assert (message != NULL );
+    assert (elementList.empty() || true );
+    return;
+}
+
 void
 bios_smtp_server (zsock_t *pipe, void* args)
 {
@@ -462,14 +477,12 @@ bios_smtp_server (zsock_t *pipe, void* args)
             char *cmd = zmsg_popstr (msg);
 
             if (streq (cmd, "$TERM")) {
-                zsys_info ("aa");
                 zstr_free (&cmd);
                 zmsg_destroy (&msg);
                 goto exit;
             }
             else
             if (streq (cmd, "VERBOSE")) {
-                zsys_info ("verbose");
                 verbose = true;
             }
             else if (streq (cmd, "CONNECT")) {
@@ -506,19 +519,17 @@ bios_smtp_server (zsock_t *pipe, void* args)
             zmsg_destroy (&msg);
             continue;
         }
-        zsys_info ("H");
         // This agent is a reactive agent, it reacts only on messages
         // and doesn't do anything if there is no messages
         // TODO: probably email also should be send every XXX seconds,
         // even if no alerts were received
         zmsg_t *zmessage = mlm_client_recv (client);
-        zsys_info ("h");
         if ( zmessage == NULL ) {
             continue;
         }
         std::string topic = mlm_client_subject(client);
         if ( verbose ) {
-            zsys_info("Got message '%s'", topic.c_str());
+                zsys_debug("Got message '%s'", topic.c_str());
         }
         // There are inputs
         //  - an alert from alert stream
@@ -530,12 +541,16 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zsys_error ("cannot decode bios_proto message, ignore it");
                 continue;
             }
-            if ( bios_proto_id (bmessage) != BIOS_PROTO_ALERT )  {
-                zsys_error ("it is not an alert message, ignore it");
-                continue;
+            if ( bios_proto_id (bmessage) == BIOS_PROTO_ALERT )  {
+                onAlertReceive (client, &bmessage, alertList, elementList, emailConfiguration);
             }
-
-            onAlertReceive (client, &bmessage, alertList, elementList, emailConfiguration);
+            else if ( bios_proto_id (bmessage) == BIOS_PROTO_ASSET )  {
+                onAssetReceive (client, &bmessage, elementList);
+            }
+            else {
+                zsys_error ("it is not an alert message, ignore it");
+                bios_proto_destroy (&bmessage);
+            }
         }
         zmsg_destroy (&zmessage);
     }
