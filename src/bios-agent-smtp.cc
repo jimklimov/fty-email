@@ -80,6 +80,7 @@ int main (int argc, char** argv)
 
     zstr_sendx (ag_server, "CONNECT", ENDPOINT, NULL);
     zstr_sendx (ag_server, "CONSUMER", "ALERTS", ".*", NULL);
+    zstr_sendx (ag_server, "CONSUMER", "ASSETS", ".*", NULL);
     zstr_sendx (ag_server, "CONFIG", PATH, NULL);
 
     //  Accept and print any message back from server
