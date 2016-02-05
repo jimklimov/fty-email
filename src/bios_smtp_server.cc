@@ -341,7 +341,14 @@ void AlertList::
     bool needNotify = false;
     int64_t nowTimestamp = ::time(NULL);
     auto &ruleName = it->first.first;
-    auto &assetDetailes = elementList.getElementDetails(it->first.second);
+    ElementDetails_ assetDetailes;
+    try {
+        assetDetailes = elementList.getElementDetails(it->first.second);
+    }
+    catch (const std::exception &e ) {
+        zsys_error ("CAN'T NOTIFY unknown asset");
+        return;
+    }
     auto &alertDescription = it->second;
     if  ( alertDescription._lastUpdate > alertDescription._lastNotification ) {
         // Last notification was send BEFORE last important change take place -> need to notify
@@ -413,7 +420,7 @@ void onAlertReceive (
     // 1. Find out information about the element
     ElementDetails_ assetDetailes ;
     {
-        if ( elementList.count(asset) == 0 ) {
+        if ( elementList.count(asset) != 0 ) {
          assetDetailes = elementList.getElementDetails (asset);
         };
 
@@ -455,12 +462,14 @@ bios_smtp_server (zsock_t *pipe, void* args)
             char *cmd = zmsg_popstr (msg);
 
             if (streq (cmd, "$TERM")) {
+                zsys_info ("aa");
                 zstr_free (&cmd);
                 zmsg_destroy (&msg);
                 goto exit;
             }
             else
             if (streq (cmd, "VERBOSE")) {
+                zsys_info ("verbose");
                 verbose = true;
             }
             else if (streq (cmd, "CONNECT")) {
@@ -497,12 +506,13 @@ bios_smtp_server (zsock_t *pipe, void* args)
             zmsg_destroy (&msg);
             continue;
         }
-
+        zsys_info ("H");
         // This agent is a reactive agent, it reacts only on messages
         // and doesn't do anything if there is no messages
         // TODO: probably email also should be send every XXX seconds,
         // even if no alerts were received
         zmsg_t *zmessage = mlm_client_recv (client);
+        zsys_info ("h");
         if ( zmessage == NULL ) {
             continue;
         }
@@ -545,6 +555,42 @@ bios_smtp_server_test (bool verbose)
 {
     printf (" * bios_smtp_server: ");
 
+    //  @selftest
+    static const char* endpoint = "inproc://bios-ag-server-test";
+
+    zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
+    assert ( server != NULL );
+    zstr_sendx (server, "BIND", endpoint, NULL);
+    if (verbose) {
+        zstr_send (server, "VERBOSE");
+    }
+
+    mlm_client_t *producer = mlm_client_new ();
+    int rv = mlm_client_connect (producer, endpoint, 1000, "producer");
+    assert( rv != -1 );
+    rv = mlm_client_set_producer (producer, "ALERTS");
+    assert( rv != -1 );
+
+    zactor_t *ag_server = zactor_new (bios_smtp_server, (void*) "agent-smtp");
+
+    if (verbose) {
+        zstr_send (ag_server, "VERBOSE");
+    }
+    zstr_sendx (ag_server, "CONNECT", endpoint, NULL);
+    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
+    zstr_sendx (ag_server, "CONSUMER", "ALERTS",".*", NULL);
+    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
+
+    zmsg_t *msg = bios_proto_encode_alert (NULL, "NY_RULE", "QWERTY", "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    std::string atopic = "NY_RULE/CRITICAL@QWERTY";
+    mlm_client_send (producer, atopic.c_str(), &msg);
+
+    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
+
+    zactor_destroy (&ag_server);
+    mlm_client_destroy (&producer);
+    zactor_destroy (&server);
     //  @selftest
     //  Simple create/destroy test
     //  @end
