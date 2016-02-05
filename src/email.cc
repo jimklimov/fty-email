@@ -32,14 +32,11 @@
 #include <sstream>
 #include <ctime>
 
-Smtp::Smtp(
-        const std::string& host,
-        const std::string& from
-        ) :
-    _host{host},
-    _from{from}
+Smtp::Smtp():
+    _host {},
+    _from {}
 {
-    _argv = Argv{ \
+    _argv = Argv{
         "/usr/bin/msmtp",
         "--host=" + _host,
         "--protocol=smtp",
@@ -48,6 +45,24 @@ Smtp::Smtp(
         "--auto-from=off",
         "--read-recipients",
         "--read-envelope-from"};
+}
+
+void
+    Smtp::host (const std::string& host)
+{
+    _host = host;
+    _argv[1] = "--host=" + _host;
+}
+
+void
+    Smtp::from (const std::string& from)
+{
+    _from = from;
+}
+
+void Smtp::msmtp_path (const std::string& msmtp_path)
+{
+    _argv[0] = msmtp_path;
 }
 
 void Smtp::sendmail(
