@@ -750,6 +750,11 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 /*
                 */
             }
+            else if (streq (cmd, "SMTPSERVER")) {
+                char *host = zmsg_popstr (msg);
+                if (host) emailConfiguration.host(host);
+                zstr_free (&host);
+            }
             zstr_free (&cmd);
             zmsg_destroy (&msg);
             continue;

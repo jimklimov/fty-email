@@ -39,6 +39,7 @@ static const char *ENDPOINT = "ipc://@/malamute";
 int main (int argc, char** argv)
 {
     bool verbose = false;
+    char *smtpserver = NULL;
 
     puts ("START bios-agent-smtp - Daemon that is responsible for email notification about alerts");
 
@@ -82,6 +83,7 @@ int main (int argc, char** argv)
     zstr_sendx (ag_server, "CONSUMER", "ALERTS", ".*", NULL);
     zstr_sendx (ag_server, "CONSUMER", "ASSETS", ".*", NULL);
     zstr_sendx (ag_server, "CONFIG", PATH, NULL);
+    if (smtpserver) zstr_sendx (ag_server, "SMTPSERVER", smtpserver, NULL);
 
     //  Accept and print any message back from server
     //  copy from src/malamute.c under MPL license
