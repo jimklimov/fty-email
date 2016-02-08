@@ -65,9 +65,9 @@ public:
     };
 
 
-    void setElementDetails (const std::string &assetName,
-        const ElementDetails &elementDetails)
+    void setElementDetails (const ElementDetails &elementDetails)
     {
+        auto assetName = elementDetails._name;
         auto it = _assets.find(assetName);
         if ( it == _assets.cend() ) {
             _assets.emplace (assetName, elementDetails);
@@ -336,21 +336,46 @@ void onAssetReceive (
     // decode alert message
     // the other fields in the messages are not important
     const char *assetName = bios_proto_name (messageAsset);
-    zhash_t *ext = bios_proto_ext (messageAsset);
-    zhash_t *aux = bios_proto_aux (messageAsset);
+    if ( assetName == NULL ) {
+        zsys_error ("asset name is missing in the mesage");
+        return;
+    }
 
-    char *priority = (char *) zhash_lookup (aux, "priority");
+    zhash_t *aux = bios_proto_aux (messageAsset);
+    const char *default_priority = "5";
+    const char *priority = default_priority;
+    if ( aux != NULL ) {
+        // if we have additional information
+        zsys_debug ("aux not null");
+        priority = (char *) zhash_lookup (aux, "priority");
+        if ( priority == NULL ) {
+            zsys_debug ("priority is NULL");
+            // but information about priority is missing
+            priority = default_priority;
+        }
+    }
+
 
     // now, we need to get the contact information
     // TODO insert here a code to handle multiple contacts
-    char *contact_name = (char *) zhash_lookup (ext, "contact_name");
-    char *contact_email = (char *) zhash_lookup (ext, "contact_email");
+    zhash_t *ext = bios_proto_ext (messageAsset);
+    char *contact_name = NULL;
+    char *contact_email = NULL;
+    if ( ext != NULL ) {
+        contact_name = (char *) zhash_lookup (ext, "contact_name");
+        contact_email = (char *) zhash_lookup (ext, "contact_email");
+    } else {
+        zsys_error ("ext is missing");
+    }
+
+
     ElementDetails newAsset;
     newAsset._priority = priority[0];
     newAsset._name = assetName;
-    newAsset._contactName = contact_name;
-    newAsset._contactEmail = contact_email;
-    elementList.setElementDetails (assetName, newAsset);
+    newAsset._contactName = ( contact_name == NULL ? "" : contact_name );
+    newAsset._contactEmail = ( contact_email == NULL ? "" : contact_email );
+    elementList.setElementDetails (newAsset);
+    newAsset.print();
 }
 
 void
@@ -392,6 +417,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     zsys_error ("%s: can't connect to malamute endpoint '%s'", name, endpoint);
                 }
                 zstr_free (&endpoint);
+                zsock_signal (pipe, 0);
             }
             else if (streq (cmd, "PRODUCER")) {
                 char* stream = zmsg_popstr (msg);
@@ -400,6 +426,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     zsys_error ("%s: can't set producer on stream '%s'", name, stream);
                 }
                 zstr_free (&stream);
+                zsock_signal (pipe, 0);
             }
             else if (streq (cmd, "CONSUMER")) {
                 char* stream = zmsg_popstr (msg);
@@ -410,6 +437,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 }
                 zstr_free (&pattern);
                 zstr_free (&stream);
+                zsock_signal (pipe, 0);
             }
             else if (streq (cmd, "MSMTP_PATH")) {
                 char* path = zmsg_popstr (msg);
@@ -441,29 +469,33 @@ bios_smtp_server (zsock_t *pipe, void* args)
         }
         std::string topic = mlm_client_subject(client);
         if ( verbose ) {
-                zsys_debug("Got message '%s'", topic.c_str());
+            zsys_debug("Got message '%s'", topic.c_str());
         }
         // There are inputs
         //  - an alert from alert stream
         //  - an asset config message
         //  - an SMTP settings
         if( is_bios_proto (zmessage) ) {
+            zsys_debug("it is zproto");
             bios_proto_t *bmessage = bios_proto_decode (&zmessage);
             if( ! bmessage ) {
                 zsys_error ("cannot decode bios_proto message, ignore it");
                 continue;
             }
             if ( bios_proto_id (bmessage) == BIOS_PROTO_ALERT )  {
+                zsys_debug("it is alert msg");
                 onAlertReceive (&bmessage, alertList, elementList,
                     emailConfiguration);
             }
             else if ( bios_proto_id (bmessage) == BIOS_PROTO_ASSET )  {
+                zsys_debug("it is asset msg");
                 onAssetReceive (&bmessage, elementList);
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
             }
             bios_proto_destroy (&bmessage);
+            zsys_debug("destroyed correctly");
         }
         zmsg_destroy (&zmessage);
     }
@@ -479,24 +511,29 @@ exit:
 //  Self test of this class
 
 void
-bios_smtp_server_test (bool verbose)
+bios_smtp_server_test (bool verbose1)
 {
     printf (" * bios_smtp_server: ");
-
+    bool verbose = true;
     //  @selftest
-    static const char* endpoint = "inproc://bios-ag-server-test";
-
+    static const char* endpoint = "inproc://bios-smtp-server-test";
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
     assert ( server != NULL );
     zstr_sendx (server, "BIND", endpoint, NULL);
     if (verbose) {
-        zstr_send (server, "VERBOSE");
+ //       zstr_send (server, "VERBOSE");
     }
 
-    mlm_client_t *producer = mlm_client_new ();
-    int rv = mlm_client_connect (producer, endpoint, 1000, "producer");
+    mlm_client_t *alert_producer = mlm_client_new ();
+    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
     assert( rv != -1 );
-    rv = mlm_client_set_producer (producer, "ALERTS");
+    rv = mlm_client_set_producer (alert_producer, "ALERTS");
+    assert( rv != -1 );
+
+    mlm_client_t *asset_producer = mlm_client_new ();
+    rv = mlm_client_connect (asset_producer, endpoint, 1000, "asset_producer");
+    assert( rv != -1 );
+    rv = mlm_client_set_producer (asset_producer, "ASSETS");
     assert( rv != -1 );
 
     zactor_t *ag_server = zactor_new (bios_smtp_server, (void*)"agent-smtp");
@@ -505,21 +542,41 @@ bios_smtp_server_test (bool verbose)
         zstr_send (ag_server, "VERBOSE");
     }
     zstr_sendx (ag_server, "CONNECT", endpoint, NULL);
-    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
+    zsock_wait (ag_server);
     zstr_sendx (ag_server, "CONSUMER", "ALERTS",".*", NULL);
+    zsock_wait (ag_server);
+    zstr_sendx (ag_server, "CONSUMER", "ASSETS",".*", NULL);
+    zsock_wait (ag_server);
     zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
 
-    zmsg_t *msg = bios_proto_encode_alert (NULL, "NY_RULE", "QWERTY",
+
+    zhash_t *aux = zhash_new ();
+    zhash_insert (aux, "priority", (void *)"1");
+    const char *asset_name = "QWERTY";
+    const char *operation = "OOPS";
+    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, operation, NULL);
+    mlm_client_send (asset_producer, "DOESNTMATTER", &msg);
+    zsys_info ("asset message was send");
+    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
+
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name,
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     std::string atopic = "NY_RULE/CRITICAL@QWERTY";
-    mlm_client_send (producer, atopic.c_str(), &msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    zsys_info ("alert message was send");
 
-    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
+    zclock_sleep (1000);   //THIS IS A HACK TO SETTLE DOWN THINGS
 
     zactor_destroy (&ag_server);
-    mlm_client_destroy (&producer);
+    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
+    zsys_info ("smtp killed");
+    mlm_client_destroy (&asset_producer);
+    zsys_info ("asset killed");
+    mlm_client_destroy (&alert_producer);
+    zsys_info ("alert killed");
     zactor_destroy (&server);
+    zsys_info ("malamute killed");
     //  @selftest
     //  Simple create/destroy test
     //  @end
