@@ -34,6 +34,7 @@ BuildRequires:  systemd-devel
 BuildRequires:  gcc-c++
 BuildRequires:  libsodium-devel
 BuildRequires:  zeromq-devel
+BuildRequires:  uuid-devel
 BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
 BuildRequires:  biosproto-devel

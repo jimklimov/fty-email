@@ -101,6 +101,17 @@ ELSE (LIBZMQ_FOUND)
 ENDIF (LIBZMQ_FOUND)
 
 ########################################################################
+# UUID dependency
+########################################################################
+find_package(uuid)
+IF (UUID_FOUND)
+    include_directories(${UUID_INCLUDE_DIRS})
+    list(APPEND MORE_LIBRARIES ${UUID_LIBRARIES})
+    add_definitions(-DHAVE_UUID)
+    list(APPEND OPTIONAL_LIBRARIES ${UUID_LIBRARIES})
+ENDIF (UUID_FOUND)
+
+########################################################################
 # CZMQ dependency
 ########################################################################
 find_package(czmq REQUIRED)
@@ -232,6 +243,24 @@ target_link_libraries(
 )
 set_target_properties(
     bios-agent-smtp
+    PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${SOURCE_DIR}/src"
+)
+add_executable(
+    btest
+    "${SOURCE_DIR}/src/btest.c"
+)
+target_link_libraries(
+    btest
+    agent_smtp
+    ${LIBZMQ_LIBRARIES}
+    ${CZMQ_LIBRARIES}
+    ${MALAMUTE_LIBRARIES}
+    ${BIOSPROTO_LIBRARIES}
+    ${CXXTOOLS_LIBRARIES}
+    ${OPTIONAL_LIBRARIES}
+)
+set_target_properties(
+    btest
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${SOURCE_DIR}/src"
 )
 add_executable(
