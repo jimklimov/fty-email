@@ -422,6 +422,11 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 /*
                 */
             }
+            else if (streq (cmd, "SMTPSERVER")) {
+                char *host = zmsg_popstr (msg);
+                if (host) emailConfiguration.host(host);
+                zstr_free (&host);
+            }
             zstr_free (&cmd);
             zmsg_destroy (&msg);
             continue;
@@ -457,8 +462,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
-                bios_proto_destroy (&bmessage);
             }
+            bios_proto_destroy (&bmessage);
         }
         zmsg_destroy (&zmessage);
     }
