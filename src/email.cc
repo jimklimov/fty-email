@@ -120,7 +120,7 @@ void Smtp::sendmail(
     bool bret = proc.run();
     if (!bret) {
         throw std::runtime_error( \
-                "/usr/bin/msmtp failed with exit code '" + \
+                _argv[0] + " failed with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
                 read_all(proc.getStderr()));
     }
@@ -134,7 +134,7 @@ void Smtp::sendmail(
     int ret = proc.wait();
     if ( ret != 0 ) {
         throw std::runtime_error( \
-                "/usr/bin/msmtp wait with exit code '" + \
+                _argv[0] + " wait with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
                 read_all(proc.getStderr()));
     }
@@ -142,7 +142,7 @@ void Smtp::sendmail(
     ret = proc.getReturnCode();
     if (ret != 0) {
         throw std::runtime_error( \
-                "/usr/bin/msmtp failed with exit code '" + \
+                _argv[0] + " failed with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
                 read_all(proc.getStderr()));
     }
