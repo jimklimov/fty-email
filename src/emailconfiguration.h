@@ -110,6 +110,13 @@ public:
         _smtp.host (host);
     }
 
+    /* \brief Set the msmtp file for authentication config
+     *
+     * \param config - a config file
+     */
+    void config (const std::string &config) {
+        _smtp.config (config);
+    }
 
     /* \brief Set the sender
      *

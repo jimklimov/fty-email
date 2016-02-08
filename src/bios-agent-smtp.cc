@@ -121,10 +121,15 @@ int main (int argc, char** argv)
     if ( smtpuser && smtppassword && ! configfile ) {
         // we have user/password but not configfile. Let's create one
         configfile = "/var/lib/bios/smtp-agent/msmtp.cfg";
-        std::ofstream config("/var/lib/bios/smtp-agent/msmtp.cfg");
-        config << "auth on" << std::endl
-               << "user " << smtpuser << std::endl
-               << "password " << smtppassword << std::endl;
+        std::ofstream config("/var/lib/bios/smtp-agent/msmtp.cfg", std::ofstream::out | std::ofstream::trunc );
+        if (config.is_open()) {
+            config << "auth on" << std::endl
+                   << "user " << smtpuser << std::endl
+                   << "password " << smtppassword << std::endl;
+            config.close();
+        } else {
+            zsys_error("Can't create msmtp config file %s", configfile);
+        }
     }
     if (configfile) {
         zstr_sendx (ag_server, "MSMTPCONFIG", smtpserver, NULL);

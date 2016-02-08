@@ -427,9 +427,9 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 if (host) emailConfiguration.host(host);
                 zstr_free (&host);
             }
-            else if (streq (cmd, "SMTPSERVER")) {
+            else if (streq (cmd, "MSMTPCONFIG")) {
                 char *config = zmsg_popstr (msg);
-                //TODO: if (config) emailConfiguration.config(config);
+                if (config) emailConfiguration.config (config);
                 zstr_free (&config);
             }
             zstr_free (&cmd);
