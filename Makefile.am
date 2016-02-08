@@ -33,6 +33,7 @@ noinst_LTLIBRARIES =
 TESTS =
 
 EXTRA_DIST = \
+    src/emailconfiguration.h \
     src/email.h \
     src/subprocess.h \
     src/bios_smtp_server.h \

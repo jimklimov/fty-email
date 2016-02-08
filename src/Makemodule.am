@@ -17,6 +17,7 @@ include_HEADERS = \
     include/agent_smtp_library.h
 
 src_libagent_smtp_la_SOURCES = \
+    src/emailconfiguration.cc \
     src/email.cc \
     src/subprocess.cc \
     src/bios_smtp_server.cc \
@@ -48,7 +49,9 @@ bin_PROGRAMS += src/bios-agent-smtp
 src_bios_agent_smtp_CPPFLAGS = ${AM_CPPFLAGS}
 src_bios_agent_smtp_LDADD = ${program_libs}
 src_bios_agent_smtp_SOURCES = src/bios-agent-smtp.cc
-src_bios_agent_smtp_servicedir = @prefix@/lib/systemd/system
+# service file is not generated: TODO
+# src_bios_agent_smtp_servicedir = @prefix@/lib/systemd/system
+# src_bios_agent_smtp_service_DATA = src/bios-agent-smtp.service
 endif #ENABLE_BIOS_AGENT_SMTP
 
 if ENABLE_AGENT_SMTP_SELFTEST

@@ -36,6 +36,7 @@ typedef struct {
 
 static test_item_t
 all_tests [] = {
+    { "emailconfiguration", emailconfiguration_test },
     { "email", email_test },
     { "subprocess", subprocess_test },
     { "bios_smtp_server", bios_smtp_server_test },
@@ -96,13 +97,14 @@ main (int argc, char **argv)
         else
         if (streq (argv [argn], "--number")
         ||  streq (argv [argn], "-n")) {
-            puts ("3");
+            puts ("4");
             return 0;
         }
         else
         if (streq (argv [argn], "--list")
         ||  streq (argv [argn], "-l")) {
             puts ("Available tests:");
+            puts ("    emailconfiguration");
             puts ("    email");
             puts ("    subprocess");
             puts ("    bios_smtp_server");

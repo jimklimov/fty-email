@@ -150,6 +150,7 @@ ENDIF (CXXTOOLS_FOUND)
 set (agent_smtp_headers
     include/agent_smtp_library.h
     include/agent_smtp.h
+    src/emailconfiguration.h
     src/email.h
     src/subprocess.h
     src/bios_smtp_server.h
@@ -163,6 +164,7 @@ install(FILES ${agent_smtp_headers} DESTINATION include)
 ########################################################################
 include_directories("${SOURCE_DIR}/src" "${SOURCE_DIR}/include")
 set (agent_smtp_sources
+    src/emailconfiguration.c
     src/email.c
     src/subprocess.c
     src/bios_smtp_server.c
@@ -258,6 +260,7 @@ set(CLASSTEST_TIMEOUT 5 CACHE STRING "Timeout of the selftest of a class")
 set(TOTAL_TIMEOUT 20 CACHE STRING "Timout of the total testsuite")
 
 set(TEST_CLASSES
+    emailconfiguration
     email
     subprocess
     bios_smtp_server
