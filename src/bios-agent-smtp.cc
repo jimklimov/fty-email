@@ -26,6 +26,8 @@
 @end
 */
 #include <getopt.h>
+#include <fstream>
+
 #include "agent_smtp_classes.h"
 
 static const char *PATH = "/var/lib/bios/agent-smtp";
@@ -41,6 +43,7 @@ void usage ()
     puts ("bios-agent-smtp [options]");
     puts ("  -v|--verbose          verbose test output");
     puts ("  -s|--smtpserver       smtp server name or address");
+    puts ("  -C|--smtpconfigfile   msmtp config file with credentials");
     puts ("  -h|--help             print this information");
 }    
 
@@ -55,7 +58,10 @@ int main (int argc, char** argv)
         verbose = 1;
     }
     char *smtpserver = getenv("BIOS_SMTP_SERVER");
-
+    char *smtpuser = getenv("BIOS_SMTP_USER");
+    char *smtppassword = getenv("BIOS_SMTP_PASSWORD");
+    const char *configfile = NULL;
+    
     // get options
     int c;
     while(true) {
@@ -64,10 +70,11 @@ int main (int argc, char** argv)
             {"help",       no_argument,       &help,    1},
             {"verbose",    no_argument,       &verbose, 1},
             {"smtpserver", required_argument, 0,'s'},
+            {"smtpconfigfile", required_argument, 0,'C'},
             {0, 0, 0, 0}
         };
         int option_index = 0;
-        c = getopt_long (argc, argv, "hvs:", long_options, &option_index);
+        c = getopt_long (argc, argv, "hvs:C:", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
         case 0:
@@ -78,6 +85,9 @@ int main (int argc, char** argv)
             break;
         case 'v':
             verbose = 1;
+            break;
+        case 'C':
+            configfile = optarg;
             break;
         case 'h':
         default:
@@ -105,6 +115,19 @@ int main (int argc, char** argv)
     zstr_sendx (ag_server, "CONFIG", PATH, NULL);
     if (smtpserver) {
         zstr_sendx (ag_server, "SMTPSERVER", smtpserver, NULL);
+    }
+
+    // pass smtp credentials
+    if ( smtpuser && smtppassword && ! configfile ) {
+        // we have user/password but not configfile. Let's create one
+        configfile = "/var/lib/bios/smtp-agent/msmtp.cfg";
+        std::ofstream config("/var/lib/bios/smtp-agent/msmtp.cfg");
+        config << "auth on" << std::endl
+               << "user " << smtpuser << std::endl
+               << "password " << smtppassword << std::endl;
+    }
+    if (configfile) {
+        zstr_sendx (ag_server, "MSMTPCONFIG", smtpserver, NULL);
     }
     //  Accept and print any message back from server
     //  copy from src/malamute.c under MPL license

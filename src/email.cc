@@ -34,17 +34,18 @@
 
 Smtp::Smtp():
     _host {},
-    _from {}
+    _from {},
+    _config {}
 {
     _argv = Argv{
         "/usr/bin/msmtp",
         "--host=" + _host,
         "--protocol=smtp",
-        "--auth=off",
         "--tls=off",
         "--auto-from=off",
         "--read-recipients",
-        "--read-envelope-from"};
+        "--read-envelope-from",
+        "--auth=off"};
 }
 
 void
@@ -58,6 +59,13 @@ void
     Smtp::from (const std::string& from)
 {
     _from = from;
+}
+
+void
+    Smtp::config (const std::string& config)
+{
+    _config = config;
+    _argv[7] = "--file" + _config; // replace --auth-off with authentication config
 }
 
 void Smtp::msmtp_path (const std::string& msmtp_path)
