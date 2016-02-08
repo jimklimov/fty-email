@@ -516,7 +516,8 @@ bios_smtp_server_test (bool verbose1)
     printf (" * bios_smtp_server: ");
     bool verbose = true;
     //  @selftest
-    static const char* endpoint = "inproc://bios-smtp-server-test";
+    static const char* endpoint = "ipc://bios-smtp-server-test";
+
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
     assert ( server != NULL );
     zstr_sendx (server, "BIND", endpoint, NULL);
