@@ -49,9 +49,10 @@ bin_PROGRAMS += src/bios-agent-smtp
 src_bios_agent_smtp_CPPFLAGS = ${AM_CPPFLAGS}
 src_bios_agent_smtp_LDADD = ${program_libs}
 src_bios_agent_smtp_SOURCES = src/bios-agent-smtp.cc
-# service file is not generated: TODO
-# src_bios_agent_smtp_servicedir = @prefix@/lib/systemd/system
-# src_bios_agent_smtp_service_DATA = src/bios-agent-smtp.service
+if WITH_SYSTEMD
+src_bios_agent_smtp_servicedir = @prefix@/lib/systemd/system
+src_bios_agent_smtp_service_DATA = src/bios-agent-smtp.service
+endif
 endif #ENABLE_BIOS_AGENT_SMTP
 
 if ENABLE_AGENT_SMTP_SELFTEST
