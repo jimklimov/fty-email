@@ -568,7 +568,8 @@ bios_smtp_server_test (bool verbose1)
     zsys_info ("alert message was send");
 
     zclock_sleep (1000);   //THIS IS A HACK TO SETTLE DOWN THINGS
-
+    
+    zhash_destroy (&aux);
     zactor_destroy (&ag_server);
     zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
     zsys_info ("smtp killed");
