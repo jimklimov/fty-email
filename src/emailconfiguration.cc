@@ -139,13 +139,13 @@ std::string EmailConfiguration::
 
 
 const std::string EmailConfiguration::
-    _emailBodyActiveAlertTemplate = "In the system an alert was detected. \n"
-        " Source rule: ${rulename}\n"
-        " Asset: ${assetname}\n"
-        " Alert priority: P${priority}\n"
-        " Alert severity: ${severity}\n"
-        " Alert description: ${description}\n"
-        " Alert state: ${state}";
+    _emailBodyActiveAlertTemplate = "In the system an alert was detected.\n"
+        "Source rule: ${rulename}\n"
+        "Asset: ${assetname}\n"
+        "Alert priority: P${priority}\n"
+        "Alert severity: ${severity}\n"
+        "Alert description: ${description}\n"
+        "Alert state: ${state}";
 
 
 const std::string EmailConfiguration::
@@ -155,9 +155,9 @@ const std::string EmailConfiguration::
 
 const std::string EmailConfiguration::
     _emailBodyResolvedAlertTemplate = "In the system an alert was resolved."
-        " \n Source rule: ${rulename}\n"
-        " Asset: ${assetname}\n "
-        " Alert description: ${description}";
+        "\nSource rule: ${rulename}\n"
+        "Asset: ${assetname}\n"
+        "Alert description: ${description}";
 
 
 const std::string EmailConfiguration::
