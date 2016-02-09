@@ -486,7 +486,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
         // There are inputs
         //  - an alert from alert stream
         //  - an asset config message
-        //  - an SMTP settings
+        //  - an SMTP settings TODO
         if( is_bios_proto (zmessage) ) {
             bios_proto_t *bmessage = bios_proto_decode (&zmessage);
             if( ! bmessage ) {
@@ -600,11 +600,12 @@ bios_smtp_server_test (bool verbose)
 
     //      3. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
+    assert (msg);
     if ( verbose ) {
         zsys_debug ("parameters for the email:");
         zmsg_print (msg);
     }
-
+    //      4. compare the email with expected output
     int fr_number = zmsg_size(msg);
     char *body = NULL;
     while ( fr_number > 0 ) {
@@ -612,6 +613,7 @@ bios_smtp_server_test (bool verbose)
         body = zmsg_popstr(msg);
         fr_number--;
     }
+    zmsg_destroy (&msg);
     if ( verbose ) {
         zsys_debug ("email itself:");
         zsys_debug ("%s", body);
@@ -632,14 +634,35 @@ bios_smtp_server_test (bool verbose)
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
 
     assert ( expectedBody.compare(newBody) == 0 );
-    zmsg_destroy (&msg);
 
-    //      4. send ack back, so btest can exit
+    //      5. send ack back, so btest can exit
     mlm_client_sendtox (
             btest_reader,
             mlm_client_sender (btest_reader),
             "BTEST-OK", "OK", NULL);
     zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
+
+
+    // scenario 2: send an alert on the unknown asset
+    //      1. DO NOT send asset info
+    const char *asset_name1 = "ASSET2";
+
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name1, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    std::string atopic1 = "NY_RULE/CRITICAL@" + std::string (asset_name1);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    zsys_info ("alert message was send");
+
+    //      3. No mail should be generated
+    zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    void *which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
 
     // clean up after the test
     mlm_client_destroy (&btest_reader);
