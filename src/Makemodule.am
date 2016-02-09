@@ -46,7 +46,7 @@ src_libagent_smtp_la_LIBADD = ${project_libs}
 
 if ENABLE_BIOS_AGENT_SMTP
 bin_PROGRAMS += src/bios-agent-smtp
-src_bios_agent_smtp_CPPFLAGS = ${AM_CPPFLAGS}
+src_bios_agent_smtp_CPPFLAGS = ${AM_CPPFLAGS} -D__STDC_FORMAT_MACROS
 src_bios_agent_smtp_LDADD = ${program_libs}
 src_bios_agent_smtp_SOURCES = src/bios-agent-smtp.cc
 if WITH_SYSTEMD
@@ -57,7 +57,8 @@ endif #ENABLE_BIOS_AGENT_SMTP
 
 if ENABLE_BTEST
 noinst_PROGRAMS += src/btest
-src_btest_CPPFLAGS = ${AM_CPPFLAGS}
+src_btest_CPPFLAGS = ${AM_CPPFLAGS} -D__STDC_FORMAT_MACROS
+
 src_btest_LDADD = ${program_libs}
 src_btest_SOURCES = src/btest.cc
 endif #ENABLE_BTEST
