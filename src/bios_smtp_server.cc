@@ -615,6 +615,7 @@ bios_smtp_server_test (bool verbose)
     int fr_number = zmsg_size(msg);
     char *body = NULL;
     while ( fr_number > 0 ) {
+        zstr_free(&body);
         body = zmsg_popstr(msg);
         fr_number--;
     }
@@ -623,6 +624,7 @@ bios_smtp_server_test (bool verbose)
         zsys_debug ("%s", body);
     }
     std::string newBody = std::string (body);
+    zstr_free(&body);
     std::size_t subject = newBody.find ("Subject:");
     std::size_t date = newBody.find ("Date:");
     // in the body there is a line with current date -> remove it
