@@ -464,6 +464,10 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 if (host) emailConfiguration.host(host);
                 zstr_free (&host);
             }
+            else if (streq (cmd, "MSMTPCONFIG")) {
+                char *config = zmsg_popstr (msg);
+                if (config) emailConfiguration.config (config);
+                zstr_free (&config);
             else
             {
                 zsys_info ("unhandled command %s", cmd);

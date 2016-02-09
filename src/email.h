@@ -77,6 +77,7 @@ class Smtp
 
         void host (const std::string& host);
         void from (const std::string& from);
+        void config (const std::string& config);
 
         /**
          * \brief send the email
@@ -126,6 +127,7 @@ class Smtp
 
         std::string _host;
         std::string _from;
+        std::string _config;
         Argv _argv;
 };
 
