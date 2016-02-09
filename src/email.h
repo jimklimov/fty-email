@@ -108,6 +108,8 @@ class Smtp
                 const std::string& subject,
                 const std::string& body) const;
 
+    protected:
+
         /**
          * \brief send the email
          *
@@ -121,7 +123,6 @@ class Smtp
         void sendmail(
                 const std::string& data) const;
 
-    protected:
 
         std::string _host;
         std::string _from;
