@@ -75,7 +75,7 @@ std::string EmailConfiguration::
     result = replaceTokens (result, "${rulename}", ruleName);
     result = replaceTokens (result, "${assetname}", asset._name);
     result = replaceTokens (result, "${description}", alert._description);
-    result = replaceTokens (result, "${priority}", std::to_string(asset._priority));
+    result = replaceTokens (result, "${priority}", std::string(1, asset._priority));
     result = replaceTokens (result, "${severity}", alert._severity);
     result = replaceTokens (result, "${state}", alert._state);
     return result;
@@ -103,7 +103,7 @@ std::string EmailConfiguration::
     result = replaceTokens (result, "${rulename}", ruleName);
     result = replaceTokens (result, "${assetname}", asset._name);
     result = replaceTokens (result, "${description}", alert._description);
-    result = replaceTokens (result, "${priority}", std::to_string(asset._priority));
+    result = replaceTokens (result, "${priority}", std::string(1, asset._priority));
     result = replaceTokens (result, "${severity}", alert._severity);
     result = replaceTokens (result, "${state}", alert._state);
     return result;
@@ -116,11 +116,9 @@ std::string EmailConfiguration::
         const std::string &ruleName)
 {
     if ( alert._state == "RESOLVED" ) {
-        zsys_debug ("RESOLVED BODY");
         return generateEmailBodyResolved (alert, asset, ruleName);
     }
     else {
-        zsys_debug ("ACTIVE BODY");
         return generateEmailBodyActive (alert, asset, ruleName);
     }
 }
