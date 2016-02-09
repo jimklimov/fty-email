@@ -45,8 +45,7 @@ int main (int argc, char *argv [])
     mlm_client_t *client = mlm_client_new ();
     assert (client);
 
-    char *address;
-    asprintf (&address, "btest-smtp.%" PRIi64, zclock_mono ());
+    const char *address = "btest-smtp";
     int r = mlm_client_connect (client, endpoint, 5000, address);
     assert (r != -1);
 
@@ -66,7 +65,6 @@ int main (int argc, char *argv [])
     zmsg_print (msg);
     zmsg_destroy (&msg);
 
-    zstr_free (&address);
     mlm_client_destroy (&client);
     unlink (pidfile);
     return 0;
