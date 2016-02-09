@@ -48,6 +48,17 @@ Example:
 #include "subprocess.h"
 
 /**
+ * \class security
+ *
+ * Security of SMTP connection
+ */
+enum class Enctryption {
+    NONE,
+    TLS,
+    STARTTLS
+};
+
+/**
  * \class Smtp
  *
  * \brief Simple wrapper on top of msmtp
@@ -66,18 +77,19 @@ class Smtp
          */
         explicit Smtp();
 
+        void host (const std::string& host) { _host = host; };
+        void from (const std::string& from) { _from = from; };
+        void username (const std::string& username) { _username = username; };
+        void password (const std::string& password) { _password = password; };
+        void encryption (Enctryption enc) { _encryption = enc; };
+
         /**
          * \brief set alternative path for msmtp
          *
          * \param path  path to msmtp binary to be called
          *
          */
-        void msmtp_path(
-                const std::string& msmtp_path);
-
-        void host (const std::string& host);
-        void from (const std::string& from);
-        void config (const std::string& config);
+        void msmtp_path (const std::string& msmtp_path) { _msmtp = msmtp_path; };
 
         /**
          * \brief send the email
@@ -124,11 +136,21 @@ class Smtp
         void sendmail(
                 const std::string& data) const;
 
+        /**
+         * \brief create msmtp config file
+         */
+        std::string createConfigFile() const;
+        /**
+         * \brief delete msmtp config file
+         */
+        void deleteConfigFile(std::string &filename) const;
 
         std::string _host;
         std::string _from;
-        std::string _config;
-        Argv _argv;
+        Enctryption _encryption;
+        std::string _username;
+        std::string _password;
+        std::string _msmtp;
 };
 
 void email_test (bool verbose);

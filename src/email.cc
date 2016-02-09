@@ -31,12 +31,17 @@
 //  Structure of our class
 #include <sstream>
 #include <ctime>
+#include <stdio.h>
 
 Smtp::Smtp():
     _host {},
     _from {},
-    _config {}
+    _encryption { Enctryption::NONE },
+    _username {},
+    _password {},
+    _msmtp { "/usr/bin/msmtp" }
 {
+    /*
     _argv = Argv{
         "/usr/bin/msmtp",
         "--host=" + _host,
@@ -46,32 +51,51 @@ Smtp::Smtp():
         "--read-recipients",
         "--read-envelope-from",
         "--auth=off"};
+    */
 }
 
-void
-    Smtp::host (const std::string& host)
+std::string Smtp::createConfigFile() const
 {
-    _host = host;
-    _argv[1] = "--host=" + _host;
+    char filename[] = "/tmp/bios-msmtp-XXXXXX.cfg";
+    int handle = mkstemps(filename,4);
+    std::string line;
+
+    line = "defaults\n";
+    line += "host " + _host +"\n";
+    line += "from " + _from + "\n";
+    switch (_encryption) {
+    case Enctryption::NONE:
+        line += "tls off\n"
+                "tls_starttls off\n";
+        break;
+    case Enctryption::TLS:
+        line += "tls on\n"
+                "tls_certcheck off\n";
+        break;
+    case Enctryption::STARTTLS:
+        // TODO: is this correct?
+        line += "tls off\n"
+                "tls_certcheck off\n"
+                "tls_starttls on\n";
+        break;
+    }
+    if (_username.empty()) {
+        line += "auth off\n";
+    } else {
+        line += "auth on\n"
+            "user " + _username + "\n"
+            "password " + _password + "\n";
+    }
+    write (handle,  line.c_str(), line.size());
+    close (handle);
+    return std::string(filename);
 }
 
-void
-    Smtp::from (const std::string& from)
+void Smtp::deleteConfigFile(std::string &filename) const
 {
-    _from = from;
+    unlink (filename.c_str());
 }
 
-void
-    Smtp::config (const std::string& config)
-{
-    _config = config;
-    _argv[7] = "--file" + _config; // replace --auth-off with authentication config
-}
-
-void Smtp::msmtp_path (const std::string& msmtp_path)
-{
-    _argv[0] = msmtp_path;
-}
 
 void Smtp::sendmail(
         const std::vector<std::string> &to,
@@ -119,15 +143,18 @@ void Smtp::sendmail(
     return sendmail(recip, subject, body);
 }
 
+
 void Smtp::sendmail(
         const std::string& data)    const
 {
-    SubProcess proc{_argv, SubProcess::STDIN_PIPE | SubProcess::STDOUT_PIPE | SubProcess::STDERR_PIPE};
+    std::string cfg = createConfigFile();
+    Argv argv = { _msmtp, "-C", cfg };
+    SubProcess proc{argv, SubProcess::STDIN_PIPE | SubProcess::STDOUT_PIPE | SubProcess::STDERR_PIPE};
 
     bool bret = proc.run();
     if (!bret) {
         throw std::runtime_error( \
-                _argv[0] + " failed with exit code '" + \
+                _msmtp + " failed with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
                 read_all(proc.getStderr()));
     }
@@ -139,9 +166,10 @@ void Smtp::sendmail(
     ::close(proc.getStdin()); //EOF
 
     int ret = proc.wait();
+    deleteConfigFile (cfg);
     if ( ret != 0 ) {
         throw std::runtime_error( \
-                _argv[0] + " wait with exit code '" + \
+                _msmtp + " wait with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
                 read_all(proc.getStderr()));
     }
@@ -149,12 +177,13 @@ void Smtp::sendmail(
     ret = proc.getReturnCode();
     if (ret != 0) {
         throw std::runtime_error( \
-                _argv[0] + " failed with exit code '" + \
+                _msmtp + " failed with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
                 read_all(proc.getStderr()));
     }
 
 }
+
 
 //  --------------------------------------------------------------------------
 //  Self test of this class
