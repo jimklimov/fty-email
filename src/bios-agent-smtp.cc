@@ -135,7 +135,7 @@ int main (int argc, char** argv)
         }
     }
     if (configfile) {
-        zstr_sendx (smtp_server, "MSMTPCONFIG", smtpserver, NULL);
+        zstr_sendx (smtp_server, "MSMTPCONFIG", configfile, NULL);
     }
     //  Accept and print any message back from server
     //  copy from src/malamute.c under MPL license
