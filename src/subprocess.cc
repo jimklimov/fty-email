@@ -16,21 +16,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#include "subprocess.h"
-
-#include <cassert>
-#include <cerrno>
-#include <cstring>
-#include <cstdlib>
-#include <stdexcept>
-#include <algorithm>
-
-#include <sys/types.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <unistd.h>
-
+#include "agent_smtp_classes.h"
 
 #define BUF_SIZE 4096
 // forward declaration of helper functions
@@ -342,7 +328,14 @@ int output(const Argv& args, std::string& o, std::string& e, unsigned int timeou
 int output(const Argv& args, std::string& o, std::string& e, const std::string& i, unsigned int timeout) {
     SubProcess p(args, SubProcess::STDOUT_PIPE | SubProcess::STDERR_PIPE| SubProcess::STDIN_PIPE);
     p.run();
-    ::write(p.getStdin(), i.c_str(), i.size());
+    int r = ::write(p.getStdin(), i.c_str(), i.size());
+    if (r == -1) {
+        zsys_error ("Can't write %zu to stdin, broken pipe: %s", i.size (), strerror (errno));
+        p.terminate ();
+        zclock_sleep (2000);
+        p.kill (SIGKILL);
+        return -1;
+    }
     ::fsync(p.getStdin());
     ::close(p.getStdin());
 

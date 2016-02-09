@@ -33,9 +33,15 @@
 #include "../include/agent_smtp.h"
 
 //  Internal API
+#include "emailconfiguration.h"
 #include "email.h"
 #include "subprocess.h"
 #include "bios_smtp_server.h"
+
+//  *** Draft method, defined for internal use only ***
+//  Self test of this class.
+AGENT_SMTP_EXPORT void
+    emailconfiguration_test (bool verbose);
 
 //  *** Draft method, defined for internal use only ***
 //  Self test of this class.

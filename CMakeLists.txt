@@ -101,6 +101,17 @@ ELSE (LIBZMQ_FOUND)
 ENDIF (LIBZMQ_FOUND)
 
 ########################################################################
+# UUID dependency
+########################################################################
+find_package(uuid)
+IF (UUID_FOUND)
+    include_directories(${UUID_INCLUDE_DIRS})
+    list(APPEND MORE_LIBRARIES ${UUID_LIBRARIES})
+    add_definitions(-DHAVE_UUID)
+    list(APPEND OPTIONAL_LIBRARIES ${UUID_LIBRARIES})
+ENDIF (UUID_FOUND)
+
+########################################################################
 # CZMQ dependency
 ########################################################################
 find_package(czmq REQUIRED)
@@ -150,6 +161,7 @@ ENDIF (CXXTOOLS_FOUND)
 set (agent_smtp_headers
     include/agent_smtp_library.h
     include/agent_smtp.h
+    src/emailconfiguration.h
     src/email.h
     src/subprocess.h
     src/bios_smtp_server.h
@@ -163,6 +175,7 @@ install(FILES ${agent_smtp_headers} DESTINATION include)
 ########################################################################
 include_directories("${SOURCE_DIR}/src" "${SOURCE_DIR}/include")
 set (agent_smtp_sources
+    src/emailconfiguration.c
     src/email.c
     src/subprocess.c
     src/bios_smtp_server.c
@@ -233,6 +246,24 @@ set_target_properties(
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${SOURCE_DIR}/src"
 )
 add_executable(
+    btest
+    "${SOURCE_DIR}/src/btest.c"
+)
+target_link_libraries(
+    btest
+    agent_smtp
+    ${LIBZMQ_LIBRARIES}
+    ${CZMQ_LIBRARIES}
+    ${MALAMUTE_LIBRARIES}
+    ${BIOSPROTO_LIBRARIES}
+    ${CXXTOOLS_LIBRARIES}
+    ${OPTIONAL_LIBRARIES}
+)
+set_target_properties(
+    btest
+    PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${SOURCE_DIR}/src"
+)
+add_executable(
     agent_smtp_selftest
     "${SOURCE_DIR}/src/agent_smtp_selftest.c"
 )
@@ -258,6 +289,7 @@ set(CLASSTEST_TIMEOUT 5 CACHE STRING "Timeout of the selftest of a class")
 set(TOTAL_TIMEOUT 20 CACHE STRING "Timout of the total testsuite")
 
 set(TEST_CLASSES
+    emailconfiguration
     email
     subprocess
     bios_smtp_server

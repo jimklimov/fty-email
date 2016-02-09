@@ -63,13 +63,21 @@ class Smtp
         /**
          * \brief Creates SMTP instance
          *
-         * \param host   hostname of remote smtp server
-         * \param from   envelope from
          */
-        explicit Smtp(
-                const std::string& host,
-                const std::string& from
-                );
+        explicit Smtp();
+
+        /**
+         * \brief set alternative path for msmtp
+         *
+         * \param path  path to msmtp binary to be called
+         *
+         */
+        void msmtp_path(
+                const std::string& msmtp_path);
+
+        void host (const std::string& host);
+        void from (const std::string& from);
+        void config (const std::string& config);
 
         /**
          * \brief send the email
@@ -101,6 +109,8 @@ class Smtp
                 const std::string& subject,
                 const std::string& body) const;
 
+    protected:
+
         /**
          * \brief send the email
          *
@@ -114,10 +124,10 @@ class Smtp
         void sendmail(
                 const std::string& data) const;
 
-    protected:
 
         std::string _host;
         std::string _from;
+        std::string _config;
         Argv _argv;
 };
 

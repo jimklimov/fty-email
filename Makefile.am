@@ -15,13 +15,14 @@ AM_CXXFLAGS = \
 AM_CPPFLAGS = \
     ${libsodium_CFLAGS} \
     ${libzmq_CFLAGS} \
+    ${uuid_CFLAGS} \
     ${czmq_CFLAGS} \
     ${malamute_CFLAGS} \
     ${biosproto_CFLAGS} \
     ${cxxtools_CFLAGS} \
     -I$(srcdir)/include
 
-project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${biosproto_LIBS} ${cxxtools_LIBS}
+project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${uuid_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${biosproto_LIBS} ${cxxtools_LIBS}
 
 SUBDIRS = doc
 DIST_SUBDIRS = doc
@@ -33,6 +34,7 @@ noinst_LTLIBRARIES =
 TESTS =
 
 EXTRA_DIST = \
+    src/emailconfiguration.h \
     src/email.h \
     src/subprocess.h \
     src/bios_smtp_server.h \

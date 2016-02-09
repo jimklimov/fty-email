@@ -32,22 +32,45 @@
 #include <sstream>
 #include <ctime>
 
-Smtp::Smtp(
-        const std::string& host,
-        const std::string& from
-        ) :
-    _host{host},
-    _from{from}
+Smtp::Smtp():
+    _host {},
+    _from {},
+    _config {}
 {
-    _argv = Argv{ \
+    _argv = Argv{
         "/usr/bin/msmtp",
         "--host=" + _host,
         "--protocol=smtp",
-        "--auth=off",
         "--tls=off",
         "--auto-from=off",
         "--read-recipients",
-        "--read-envelope-from"};
+        "--read-envelope-from",
+        "--auth=off"};
+}
+
+void
+    Smtp::host (const std::string& host)
+{
+    _host = host;
+    _argv[1] = "--host=" + _host;
+}
+
+void
+    Smtp::from (const std::string& from)
+{
+    _from = from;
+}
+
+void
+    Smtp::config (const std::string& config)
+{
+    _config = config;
+    _argv[7] = "--file" + _config; // replace --auth-off with authentication config
+}
+
+void Smtp::msmtp_path (const std::string& msmtp_path)
+{
+    _argv[0] = msmtp_path;
 }
 
 void Smtp::sendmail(
@@ -83,7 +106,7 @@ void Smtp::sendmail(
 
     sbuf << body;
     sbuf << "\n";
-
+    printf ("%s\n", sbuf.str().c_str());
     return sendmail(sbuf.str());
 }
 
@@ -105,7 +128,7 @@ void Smtp::sendmail(
     bool bret = proc.run();
     if (!bret) {
         throw std::runtime_error( \
-                "/usr/bin/msmtp failed with exit code '" + \
+                _argv[0] + " failed with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
                 read_all(proc.getStderr()));
     }
@@ -119,7 +142,7 @@ void Smtp::sendmail(
     int ret = proc.wait();
     if ( ret != 0 ) {
         throw std::runtime_error( \
-                "/usr/bin/msmtp wait with exit code '" + \
+                _argv[0] + " wait with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
                 read_all(proc.getStderr()));
     }
@@ -127,7 +150,7 @@ void Smtp::sendmail(
     ret = proc.getReturnCode();
     if (ret != 0) {
         throw std::runtime_error( \
-                "/usr/bin/msmtp failed with exit code '" + \
+                _argv[0] + " failed with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
                 read_all(proc.getStderr()));
     }
