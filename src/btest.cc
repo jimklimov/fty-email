@@ -32,11 +32,22 @@ int main (int argc, char *argv [])
 {
     //keep it up to date with selftest
     static const char* endpoint = "ipc://bios-smtp-server-test";
+    static const char* pidfile = "src/btest.pid";
+
+    assert (!zsys_file_exists (pidfile));
+
+    FILE *fp = fopen (pidfile, "w");
+    assert (fp);
+    fprintf (fp, "%d", getpid ());
+    fflush (fp);
+    fclose (fp);
 
     mlm_client_t *client = mlm_client_new ();
     assert (client);
 
-    int r = mlm_client_connect (client, endpoint, 5000, "btest-smtp");
+    char *address;
+    asprintf (&address, "btest-smtp.%" PRIi64, zclock_mono ());
+    int r = mlm_client_connect (client, endpoint, 5000, address);
     assert (r != -1);
 
     zmsg_t *msg = zmsg_new ();
@@ -48,9 +59,15 @@ int main (int argc, char *argv [])
     auto stdin_s = read_all (STDIN_FILENO);
     zmsg_addstr (msg, stdin_s.c_str());
 
-    mlm_client_send (client, "btest", &msg);
-    zclock_sleep (1000); //TODO: to recv?
+    r = mlm_client_sendto (client, "btest-reader", "btest", NULL, 1000, &msg);
+    assert (r != -1);
 
+    msg = mlm_client_recv (client);
+    zmsg_print (msg);
+    zmsg_destroy (&msg);
+
+    zstr_free (&address);
     mlm_client_destroy (&client);
+    unlink (pidfile);
     return 0;
 }

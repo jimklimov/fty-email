@@ -247,7 +247,6 @@ void AlertList::
     {
         zsys_debug ("Want to notify");
         try {
-
             emailConfiguration._smtp.sendmail(
                 assetDetailes._contactEmail,
                 EmailConfiguration::generateBody
@@ -383,23 +382,27 @@ bios_smtp_server (zsock_t *pipe, void* args)
 {
     bool verbose = false;
 
-    char *name = (char*) args;
+    char *name = strdup ((char*) args);
 
     mlm_client_t *client = mlm_client_new ();
 
     zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe(client), NULL);
 
-    zsock_signal (pipe, 0);
-
     AlertList alertList;
     ElementList elementList;
     EmailConfiguration emailConfiguration;
+
+    zsock_signal (pipe, 0);
     while (!zsys_interrupted) {
 
         void *which = zpoller_wait (poller, -1);
+        if (!which)
+            break;
+
         if (which == pipe) {
             zmsg_t *msg = zmsg_recv (pipe);
             char *cmd = zmsg_popstr (msg);
+            zsys_debug ("actor command=%s", cmd);
 
             if (streq (cmd, "$TERM")) {
                 zstr_free (&cmd);
@@ -410,7 +413,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
             if (streq (cmd, "VERBOSE")) {
                 verbose = true;
             }
-            else if (streq (cmd, "CONNECT")) {
+            else
+            if (streq (cmd, "CONNECT")) {
                 char* endpoint = zmsg_popstr (msg);
                 int rv = mlm_client_connect (client, endpoint, 1000, name);
                 if (rv == -1) {
@@ -419,7 +423,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zstr_free (&endpoint);
                 zsock_signal (pipe, 0);
             }
-            else if (streq (cmd, "PRODUCER")) {
+            else
+            if (streq (cmd, "PRODUCER")) {
                 char* stream = zmsg_popstr (msg);
                 int rv = mlm_client_set_producer (client, stream);
                 if (rv == -1) {
@@ -428,7 +433,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zstr_free (&stream);
                 zsock_signal (pipe, 0);
             }
-            else if (streq (cmd, "CONSUMER")) {
+            else
+            if (streq (cmd, "CONSUMER")) {
                 char* stream = zmsg_popstr (msg);
                 char* pattern = zmsg_popstr (msg);
                 int rv = mlm_client_set_consumer (client, stream, pattern);
@@ -439,26 +445,34 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zstr_free (&stream);
                 zsock_signal (pipe, 0);
             }
-            else if (streq (cmd, "MSMTP_PATH")) {
+            else
+            if (streq (cmd, "MSMTP_PATH")) {
                 char* path = zmsg_popstr (msg);
                 emailConfiguration._smtp.msmtp_path (path);
                 zstr_free (&path);
             }
-            else if (streq (cmd, "CONFIG")) {
+            else
+            if (streq (cmd, "CONFIG")) {
                 //char* filename = zmsg_popstr (msg);
                 // TODO read configuration SMTP
                 /*
                 */
             }
-            else if (streq (cmd, "SMTPSERVER")) {
+            else
+            if (streq (cmd, "SMTPSERVER")) {
                 char *host = zmsg_popstr (msg);
                 if (host) emailConfiguration.host(host);
                 zstr_free (&host);
+            }
+            else
+            {
+                zsys_info ("unhandled command %s", cmd);
             }
             zstr_free (&cmd);
             zmsg_destroy (&msg);
             continue;
         }
+
         // This agent is a reactive agent, it reacts only on messages
         // and doesn't do anything if there is no messages
         // TODO: probably email also should be send every XXX seconds,
@@ -502,8 +516,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
 exit:
     // TODO save info to persistence before I die
     zpoller_destroy (&poller);
-    // TODO need to return to main correctly
     mlm_client_destroy (&client);
+    zstr_free (&name);
 }
 
 
@@ -511,22 +525,46 @@ exit:
 //  Self test of this class
 
 void
-bios_smtp_server_test (bool verbose1)
+bios_smtp_server_test (bool verbose)
 {
     printf (" * bios_smtp_server: ");
-    bool verbose = true;
+    static const char* pidfile = "src/btest.pid";
+    if (zfile_exists (pidfile))
+    {
+        FILE *fp = fopen (pidfile, "r");
+        assert (fp);
+        int pid;
+        fscanf (fp, "%d", &pid);
+        fclose (fp);
+        zsys_info ("about to kill -9 %d", pid);
+        kill (pid, SIGKILL);
+        unlink (pidfile);
+    }
+
     //  @selftest
     static const char* endpoint = "ipc://bios-smtp-server-test";
 
+    // malamute broker
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
     assert ( server != NULL );
+    if (verbose)
+        zstr_send (server, "VERBOSE");
     zstr_sendx (server, "BIND", endpoint, NULL);
-    if (verbose) {
- //       zstr_send (server, "VERBOSE");
-    }
+
+    // smtp server
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, (void*)"agent-smtp");
+    if (verbose)
+        zstr_send (smtp_server, "VERBOSE");
+    zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
+    zstr_sendx (smtp_server, "CONNECT", endpoint, NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
+    zsock_wait (smtp_server);
 
     mlm_client_t *alert_producer = mlm_client_new ();
-    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
+    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "producer");
     assert( rv != -1 );
     rv = mlm_client_set_producer (alert_producer, "ALERTS");
     assert( rv != -1 );
@@ -537,20 +575,11 @@ bios_smtp_server_test (bool verbose1)
     rv = mlm_client_set_producer (asset_producer, "ASSETS");
     assert( rv != -1 );
 
-    zactor_t *ag_server = zactor_new (bios_smtp_server, (void*)"agent-smtp");
+    mlm_client_t *btest_reader = mlm_client_new ();
+    rv = mlm_client_connect (btest_reader, endpoint, 1000, "btest-reader");
+    assert( rv != -1 );
 
-    if (verbose) {
-        zstr_send (ag_server, "VERBOSE");
-    }
-    zstr_sendx (ag_server, "CONNECT", endpoint, NULL);
-    zsock_wait (ag_server);
-    zstr_sendx (ag_server, "CONSUMER", "ALERTS",".*", NULL);
-    zsock_wait (ag_server);
-    zstr_sendx (ag_server, "CONSUMER", "ASSETS",".*", NULL);
-    zsock_wait (ag_server);
-    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
-
-
+    // send asset info
     zhash_t *aux = zhash_new ();
     zhash_insert (aux, "priority", (void *)"1");
     const char *asset_name = "QWERTY";
@@ -558,27 +587,31 @@ bios_smtp_server_test (bool verbose1)
     zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, operation, NULL);
     mlm_client_send (asset_producer, "DOESNTMATTER", &msg);
     zsys_info ("asset message was send");
-    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
 
-    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name,
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", "QWERTY", \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     std::string atopic = "NY_RULE/CRITICAL@QWERTY";
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     zsys_info ("alert message was send");
 
-    zclock_sleep (1000);   //THIS IS A HACK TO SETTLE DOWN THINGS
-    
-    zhash_destroy (&aux);
-    zactor_destroy (&ag_server);
-    zclock_sleep (500);   //THIS IS A HACK TO SETTLE DOWN THINGS
-    zsys_info ("smtp killed");
+    // read sent email
+    msg = mlm_client_recv (btest_reader);
+    zmsg_print (msg);
+    zmsg_destroy (&msg);
+
+    // send ack back, so btest can exit
+    mlm_client_sendtox (
+            btest_reader,
+            mlm_client_sender (btest_reader),
+            "BTEST-OK", "OK", NULL);
+    zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
+
+    mlm_client_destroy (&btest_reader);
     mlm_client_destroy (&asset_producer);
-    zsys_info ("asset killed");
     mlm_client_destroy (&alert_producer);
-    zsys_info ("alert killed");
+    zactor_destroy (&smtp_server);
     zactor_destroy (&server);
-    zsys_info ("malamute killed");
     //  @selftest
     //  Simple create/destroy test
     //  @end
