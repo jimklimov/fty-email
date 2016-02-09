@@ -59,7 +59,7 @@ int main (int argc, char** argv)
     }
     char *smtpserver = getenv("BIOS_SMTP_SERVER");
     char *smtpuser = getenv("BIOS_SMTP_USER");
-    char *smtppassword = getenv("BIOS_SMTP_PASSWORD");
+    char *smtppassword = getenv("BIOS_SMTP_PASSWD");
     const char *configfile = NULL;
     
     // get options
