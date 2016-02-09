@@ -566,7 +566,7 @@ bios_smtp_server_test (bool verbose)
 
     // scenario 1:
     mlm_client_t *alert_producer = mlm_client_new ();
-    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "producer");
+    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
     assert( rv != -1 );
     rv = mlm_client_set_producer (alert_producer, "ALERTS");
     assert( rv != -1 );
@@ -586,7 +586,9 @@ bios_smtp_server_test (bool verbose)
     zhash_insert (aux, "priority", (void *)"1");
     const char *asset_name = "ASSET1";
     zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, NULL, NULL);
+    assert (msg);
     mlm_client_send (asset_producer, "Asset message1", &msg);
+    zhash_destroy (&aux);
     zsys_info ("asset message was send");
 
     msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name, \
