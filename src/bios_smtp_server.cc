@@ -452,13 +452,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zstr_free (&path);
             }
             else
-            if (streq (cmd, "CONFIG")) {
-                //char* filename = zmsg_popstr (msg);
-                // TODO read configuration SMTP
-                /*
-                */
-            }
-            else
             if (streq (cmd, "SMTPSERVER")) {
                 char *host = zmsg_popstr (msg);
                 if (host) emailConfiguration.host(host);

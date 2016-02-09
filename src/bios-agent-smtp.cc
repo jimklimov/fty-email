@@ -30,9 +30,7 @@
 
 #include "agent_smtp_classes.h"
 
-static const char *PATH = "/var/lib/bios/agent-smtp";
-
-// agents name
+// agent's name
 static const char *AGENT_NAME = "agent-smtp";
 
 // malamute endpoint
@@ -115,7 +113,6 @@ int main (int argc, char** argv)
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS", ".*", NULL);
     zsock_wait (smtp_server);
-    zstr_sendx (smtp_server, "CONFIG", PATH, NULL);
     if (smtpserver) {
         zstr_sendx (smtp_server, "SMTPSERVER", smtpserver, NULL);
     }
