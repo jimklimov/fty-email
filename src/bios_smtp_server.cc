@@ -323,7 +323,6 @@ void onAssetReceive (
 {
     // when some asset message received
     assert (message != NULL );
-    assert (elementList.empty() || true );
 
     bios_proto_t *messageAsset = *message;
     // check one more time to be sure, that it is an asset message
@@ -332,8 +331,8 @@ void onAssetReceive (
         zsys_error ("message bios_proto is not ASSET!");
         return;
     }
-    // decode alert message
-    // the other fields in the messages are not important
+    // decode asset message
+    // other fields in the message are not important
     const char *assetName = bios_proto_name (messageAsset);
     if ( assetName == NULL ) {
         zsys_error ("asset name is missing in the mesage");
@@ -345,15 +344,12 @@ void onAssetReceive (
     const char *priority = default_priority;
     if ( aux != NULL ) {
         // if we have additional information
-        zsys_debug ("aux not null");
         priority = (char *) zhash_lookup (aux, "priority");
         if ( priority == NULL ) {
-            zsys_debug ("priority is NULL");
             // but information about priority is missing
             priority = default_priority;
         }
     }
-
 
     // now, we need to get the contact information
     // TODO insert here a code to handle multiple contacts
@@ -375,6 +371,9 @@ void onAssetReceive (
     newAsset._contactEmail = ( contact_email == NULL ? "" : contact_email );
     elementList.setElementDetails (newAsset);
     newAsset.print();
+
+    // destroy the message
+    bios_proto_destroy (message);
 }
 
 void
@@ -495,26 +494,22 @@ bios_smtp_server (zsock_t *pipe, void* args)
         //  - an asset config message
         //  - an SMTP settings
         if( is_bios_proto (zmessage) ) {
-            zsys_debug("it is zproto");
             bios_proto_t *bmessage = bios_proto_decode (&zmessage);
             if( ! bmessage ) {
                 zsys_error ("cannot decode bios_proto message, ignore it");
                 continue;
             }
             if ( bios_proto_id (bmessage) == BIOS_PROTO_ALERT )  {
-                zsys_debug("it is alert msg");
                 onAlertReceive (&bmessage, alertList, elementList,
                     emailConfiguration);
             }
             else if ( bios_proto_id (bmessage) == BIOS_PROTO_ASSET )  {
-                zsys_debug("it is asset msg");
                 onAssetReceive (&bmessage, elementList);
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
             }
             bios_proto_destroy (&bmessage);
-            zsys_debug("destroyed correctly");
         }
         zmsg_destroy (&zmessage);
     }
@@ -568,6 +563,8 @@ bios_smtp_server_test (bool verbose)
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
     zsock_wait (smtp_server);
 
+
+    // scenario 1:
     mlm_client_t *alert_producer = mlm_client_new ();
     int rv = mlm_client_connect (alert_producer, endpoint, 1000, "producer");
     assert( rv != -1 );
@@ -587,16 +584,15 @@ bios_smtp_server_test (bool verbose)
     // send asset info
     zhash_t *aux = zhash_new ();
     zhash_insert (aux, "priority", (void *)"1");
-    const char *asset_name = "QWERTY";
-    const char *operation = "OOPS";
-    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, operation, NULL);
-    mlm_client_send (asset_producer, "DOESNTMATTER", &msg);
+    const char *asset_name = "ASSET1";
+    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, NULL, NULL);
+    mlm_client_send (asset_producer, "Asset message1", &msg);
     zsys_info ("asset message was send");
 
-    msg = bios_proto_encode_alert (NULL, "NY_RULE", "QWERTY", \
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
-    std::string atopic = "NY_RULE/CRITICAL@QWERTY";
+    std::string atopic = "NY_RULE/CRITICAL@" + std::string (asset_name);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     zsys_info ("alert message was send");
 
