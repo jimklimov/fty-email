@@ -106,7 +106,7 @@ void Smtp::sendmail(
 
     sbuf << body;
     sbuf << "\n";
-
+    printf ("%s\n", sbuf.str().c_str());
     return sendmail(sbuf.str());
 }
 

@@ -54,15 +54,17 @@ struct AlertDescription_ {
 };
 typedef struct AlertDescription_ AlertDescription;
 
-struct ElementDetails_ {
+class ElementDetails {
+
+public:
     char _priority;
     std::string _name;
     // TODO be ready for the list of alerts
     std::string _contactName;
     std::string _contactEmail;
-};
 
-typedef struct ElementDetails_ ElementDetails;
+    void print (void);
+};
 
 
 /*

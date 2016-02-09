@@ -28,6 +28,16 @@
 
 #include "agent_smtp_classes.h"
 
+
+void ElementDetails::
+    print (void)
+{
+    zsys_debug ("priority %c", _priority);
+    zsys_debug ("name %s", _name.c_str());
+    zsys_debug ("contact name %s", _contactName.c_str());
+    zsys_debug ("contact email %s", _contactEmail.c_str());
+}
+
 static std::string
     replaceTokens (const std::string &text,
         const std::string &pattern,
@@ -49,9 +59,9 @@ std::string EmailConfiguration::
         const std::string &ruleName)
 {
     std::string result = _emailBodyResolvedAlertTemplate;
-    replaceTokens (result, "${rulename}", ruleName);
-    replaceTokens (result, "${assetname}", asset._name);
-    replaceTokens (result, "${description}", alert._description);
+    result = replaceTokens (result, "${rulename}", ruleName);
+    result = replaceTokens (result, "${assetname}", asset._name);
+    result = replaceTokens (result, "${description}", alert._description);
     return result;
 }
 
@@ -62,12 +72,12 @@ std::string EmailConfiguration::
         const std::string &ruleName)
 {
     std::string result = _emailBodyActiveAlertTemplate;
-    replaceTokens (result, "${rulename}", ruleName);
-    replaceTokens (result, "${assetname}", asset._name);
-    replaceTokens (result, "${description}", alert._description);
-    replaceTokens (result, "${priority}", std::to_string(asset._priority));
-    replaceTokens (result, "${severity}", alert._severity);
-    replaceTokens (result, "${state}", alert._state);
+    result = replaceTokens (result, "${rulename}", ruleName);
+    result = replaceTokens (result, "${assetname}", asset._name);
+    result = replaceTokens (result, "${description}", alert._description);
+    result = replaceTokens (result, "${priority}", std::to_string(asset._priority));
+    result = replaceTokens (result, "${severity}", alert._severity);
+    result = replaceTokens (result, "${state}", alert._state);
     return result;
 }
 
@@ -78,8 +88,8 @@ std::string EmailConfiguration::
         const std::string &ruleName)
 {
     std::string result = _emailSubjectResolvedAlertTemplate;
-    replaceTokens (result, "${rulename}", ruleName);
-    replaceTokens (result, "${assetname}", asset._name);
+    result = replaceTokens (result, "${rulename}", ruleName);
+    result = replaceTokens (result, "${assetname}", asset._name);
     return result;
 }
 
@@ -90,12 +100,12 @@ std::string EmailConfiguration::
         const std::string &ruleName)
 {
     std::string result = _emailSubjectActiveAlertTemplate;
-    replaceTokens (result, "${rulename}", ruleName);
-    replaceTokens (result, "${assetname}", asset._name);
-    replaceTokens (result, "${description}", alert._description);
-    replaceTokens (result, "${priority}", std::to_string(asset._priority));
-    replaceTokens (result, "${severity}", alert._severity);
-    replaceTokens (result, "${state}", alert._state);
+    result = replaceTokens (result, "${rulename}", ruleName);
+    result = replaceTokens (result, "${assetname}", asset._name);
+    result = replaceTokens (result, "${description}", alert._description);
+    result = replaceTokens (result, "${priority}", std::to_string(asset._priority));
+    result = replaceTokens (result, "${severity}", alert._severity);
+    result = replaceTokens (result, "${state}", alert._state);
     return result;
 }
 
@@ -106,9 +116,11 @@ std::string EmailConfiguration::
         const std::string &ruleName)
 {
     if ( alert._state == "RESOLVED" ) {
+        zsys_debug ("RESOLVED BODY");
         return generateEmailBodyResolved (alert, asset, ruleName);
     }
     else {
+        zsys_debug ("ACTIVE BODY");
         return generateEmailBodyActive (alert, asset, ruleName);
     }
 }
