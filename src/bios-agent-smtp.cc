@@ -30,9 +30,7 @@
 
 #include "agent_smtp_classes.h"
 
-static const char *PATH = "/var/lib/bios/agent-smtp";
-
-// agents name
+// agent's name
 static const char *AGENT_NAME = "agent-smtp";
 
 // malamute endpoint
@@ -99,22 +97,24 @@ int main (int argc, char** argv)
     // end of the options
 
     puts ("START bios-agent-smtp - Daemon that is responsible for email notification about alerts");
-    zactor_t *ag_server = zactor_new (bios_smtp_server, (void*) AGENT_NAME);
-    if ( !ag_server ) {
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, (void*) AGENT_NAME);
+    if ( !smtp_server ) {
         zsys_error ("cannot start the daemon");
         return -1;
     }
 
     if (verbose) {
-        zstr_sendx (ag_server, "VERBOSE", NULL);
+        zstr_sendx (smtp_server, "VERBOSE", NULL);
     }
 
-    zstr_sendx (ag_server, "CONNECT", ENDPOINT, NULL);
-    zstr_sendx (ag_server, "CONSUMER", "ALERTS", ".*", NULL);
-    zstr_sendx (ag_server, "CONSUMER", "ASSETS", ".*", NULL);
-    zstr_sendx (ag_server, "CONFIG", PATH, NULL);
+    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ASSETS", ".*", NULL);
+    zsock_wait (smtp_server);
     if (smtpserver) {
-        zstr_sendx (ag_server, "SMTPSERVER", smtpserver, NULL);
+        zstr_sendx (smtp_server, "SMTPSERVER", smtpserver, NULL);
     }
 
     // pass smtp credentials
@@ -132,12 +132,12 @@ int main (int argc, char** argv)
         }
     }
     if (configfile) {
-        zstr_sendx (ag_server, "MSMTPCONFIG", smtpserver, NULL);
+        zstr_sendx (smtp_server, "MSMTPCONFIG", configfile, NULL);
     }
     //  Accept and print any message back from server
     //  copy from src/malamute.c under MPL license
     while (true) {
-        char *message = zstr_recv (ag_server);
+        char *message = zstr_recv (smtp_server);
         if (message) {
             puts (message);
             free (message);
@@ -149,7 +149,7 @@ int main (int argc, char** argv)
     }
 
     // TODO save info to persistence before I die
-    zactor_destroy (&ag_server);
+    zactor_destroy (&smtp_server);
     if (verbose) {
         zsys_info ("END bios_agent_smtp - Daemon that is responsible for email notification about alerts");
     }
