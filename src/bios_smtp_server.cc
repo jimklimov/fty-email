@@ -28,6 +28,7 @@
 
 #include "agent_smtp_classes.h"
 
+#include <algorithm>
 #include <iterator>
 #include <map>
 #include <set>
@@ -249,9 +250,9 @@ void AlertList::
         try {
             emailConfiguration._smtp.sendmail(
                 assetDetailes._contactEmail,
-                EmailConfiguration::generateBody
-                    (alertDescription, assetDetailes, ruleName),
                 EmailConfiguration::generateSubject
+                    (alertDescription, assetDetailes, ruleName),
+                EmailConfiguration::generateBody
                     (alertDescription, assetDetailes, ruleName)
             );
             alertDescription._lastNotification = nowTimestamp;
@@ -564,9 +565,8 @@ bios_smtp_server_test (bool verbose)
     zsock_wait (smtp_server);
 
 
-    // scenario 1:
     mlm_client_t *alert_producer = mlm_client_new ();
-    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "producer");
+    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
     assert( rv != -1 );
     rv = mlm_client_set_producer (alert_producer, "ALERTS");
     assert( rv != -1 );
@@ -577,18 +577,27 @@ bios_smtp_server_test (bool verbose)
     rv = mlm_client_set_producer (asset_producer, "ASSETS");
     assert( rv != -1 );
 
+    // name of the client should be the same as name in the btest.cc
     mlm_client_t *btest_reader = mlm_client_new ();
     rv = mlm_client_connect (btest_reader, endpoint, 1000, "btest-reader");
     assert( rv != -1 );
 
-    // send asset info
+    // scenario 1: send asset + send an alert on the already known correct asset
+    //      1. send asset info
     zhash_t *aux = zhash_new ();
     zhash_insert (aux, "priority", (void *)"1");
+    zhash_t *ext = zhash_new ();
+    zhash_insert (ext, "contact_email", (void *)"scenario1.email@eaton.com");
+    zhash_insert (ext, "contact_name", (void *)"eaton Support team");
     const char *asset_name = "ASSET1";
-    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, NULL, NULL);
+    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, NULL, ext);
+    assert (msg);
     mlm_client_send (asset_producer, "Asset message1", &msg);
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
     zsys_info ("asset message was send");
 
+    //      2. send alert message
     msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
@@ -596,25 +605,55 @@ bios_smtp_server_test (bool verbose)
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     zsys_info ("alert message was send");
 
-    // read sent email
+    //      3. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
-    zmsg_print (msg);
+    if ( verbose ) {
+        zsys_debug ("parameters for the email:");
+        zmsg_print (msg);
+    }
+
+    int fr_number = zmsg_size(msg);
+    char *body = NULL;
+    while ( fr_number > 0 ) {
+        zstr_free(&body);
+        body = zmsg_popstr(msg);
+        fr_number--;
+    }
+    if ( verbose ) {
+        zsys_debug ("email itself:");
+        zsys_debug ("%s", body);
+    }
+    std::string newBody = std::string (body);
+    zstr_free(&body);
+    std::size_t subject = newBody.find ("Subject:");
+    std::size_t date = newBody.find ("Date:");
+    // in the body there is a line with current date -> remove it
+    newBody.replace (date, subject - date, "");
+    // need to erase white spaces, because newLines in "body" are not "\n"
+    newBody.erase(remove_if(newBody.begin(), newBody.end(), isspace), newBody.end());
+
+    // expected string withoiut date
+    std::string expectedBody = "From:\nTo: scenario1.email@eaton.com\nSubject: CRITICAL alert on ASSET1 from the rule NY_RULE is active!\n\n"
+    "In the system an alert was detected.\nSource rule: NY_RULE\nAsset: ASSET1\nAlert priority: P1\nAlert severity: CRITICAL\n"
+    "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
+    expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
+
+    assert ( expectedBody.compare(newBody) == 0 );
     zmsg_destroy (&msg);
 
-    // send ack back, so btest can exit
+    //      4. send ack back, so btest can exit
     mlm_client_sendtox (
             btest_reader,
             mlm_client_sender (btest_reader),
             "BTEST-OK", "OK", NULL);
     zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
 
+    // clean up after the test
     mlm_client_destroy (&btest_reader);
     mlm_client_destroy (&asset_producer);
     mlm_client_destroy (&alert_producer);
     zactor_destroy (&smtp_server);
     zactor_destroy (&server);
-    //  @selftest
-    //  Simple create/destroy test
-    //  @end
+
     printf ("OK\n");
 }
