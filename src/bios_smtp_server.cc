@@ -329,7 +329,6 @@ void onAssetReceive (
 {
     // when some asset message received
     assert (message != NULL );
-    zsys_info ("ASSET DDDD");
     bios_proto_t *messageAsset = *message;
     // check one more time to be sure, that it is an asset message
     if ( bios_proto_id (messageAsset) != BIOS_PROTO_ASSET )
@@ -650,7 +649,6 @@ bios_smtp_server_test (bool verbose)
             "BTEST-OK", "OK", NULL);
     zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
 
-/*
     // =====================================================
     // scenario 2: send an alert on the unknown asset
     //      1. DO NOT send asset info
@@ -705,8 +703,6 @@ bios_smtp_server_test (bool verbose)
     }
     zpoller_destroy (&poller);
     zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
-*/
-
 
     // clean up after the test
     mlm_client_destroy (&btest_reader);
