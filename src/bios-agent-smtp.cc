@@ -40,15 +40,15 @@ static const char *ENDPOINT = "ipc://@/malamute";
 
 void usage ()
 {
-    puts ("bios-agent-smtp [options]");
-    puts ("  -v|--verbose          verbose test output");
-    puts ("  -s|--server           smtp server name or address");
-    puts ("  -p|--port             smtp server port [25]");
-    puts ("  -u|--user             user for smtp authentication");
-    puts ("  -f|--from             from address");
-    puts ("  -e|--encryption       smtp encryption (none|tls|starttls) [none]");
-    puts ("  -h|--help             print this information");
-    puts ("For security reasons, there is not oprion for password. Use environment variable.\n"
+    puts ("bios-agent-smtp [options]\n"
+          "  -v|--verbose          verbose test output\n"
+          "  -s|--server           smtp server name or address\n"
+          "  -p|--port             smtp server port [25]\n"
+          "  -u|--user             user for smtp authentication\n"
+          "  -f|--from             mail from address\n"
+          "  -e|--encryption       smtp encryption (none|tls|starttls) [none]\n"
+          "  -h|--help             print this information\n"
+          "For security reasons, there is not option for password. Use environment variable.\n"
           "Used environment variables are BIOS_SMTP_SERVER, BIOS_SMTP_PORT, BIOS_SMTP_USER\n"
           "BIOS_SMTP_PASSWD, BIOS_SMTP_FROM and BIOS_SMTP_ENCRYPT");
 }
