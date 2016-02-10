@@ -108,7 +108,7 @@ public:
      * \param host - a host name
      */
     void host (const std::string &host) {
-        // TODO set the indicator, that it was configured
+        // TODO set the indicator, that it was configured if not empty
         _smtp.host (host);
     }
 
@@ -132,22 +132,12 @@ public:
         _smtp.password (password);
     }
 
-    /* \brief Set the msmtp file for authentication config
-     *
-     * \param config - a config file
-     */
-    void config (const std::string &config) {
-        // _smtp.config (config);
-        // FIXME: do something
-    }
-
     /* \brief Set the sender
      *
      * \param from - a sender's email
      */
     void from (const std::string &from) {
-        // TODO set the indicator, that it was configured
-        _smtp.host (from);
+        _smtp.from (from);
     }
 
 
