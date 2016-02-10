@@ -42,13 +42,20 @@ void usage ()
 {
     puts ("bios-agent-smtp [options]");
     puts ("  -v|--verbose          verbose test output");
-    puts ("  -s|--smtpserver       smtp server name or address");
-    puts ("  -C|--smtpconfigfile   msmtp config file with credentials");
+    puts ("  -s|--server           smtp server name or address");
+    puts ("  -p|--port             smtp server port [25]");
+    puts ("  -u|--user             user for smtp authentication");
+    puts ("  -f|--from             from address");
+    puts ("  -e|--encryption       smtp encryption (none|tls|starttls) [none]");
     puts ("  -h|--help             print this information");
-}    
+    puts ("For security reasons, there is not oprion for password. Use environment variable.\n"
+          "Used environment variables are BIOS_SMTP_SERVER, BIOS_SMTP_PORT, BIOS_SMTP_USER\n"
+          "BIOS_SMTP_PASSWD, BIOS_SMTP_FROM and BIOS_SMTP_ENCRYPT");
+}
 
 int main (int argc, char** argv)
 {
+    static const char *empty = "";
     int verbose = 0;
     int help = 0;
 
@@ -57,11 +64,13 @@ int main (int argc, char** argv)
     if (bios_log_level && streq (bios_log_level, "LOG_DEBUG")) {
         verbose = 1;
     }
-    char *smtpserver = getenv("BIOS_SMTP_SERVER");
-    char *smtpuser = getenv("BIOS_SMTP_USER");
+    char *smtpserver   = getenv("BIOS_SMTP_SERVER");
+    char *smtpport     = getenv("BIOS_SMTP_PORT");
+    char *smtpuser     = getenv("BIOS_SMTP_USER");
     char *smtppassword = getenv("BIOS_SMTP_PASSWD");
-    const char *configfile = NULL;
-    
+    char *smtpfrom     = getenv("BIOS_SMTP_FROM");
+    char *smtpencrypt  = getenv("BIOS_SMTP_ENCRYPT");
+
     // get options
     int c;
     while(true) {
@@ -69,25 +78,37 @@ int main (int argc, char** argv)
         {
             {"help",       no_argument,       &help,    1},
             {"verbose",    no_argument,       &verbose, 1},
-            {"smtpserver", required_argument, 0,'s'},
-            {"smtpconfigfile", required_argument, 0,'C'},
+            {"server",     required_argument, 0,'s'},
+            {"port",       required_argument, 0,'p'},
+            {"user",       required_argument, 0,'u'},
+            {"from",       required_argument, 0,'f'},
+            {"encryption", required_argument, 0,'e'},
             {0, 0, 0, 0}
         };
         int option_index = 0;
-        c = getopt_long (argc, argv, "hvs:C:", long_options, &option_index);
+        c = getopt_long (argc, argv, "hvs:p:u:f:e:", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
-        case 0:
-            // just now walking trough some long opt
+        case 'v':
+            verbose = 1;
             break;
         case 's':
             smtpserver = optarg;
             break;
-        case 'v':
-            verbose = 1;
+        case 'p':
+            smtpport = optarg;
             break;
-        case 'C':
-            configfile = optarg;
+        case 'u':
+            smtpuser = optarg;
+            break;
+        case 'f':
+            smtpfrom = optarg;
+            break;
+        case 'e':
+            smtpencrypt = optarg;
+            break;
+        case 0:
+            // just now walking trough some long opt
             break;
         case 'h':
         default:
@@ -113,27 +134,16 @@ int main (int argc, char** argv)
     zstr_sendx (ag_server, "CONSUMER", "ALERTS", ".*", NULL);
     zstr_sendx (ag_server, "CONSUMER", "ASSETS", ".*", NULL);
     zstr_sendx (ag_server, "CONFIG", PATH, NULL);
-    if (smtpserver) {
-        zstr_sendx (ag_server, "SMTPSERVER", smtpserver, NULL);
-    }
+    zstr_sendx (ag_server,
+                "SMTPCONFIG",
+                smtpserver ? smtpserver : empty,    // server
+                smtpport ? smtpport : "25",         // port
+                smtpencrypt ? smtpencrypt : "none", // encryption
+                smtpfrom ? smtpfrom : empty,        // mail from
+                smtpuser,                           // smtp username
+                smtppassword,                       // smtp password
+                NULL);
 
-    // pass smtp credentials
-    if ( smtpuser && smtppassword && ! configfile ) {
-        // we have user/password but not configfile. Let's create one
-        configfile = "/var/lib/bios/smtp-agent/msmtp.cfg";
-        std::ofstream config("/var/lib/bios/smtp-agent/msmtp.cfg", std::ofstream::out | std::ofstream::trunc );
-        if (config.is_open()) {
-            config << "auth on" << std::endl
-                   << "user " << smtpuser << std::endl
-                   << "password " << smtppassword << std::endl;
-            config.close();
-        } else {
-            zsys_error("Can't create msmtp config file %s", configfile);
-        }
-    }
-    if (configfile) {
-        zstr_sendx (ag_server, "MSMTPCONFIG", smtpserver, NULL);
-    }
     //  Accept and print any message back from server
     //  copy from src/malamute.c under MPL license
     while (true) {

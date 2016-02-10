@@ -112,12 +112,33 @@ public:
         _smtp.host (host);
     }
 
+    /** set the SMTP server port */
+    void port (const std::string &port) {
+        _smtp.port (port);
+    }
+
+    /** set the SMTP encryption (none|tls|starttls) */
+    void encryption (const std::string &encryption) {
+        _smtp.encryption (encryption);
+    }
+
+    /** \brief set username for smtp authentication */
+    void username (const std::string &username) {
+        _smtp.username (username);
+    }
+
+    /** \brief set password for smtp authentication */
+    void password (const std::string &password) {
+        _smtp.password (password);
+    }
+
     /* \brief Set the msmtp file for authentication config
      *
      * \param config - a config file
      */
     void config (const std::string &config) {
-        _smtp.config (config);
+        // _smtp.config (config);
+        // FIXME: do something
     }
 
     /* \brief Set the sender

@@ -35,23 +35,14 @@
 
 Smtp::Smtp():
     _host {},
-    _from {},
+    _port { "25" },
+    _from { "bios@eaton.com" },
     _encryption { Enctryption::NONE },
     _username {},
     _password {},
     _msmtp { "/usr/bin/msmtp" }
 {
-    /*
-    _argv = Argv{
-        "/usr/bin/msmtp",
-        "--host=" + _host,
-        "--protocol=smtp",
-        "--tls=off",
-        "--auto-from=off",
-        "--read-recipients",
-        "--read-envelope-from",
-        "--auth=off"};
-    */
+
 }
 
 std::string Smtp::createConfigFile() const
@@ -73,7 +64,7 @@ std::string Smtp::createConfigFile() const
                 "tls_certcheck off\n";
         break;
     case Enctryption::STARTTLS:
-        // TODO: is this correct?
+        // TODO: check if this is correct!
         line += "tls off\n"
                 "tls_certcheck off\n"
                 "tls_starttls on\n";
@@ -96,6 +87,12 @@ void Smtp::deleteConfigFile(std::string &filename) const
     unlink (filename.c_str());
 }
 
+void Smtp::encryption(std::string enc)
+{
+    if( strcasecmp ("starttls", enc.c_str()) == 0) encryption (Enctryption::STARTTLS);
+    if( strcasecmp ("tls", enc.c_str()) == 0) encryption (Enctryption::TLS);
+    encryption (Enctryption::NONE);
+}
 
 void Smtp::sendmail(
         const std::vector<std::string> &to,

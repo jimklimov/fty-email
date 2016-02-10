@@ -77,10 +77,23 @@ class Smtp
          */
         explicit Smtp();
 
+        /** \brief set the SMTP server address */
         void host (const std::string& host) { _host = host; };
+
+        /** \brief set the SMTP server port. Default is 25.*/
+        void port (const std::string& port) { _port = port; };
+
+        /** \brief set the "mail from" address */
         void from (const std::string& from) { _from = from; };
+
+        /** \brief set username for smtp authentication */
         void username (const std::string& username) { _username = username; };
+
+        /** \brief set password for smtp authentication */
         void password (const std::string& password) { _password = password; };
+
+        /** \brief set the encryption for SMTP communication (NONE|TLS|STARTTLS) */
+        void encryption (std::string enc);
         void encryption (Enctryption enc) { _encryption = enc; };
 
         /**
@@ -146,6 +159,7 @@ class Smtp
         void deleteConfigFile(std::string &filename) const;
 
         std::string _host;
+        std::string _port;
         std::string _from;
         Enctryption _encryption;
         std::string _username;
