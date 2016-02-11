@@ -456,15 +456,32 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zstr_free (&path);
             }
             else
-            if (streq (cmd, "SMTPSERVER")) {
-                char *host = zmsg_popstr (msg);
-                if (host) emailConfiguration.host(host);
-                zstr_free (&host);
-            }
-            else if (streq (cmd, "MSMTPCONFIG")) {
-                char *config = zmsg_popstr (msg);
-                if (config) emailConfiguration.config (config);
-                zstr_free (&config);
+            if (streq (cmd, "SMTPCONFIG")) {
+                char *param;
+                // server
+                param = zmsg_popstr (msg);
+                if (param && param[0]) emailConfiguration.host(param);
+                zstr_free (&param);
+                // port
+                param = zmsg_popstr (msg);
+                if (param && param[0]) emailConfiguration.port(param);
+                zstr_free (&param);
+                // encryption
+                param = zmsg_popstr (msg);
+                if (param && param[0]) emailConfiguration.encryption(param);
+                zstr_free (&param);
+                // from
+                param = zmsg_popstr (msg);
+                if (param && param[0]) emailConfiguration.from(param);
+                zstr_free (&param);
+                // username
+                param = zmsg_popstr (msg);
+                if (param && param[0]) emailConfiguration.username(param);
+                zstr_free (&param);
+                // password
+                param = zmsg_popstr (msg);
+                if (param && param[0]) emailConfiguration.password(param);
+                zstr_free (&param);
             }
             else
             {
