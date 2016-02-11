@@ -597,7 +597,6 @@ bios_smtp_server_test (bool verbose)
     rv = mlm_client_connect (btest_reader, endpoint, 1000, "btest-reader");
     assert( rv != -1 );
 
-    // =====================================================
     // scenario 1: send asset + send an alert on the already known correct asset
     //      1. send asset info
     zhash_t *aux = zhash_new ();
@@ -666,7 +665,6 @@ bios_smtp_server_test (bool verbose)
             "BTEST-OK", "OK", NULL);
     zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
 
-    // =====================================================
     // scenario 2: send an alert on the unknown asset
     //      1. DO NOT send asset info
     const char *asset_name1 = "ASSET2";
@@ -688,7 +686,6 @@ bios_smtp_server_test (bool verbose)
     }
     zpoller_destroy (&poller);
 
-    // =====================================================
     // scenario 3: send asset without email + send an alert on the already known asset
     //      1. send asset info
     aux = zhash_new ();

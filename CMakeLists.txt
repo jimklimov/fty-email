@@ -161,10 +161,10 @@ ENDIF (CXXTOOLS_FOUND)
 set (agent_smtp_headers
     include/agent_smtp_library.h
     include/agent_smtp.h
+    include/bios_smtp_server.h
     src/emailconfiguration.h
     src/email.h
     src/subprocess.h
-    src/bios_smtp_server.h
 )
 
 source_group ("Header Files" FILES ${agent_smtp_headers})

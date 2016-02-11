@@ -26,7 +26,7 @@
     <class name = "emailconfiguration" private="1">Class that is responsible for email configuration</class>
     <class name = "email" private="1">Smtp</class>
     <class name = "subprocess" private="1">Subprocess</class>
-    <class name = "bios-smtp-server" private="1">Smtp actor</class>
+    <class name = "bios-smtp-server" state = "stable" >Smtp actor</class>
     <main name = "bios-agent-smtp" service = "1" no_config = "1" >
         XXXDaemon evaluating rules and producing alerts
     </main>
