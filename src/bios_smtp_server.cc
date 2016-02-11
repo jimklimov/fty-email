@@ -532,7 +532,8 @@ bios_smtp_server_test (bool verbose)
         FILE *fp = fopen (pidfile, "r");
         assert (fp);
         int pid;
-        fscanf (fp, "%d", &pid);
+        int r = fscanf (fp, "%d", &pid);
+        assert (r > 0); // make picky compilers happy
         fclose (fp);
         zsys_info ("about to kill -9 %d", pid);
         kill (pid, SIGKILL);
