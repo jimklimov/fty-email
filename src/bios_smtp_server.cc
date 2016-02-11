@@ -621,7 +621,7 @@ bios_smtp_server_test (bool verbose)
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     zsys_info ("alert message was send");
     // Ensure, that malamute will deliver ASSET message before ALERT message
-    zclock_sleep (500);
+    zclock_sleep (1000);
 
     //      3. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -653,11 +653,10 @@ bios_smtp_server_test (bool verbose)
     newBody.erase(remove_if(newBody.begin(), newBody.end(), isspace), newBody.end());
 
     // expected string withoiut date
-    std::string expectedBody = "From:\nTo: scenario1.email@eaton.com\nSubject: CRITICAL alert on ASSET1 from the rule NY_RULE is active!\n\n"
+    std::string expectedBody = "From:bios@eaton.com\nTo: scenario1.email@eaton.com\nSubject: CRITICAL alert on ASSET1 from the rule NY_RULE is active!\n\n"
     "In the system an alert was detected.\nSource rule: NY_RULE\nAsset: ASSET1\nAlert priority: P1\nAlert severity: CRITICAL\n"
     "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
-
     assert ( expectedBody.compare(newBody) == 0 );
 
     //      5. send ack back, so btest can exit
@@ -665,7 +664,7 @@ bios_smtp_server_test (bool verbose)
             btest_reader,
             mlm_client_sender (btest_reader),
             "BTEST-OK", "OK", NULL);
-    zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
+    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
 
     // =====================================================
     // scenario 2: send an alert on the unknown asset
