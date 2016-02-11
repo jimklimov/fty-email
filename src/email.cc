@@ -77,7 +77,11 @@ std::string Smtp::createConfigFile() const
             "user " + _username + "\n"
             "password " + _password + "\n";
     }
-    write (handle,  line.c_str(), line.size());
+    ssize_t r = write (handle,  line.c_str(), line.size());
+    if (r > 0 && (size_t) r != line.size ())
+        zsys_error ("write to %s was truncated, expected %zu, written %zd", filename, line.size(), r);
+    if (r == -1)
+        zsys_error ("write to %s failed: %s", filename, strerror (errno));
     close (handle);
     return std::string(filename);
 }
