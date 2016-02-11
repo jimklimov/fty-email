@@ -27,13 +27,8 @@ extern "C" {
 #endif
 
 //  @interface
-//  Create a new bios_smtp_server
-AGENT_SMTP_EXPORT bios_smtp_server_t *
-    bios_smtp_server_new (void);
-
-//  Destroy the bios_smtp_server
 AGENT_SMTP_EXPORT void
-    bios_smtp_server_destroy (bios_smtp_server_t **self_p);
+   bios_smtp_server (zsock_t *pipe, void* args);
 
 //  Self test of this class
 AGENT_SMTP_EXPORT void
