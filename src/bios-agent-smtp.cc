@@ -30,9 +30,7 @@
 
 #include "agent_smtp_classes.h"
 
-static const char *PATH = "/var/lib/bios/agent-smtp";
-
-// agents name
+// agent's name
 static const char *AGENT_NAME = "agent-smtp";
 
 // malamute endpoint
@@ -49,13 +47,13 @@ void usage ()
           "  -e|--encryption       smtp encryption (none|tls|starttls) [none]\n"
           "  -h|--help             print this information\n"
           "For security reasons, there is not option for password. Use environment variable.\n"
-          "Used environment variables are BIOS_SMTP_SERVER, BIOS_SMTP_PORT, BIOS_SMTP_USER\n"
-          "BIOS_SMTP_PASSWD, BIOS_SMTP_FROM and BIOS_SMTP_ENCRYPT");
+          "Environment variables for all paremeters are BIOS_SMTP_SERVER, BIOS_SMTP_PORT,\n"
+          "BIOS_SMTP_USER, BIOS_SMTP_PASSWD, BIOS_SMTP_FROM and BIOS_SMTP_ENCRYPT\n"
+          "Command line option takes precedence over variable.");
 }
 
 int main (int argc, char** argv)
 {
-    static const char *empty = "";
     int verbose = 0;
     int help = 0;
 
@@ -120,26 +118,27 @@ int main (int argc, char** argv)
     // end of the options
 
     puts ("START bios-agent-smtp - Daemon that is responsible for email notification about alerts");
-    zactor_t *ag_server = zactor_new (bios_smtp_server, (void*) AGENT_NAME);
-    if ( !ag_server ) {
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, (void*) AGENT_NAME);
+    if ( !smtp_server ) {
         zsys_error ("cannot start the daemon");
         return -1;
     }
 
     if (verbose) {
-        zstr_sendx (ag_server, "VERBOSE", NULL);
+        zstr_sendx (smtp_server, "VERBOSE", NULL);
     }
-
-    zstr_sendx (ag_server, "CONNECT", ENDPOINT, NULL);
-    zstr_sendx (ag_server, "CONSUMER", "ALERTS", ".*", NULL);
-    zstr_sendx (ag_server, "CONSUMER", "ASSETS", ".*", NULL);
-    zstr_sendx (ag_server, "CONFIG", PATH, NULL);
-    zstr_sendx (ag_server,
+    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ASSETS", ".*", NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server,
                 "SMTPCONFIG",
-                smtpserver ? smtpserver : empty,    // server
+                smtpserver ? smtpserver : "",       // server
                 smtpport ? smtpport : "25",         // port
                 smtpencrypt ? smtpencrypt : "none", // encryption
-                smtpfrom ? smtpfrom : empty,        // mail from
+                smtpfrom ? smtpfrom : "",           // mail from
                 smtpuser,                           // smtp username
                 smtppassword,                       // smtp password
                 NULL);
@@ -147,7 +146,7 @@ int main (int argc, char** argv)
     //  Accept and print any message back from server
     //  copy from src/malamute.c under MPL license
     while (true) {
-        char *message = zstr_recv (ag_server);
+        char *message = zstr_recv (smtp_server);
         if (message) {
             puts (message);
             free (message);
@@ -159,7 +158,7 @@ int main (int argc, char** argv)
     }
 
     // TODO save info to persistence before I die
-    zactor_destroy (&ag_server);
+    zactor_destroy (&smtp_server);
     if (verbose) {
         zsys_info ("END bios_agent_smtp - Daemon that is responsible for email notification about alerts");
     }

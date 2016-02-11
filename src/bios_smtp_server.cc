@@ -247,6 +247,12 @@ void AlertList::
     if ( needNotify )
     {
         zsys_debug ("Want to notify");
+        if ( assetDetailes._contactEmail.empty() )
+        {
+            zsys_error ("Can't send a notification. For the asset '%s' contact email is unknown",
+                assetDetailes._name.c_str());
+            return;
+        }
         try {
             emailConfiguration._smtp.sendmail(
                 assetDetailes._contactEmail,
@@ -256,7 +262,6 @@ void AlertList::
                     (alertDescription, assetDetailes, ruleName)
             );
             alertDescription._lastNotification = nowTimestamp;
-            zsys_debug ("notification send at %d", nowTimestamp);
         }
         catch (const std::runtime_error& e) {
             zsys_error ("Error: %s", e.what());
@@ -324,7 +329,6 @@ void onAssetReceive (
 {
     // when some asset message received
     assert (message != NULL );
-
     bios_proto_t *messageAsset = *message;
     // check one more time to be sure, that it is an asset message
     if ( bios_proto_id (messageAsset) != BIOS_PROTO_ASSET )
@@ -452,13 +456,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zstr_free (&path);
             }
             else
-            if (streq (cmd, "CONFIG")) {
-                //char* filename = zmsg_popstr (msg);
-                // TODO read configuration SMTP
-                /*
-                */
-            }
-            else
             if (streq (cmd, "SMTPCONFIG")) {
                 char *param;
                 // server
@@ -510,7 +507,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
         // There are inputs
         //  - an alert from alert stream
         //  - an asset config message
-        //  - an SMTP settings
+        //  - an SMTP settings TODO
         if( is_bios_proto (zmessage) ) {
             bios_proto_t *bmessage = bios_proto_decode (&zmessage);
             if( ! bmessage ) {
@@ -599,6 +596,7 @@ bios_smtp_server_test (bool verbose)
     rv = mlm_client_connect (btest_reader, endpoint, 1000, "btest-reader");
     assert( rv != -1 );
 
+    // =====================================================
     // scenario 1: send asset + send an alert on the already known correct asset
     //      1. send asset info
     zhash_t *aux = zhash_new ();
@@ -621,14 +619,17 @@ bios_smtp_server_test (bool verbose)
     std::string atopic = "NY_RULE/CRITICAL@" + std::string (asset_name);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     zsys_info ("alert message was send");
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (500);
 
     //      3. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
+    assert (msg);
     if ( verbose ) {
         zsys_debug ("parameters for the email:");
         zmsg_print (msg);
     }
-
+    //      4. compare the email with expected output
     int fr_number = zmsg_size(msg);
     char *body = NULL;
     while ( fr_number > 0 ) {
@@ -636,6 +637,7 @@ bios_smtp_server_test (bool verbose)
         body = zmsg_popstr(msg);
         fr_number--;
     }
+    zmsg_destroy (&msg);
     if ( verbose ) {
         zsys_debug ("email itself:");
         zsys_debug ("%s", body);
@@ -656,13 +658,67 @@ bios_smtp_server_test (bool verbose)
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
 
     assert ( expectedBody.compare(newBody) == 0 );
-    zmsg_destroy (&msg);
 
-    //      4. send ack back, so btest can exit
+    //      5. send ack back, so btest can exit
     mlm_client_sendtox (
             btest_reader,
             mlm_client_sender (btest_reader),
             "BTEST-OK", "OK", NULL);
+    zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
+
+    // =====================================================
+    // scenario 2: send an alert on the unknown asset
+    //      1. DO NOT send asset info
+    const char *asset_name1 = "ASSET2";
+
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name1, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    std::string atopic1 = "NY_RULE/CRITICAL@" + std::string (asset_name1);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    zsys_info ("alert message was send");
+
+    //      3. No mail should be generated
+    zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    void *which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+
+    // =====================================================
+    // scenario 3: send asset without email + send an alert on the already known asset
+    //      1. send asset info
+    aux = zhash_new ();
+    zhash_insert (aux, "priority", (void *)"1");
+    ext = zhash_new ();
+    zhash_insert (ext, "contact_name", (void *)"eaton Support team");
+    const char *asset_name3 = "ASSET2";
+    msg = bios_proto_encode_asset (aux, asset_name3, NULL, ext);
+    assert (msg);
+    mlm_client_send (asset_producer, "Asset message3", &msg);
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
+    zsys_info ("asset message was send");
+
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    std::string atopic3 = "NY_RULE/CRITICAL@" + std::string (asset_name3);
+    mlm_client_send (alert_producer, atopic3.c_str(), &msg);
+    zsys_info ("alert message was send");
+
+    //      3. No mail should be generated
+    poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
     zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
 
     // clean up after the test
