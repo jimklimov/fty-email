@@ -38,6 +38,26 @@ Build-Depends: bison, debhelper (>= 8),
     dh-autoreconf,
     systemd
 
+Package: libagent-smtp0
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: agent-smtp
+ This package contains shared library for agent-smtp: xxxx
+
+Package: agent-smtp-dev
+Architecture: all
+Section: libdevel
+Depends:
+    libsodium-dev,
+    libzmq4-dev,
+    uuid-dev,
+    libczmq-dev,
+    libmlm-dev,
+    libbiosproto-dev,
+    libcxxtools-dev,
+    libagent-smtp0 (= ${binary:Version})
+Description: development files for agent-smtp
+ This package contains development files for agent-smtp: xxxx
 
 Package: agent-smtp
 Architecture: any

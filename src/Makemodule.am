@@ -6,7 +6,7 @@ program_libs = src/libagent_smtp.la ${project_libs}
 
 # Programs need to link the c++ runtime if everything was compiled statically.
 if !ENABLE_SHARED
-program_libs += -lstdc++
+program_libs += -lstdc++ -lm
 endif
 
 lib_LTLIBRARIES += src/libagent_smtp.la
@@ -14,6 +14,7 @@ pkgconfig_DATA = src/libagent_smtp.pc
 
 include_HEADERS = \
     include/agent_smtp.h \
+    include/bios_smtp_server.h \
     include/agent_smtp_library.h
 
 src_libagent_smtp_la_SOURCES = \
@@ -46,19 +47,19 @@ src_libagent_smtp_la_LIBADD = ${project_libs}
 
 if ENABLE_BIOS_AGENT_SMTP
 bin_PROGRAMS += src/bios-agent-smtp
-src_bios_agent_smtp_CPPFLAGS = ${AM_CPPFLAGS} -D__STDC_FORMAT_MACROS
+src_bios_agent_smtp_CPPFLAGS = ${AM_CPPFLAGS}
 src_bios_agent_smtp_LDADD = ${program_libs}
-src_bios_agent_smtp_SOURCES = src/bios-agent-smtp.cc
-if WITH_SYSTEMD
+src_bios_agent_smtp_SOURCES = src/bios_agent_smtp.cc
+if WITH_SYSTEMD_UNITS
 src_bios_agent_smtp_servicedir = @prefix@/lib/systemd/system
+src_bios_agent_smtp_configdir = $(sysconfdir)/agent-smtp
 src_bios_agent_smtp_service_DATA = src/bios-agent-smtp.service
-endif
+endif #WITH_SYSTEMD_UNITS
 endif #ENABLE_BIOS_AGENT_SMTP
 
 if ENABLE_BTEST
 noinst_PROGRAMS += src/btest
-src_btest_CPPFLAGS = ${AM_CPPFLAGS} -D__STDC_FORMAT_MACROS
-
+src_btest_CPPFLAGS = ${AM_CPPFLAGS}
 src_btest_LDADD = ${program_libs}
 src_btest_SOURCES = src/btest.cc
 endif #ENABLE_BTEST

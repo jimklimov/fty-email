@@ -44,6 +44,43 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 %description
 agent-smtp xxxx.
 
+%package -n libagent_smtp0
+Group:          System/Libraries
+Summary:        xxxx
+
+%description -n libagent_smtp0
+agent-smtp xxxx.
+This package contains shared library.
+
+%post -n libagent_smtp0 -p /sbin/ldconfig
+%postun -n libagent_smtp0 -p /sbin/ldconfig
+
+%files -n libagent_smtp0
+%defattr(-,root,root)
+%doc COPYING
+%{_libdir}/libagent_smtp.so.*
+
+%package devel
+Summary:        xxxx
+Group:          System/Libraries
+Requires:       libagent_smtp0 = %{version}
+Requires:       libsodium-devel
+Requires:       zeromq-devel
+Requires:       uuid-devel
+Requires:       czmq-devel
+Requires:       malamute-devel
+Requires:       biosproto-devel
+Requires:       cxxtools-devel
+
+%description devel
+agent-smtp xxxx.
+This package contains development files.
+
+%files devel
+%defattr(-,root,root)
+%{_includedir}/*
+%{_libdir}/libagent_smtp.so
+%{_libdir}/pkgconfig/libagent_smtp.pc
 
 %prep
 %setup -q

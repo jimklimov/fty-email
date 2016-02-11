@@ -36,7 +36,6 @@
 #include "emailconfiguration.h"
 #include "email.h"
 #include "subprocess.h"
-#include "bios_smtp_server.h"
 
 //  *** Draft method, defined for internal use only ***
 //  Self test of this class.
@@ -52,10 +51,5 @@ AGENT_SMTP_EXPORT void
 //  Self test of this class.
 AGENT_SMTP_EXPORT void
     subprocess_test (bool verbose);
-
-//  *** Draft method, defined for internal use only ***
-//  Self test of this class.
-AGENT_SMTP_EXPORT void
-    bios_smtp_server_test (bool verbose);
 
 #endif
