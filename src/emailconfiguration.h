@@ -25,6 +25,8 @@
 #include "email.h"
 #include <string>
 #include <set>
+#include <cxxtools/jsonserializer.h>
+#include <cxxtools/jsondeserializer.h>
 
 
 struct AlertDescription_ {
@@ -66,6 +68,16 @@ public:
     void print (void);
 };
 
+
+/*
+ * \brief Serialzation of ElementDetails
+ */
+void operator<<= (cxxtools::SerializationInfo& si, const ElementDetails& asset);
+
+/*
+ * \brief Deserialzation of ElementDetails
+ */
+void operator>>= (const cxxtools::SerializationInfo& si, ElementDetails& asset);
 
 /*
  * \brief Class that represents an email configuration and

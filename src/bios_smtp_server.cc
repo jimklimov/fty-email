@@ -44,11 +44,14 @@
 #include "emailconfiguration.h"
 #include <cxxtools/split.h>
 
+#define SMTP_STATE_FILE "/var/bios/agent-smtp/state"
 
 class ElementList {
 public:
 
-    ElementList() {};
+    ElementList() :
+        _path{SMTP_STATE_FILE}
+    {};
 
     size_t count (const std::string &assetName) const {
         return _assets.count(assetName);
@@ -77,8 +80,98 @@ public:
             it->second = elementDetails;
         }
     };
+
+    // Path cannot be changed during the lifetime of the agent!
+    // if you want allow users change it without killing the agent
+    // you need to save old state to the new place to support the following situation:
+    //
+    // -------------------------------------------------------------------> t
+    //      |                   |               |               |
+    // agent_start_1            |               |          agent_start_2
+    //                      path_change         |
+    //                                      system_reboot
+    //
+    // Otherwise, at point agent_start_2 state would be read from the new place
+    //  (but it is still empty)
+    void setFile (const std::string &filePath)
+    {
+        _path = filePath;
+    };
+
+
+    /*
+     * \brief Save to the file
+     */
+    int save (void) {
+        std::ofstream ofs (_path + ".new", std::ofstream::out);
+        if ( !ofs.good() ) {
+            zsys_error ("Cannot open file '%s' for write", (_path + ".new").c_str());
+            ofs.close();
+            return -1;
+        }
+        int r = std::rename (std::string ( _path).append(".new").c_str (),
+            std::string (_path.c_str ()).c_str());
+        if ( r != 0 ) {
+            zsys_error ("Cannot rename file '%s' to '%s'", _path.c_str(), _path.c_str());
+            return -2;
+        }
+        ofs << serializeJSON();
+        ofs.close();
+        return 0;
+    }
+
+    /*
+     * \brief load from  file
+     */
+    int load (void) {
+        std::ifstream ifs (_path, std::ofstream::in);
+        if ( !ifs.good() ) {
+            zsys_error ("Cannot open file '%s' for read", _path.c_str());
+            ifs.close();
+            return -1;
+        }
+        try {
+            cxxtools::SerializationInfo si;
+            std::string json_string(std::istreambuf_iterator<char>(ifs), {});
+            std::stringstream s(json_string);
+        // TODO try
+            cxxtools::JsonDeserializer json(s);
+            json.deserialize(si);
+            si >>= _assets;
+            ifs.close();
+            return 0;
+        }
+        catch ( const std::exception &e) {
+            zsys_error ("Starting without initial state. Cannot deserialize the file '%s'. Error: '%s'", _path.c_str(), e.what());
+            ifs.close();
+            return -1;
+        }
+    }
+
+    std::string serializeJSON (void) const
+    {
+        std::stringstream s;
+        cxxtools::JsonSerializer js (s);
+        js.beautify (true);
+        js.serialize (_assets).finish();
+        return s.str();
+    };
+
 private:
+
+    /*
+     * \brief Delete file
+     *
+     * \return 0 on success
+     *         non-zero on error
+     */
+    int remove (void) {
+        return std::remove (_path.c_str());
+    };
+
     std::map <std::string, ElementDetails> _assets;
+
+    std::string _path;
 };
 
 class AlertList {
@@ -162,7 +255,7 @@ AlertList::AlertsConfig::iterator AlertList::
     return it;
 }
 
-
+// TODO: make it configurable without recompiling
 static int
     getNotificationInterval(
         const std::string &severity,
@@ -376,7 +469,7 @@ void onAssetReceive (
     newAsset._contactEmail = ( contact_email == NULL ? "" : contact_email );
     elementList.setElementDetails (newAsset);
     newAsset.print();
-
+    elementList.save();
     // destroy the message
     bios_proto_destroy (message);
 }
@@ -395,7 +488,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
     AlertList alertList;
     ElementList elementList;
     EmailConfiguration emailConfiguration;
-
     zsock_signal (pipe, 0);
     while (!zsys_interrupted) {
 
@@ -453,6 +545,13 @@ bios_smtp_server (zsock_t *pipe, void* args)
             if (streq (cmd, "MSMTP_PATH")) {
                 char* path = zmsg_popstr (msg);
                 emailConfiguration._smtp.msmtp_path (path);
+                zstr_free (&path);
+            }
+            else
+            if (streq (cmd, "STATE_FILE_PATH")) {
+                char* path = zmsg_popstr (msg);
+                elementList.setFile (path);
+                elementList.load();
                 zstr_free (&path);
             }
             else
@@ -569,6 +668,7 @@ bios_smtp_server_test (bool verbose)
 
     // smtp server
     zactor_t *smtp_server = zactor_new (bios_smtp_server, (void*)"agent-smtp");
+    zstr_sendx (smtp_server, "STATE_FILE_PATH", "kkk.xtx", NULL);
     if (verbose)
         zstr_send (smtp_server, "VERBOSE");
     zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
@@ -578,7 +678,6 @@ bios_smtp_server_test (bool verbose)
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
     zsock_wait (smtp_server);
-
 
     mlm_client_t *alert_producer = mlm_client_new ();
     int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");

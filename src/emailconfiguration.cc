@@ -52,6 +52,23 @@ static std::string
     return result;
 }
 
+void operator<<= (cxxtools::SerializationInfo& si, const ElementDetails& asset)
+{
+    si.addMember("name") <<= asset._name;
+    si.addMember("priority") <<= asset._priority;
+    si.addMember("contact_name") <<= asset._contactName;
+    si.addMember("contact_email") <<= asset._contactEmail;
+}
+
+void operator>>= (const cxxtools::SerializationInfo& si, ElementDetails& asset)
+{
+    // TODO error handling
+    si.getMember("name") >>= asset._name;
+    si.getMember("priority") >>= asset._priority;
+    si.getMember("contact_name") >>= asset._contactName;
+    si.getMember("contact_email") >>= asset._contactEmail;
+}
+
 
 std::string EmailConfiguration::
     generateEmailBodyResolved (const AlertDescription &alert,
