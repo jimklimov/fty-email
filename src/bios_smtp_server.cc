@@ -109,12 +109,7 @@ public:
             ofs.close();
             return -1;
         }
-        int r = remove();
-        if ( r != 0 ) {
-            zsys_error ("Cannot remove file '%s'", _path.c_str());
-            return -2;
-        }
-        r = std::rename (std::string ( _path).append(".new").c_str (),
+        int r = std::rename (std::string ( _path).append(".new").c_str (),
             std::string (_path.c_str ()).c_str());
         if ( r != 0 ) {
             zsys_error ("Cannot rename file '%s' to '%s'", _path.c_str(), _path.c_str());
