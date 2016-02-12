@@ -2,6 +2,7 @@
 Description=bios-agent-smtp service
 Requires=network.target malamute.service
 After=network.target malamute.service
+Before=bios-agent-asset.service
 PartOf=bios.target
 
 [Service]
