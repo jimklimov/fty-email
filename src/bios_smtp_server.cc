@@ -44,11 +44,14 @@
 #include "emailconfiguration.h"
 #include <cxxtools/split.h>
 
+#define SMTP_STATE_FILE "/var/bios/agent-smtp/state"
 
 class ElementList {
 public:
 
-    ElementList() {};
+    ElementList() :
+        _path{SMTP_STATE_FILE}
+    {};
 
     size_t count (const std::string &assetName) const {
         return _assets.count(assetName);
@@ -77,8 +80,74 @@ public:
             it->second = elementDetails;
         }
     };
+
+    // Path cannot be changed during the lifetime of the agent!
+    // if you want allow users change it without killing the agent
+    // you need to save old state to the new place to support the following situation:
+    //
+    // -------------------------------------------------------------------> t
+    //      |                   |               |               |
+    // agent_start_1            |               |          agent_start_2
+    //                      path_change         |
+    //                                      system_reboot
+    //
+    // Otherwise, at point agent_start_2 state would be read from the new place
+    //  (but it is still empty)
+    void setFile (const std::string &filePath)
+    {
+        _path = filePath;
+    };
+
+
+    /*
+     * \brief Save to the file
+     */
+    int save (void) {
+        std::ofstream ofs (_path, std::ofstream::out);
+        if ( !ofs.good() ) {
+            zsys_error ("Cannot open file '%s' for write", _path.c_str());
+            ofs.close();
+            return -1;
+        }
+        ofs << serializeJSON();
+        ofs.close();
+        return 0;
+    }
+
+    /*
+     * \brief load from  file
+     */
+    int load (void) {
+        std::ifstream ifs (_path, std::ofstream::in);
+        if ( !ifs.good() ) {
+            zsys_error ("Cannot open file '%s' for read", _path.c_str());
+            ifs.close();
+            return -1;
+        }
+        cxxtools::SerializationInfo si;
+        std::string json_string(std::istreambuf_iterator<char>(ifs), {});
+        std::stringstream s(json_string);
+        // TODO try
+        cxxtools::JsonDeserializer json(s);
+        json.deserialize(si);
+        si >>= _assets;
+        ifs.close();
+        return 0;
+    }
+
+    std::string serializeJSON (void) const
+    {
+        std::stringstream s;
+        cxxtools::JsonSerializer js (s);
+        js.beautify (true);
+        js.serialize (_assets).finish();
+        return s.str();
+    };
+
 private:
     std::map <std::string, ElementDetails> _assets;
+
+    std::string _path;
 };
 
 class AlertList {
@@ -162,7 +231,7 @@ AlertList::AlertsConfig::iterator AlertList::
     return it;
 }
 
-
+// TODO: make it configurable without recompiling
 static int
     getNotificationInterval(
         const std::string &severity,
@@ -376,7 +445,7 @@ void onAssetReceive (
     newAsset._contactEmail = ( contact_email == NULL ? "" : contact_email );
     elementList.setElementDetails (newAsset);
     newAsset.print();
-
+    elementList.save();
     // destroy the message
     bios_proto_destroy (message);
 }
