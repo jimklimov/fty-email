@@ -129,7 +129,7 @@ int main (int argc, char** argv)
     }
     // ATTENTION: the path for the state should be set up before any network activity!
     // as it should load the state first!
-    zstr_sendx (smtp_server, "STATE_FILE_PATH", "/var/bios/agent-smtp/state", NULL);
+    zstr_sendx (smtp_server, "STATE_FILE_PATH", "/var/lib/bios/agent-smtp/state", NULL);
     zstr_sendx (smtp_server, "CONNECT", ENDPOINT, NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);
