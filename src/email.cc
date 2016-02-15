@@ -52,8 +52,6 @@ std::string Smtp::createConfigFile() const
     std::string line;
 
     line = "defaults\n";
-    line += "host " + _host +"\n";
-    line += "from " + _from + "\n";
     switch (_encryption) {
     case Enctryption::NONE:
         line += "tls off\n"
@@ -77,6 +75,10 @@ std::string Smtp::createConfigFile() const
             "user " + _username + "\n"
             "password " + _password + "\n";
     }
+
+    line += "account default\n";
+    line += "host " + _host +"\n";
+    line += "from " + _from + "\n";
     ssize_t r = write (handle,  line.c_str(), line.size());
     if (r > 0 && (size_t) r != line.size ())
         zsys_error ("write to %s was truncated, expected %zu, written %zd", filename, line.size(), r);
@@ -149,7 +151,7 @@ void Smtp::sendmail(
         const std::string& data)    const
 {
     std::string cfg = createConfigFile();
-    Argv argv = { _msmtp, "-C", cfg };
+    Argv argv = { _msmtp, "-t", "-C", cfg };
     SubProcess proc{argv, SubProcess::STDIN_PIPE | SubProcess::STDOUT_PIPE | SubProcess::STDERR_PIPE};
 
     bool bret = proc.run();
