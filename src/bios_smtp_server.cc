@@ -628,7 +628,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
         zmsg_destroy (&zmessage);
     }
 exit:
-    // TODO save info to persistence before I die
+    // save info to persistence before I die
+    elementList.save();
     zpoller_destroy (&poller);
     mlm_client_destroy (&client);
     zstr_free (&name);
