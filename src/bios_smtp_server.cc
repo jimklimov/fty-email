@@ -214,7 +214,9 @@ AlertList::AlertsConfig::iterator AlertList::
     if (!strstr (actions, "EMAIL"))
         return _alerts.end ();
 
-    auto alertKey = std::make_pair(ruleName, asset);
+    std::string ruleNameLower = std::string (ruleName);
+    std::transform(ruleNameLower.begin(), ruleNameLower.end(), ruleNameLower.begin(), ::tolower);
+    auto alertKey = std::make_pair(ruleNameLower, asset);
 
     // try to insert a new alert
     auto newAlert = _alerts.emplace(alertKey, AlertDescription (
@@ -278,9 +280,11 @@ static int
     };
     auto it = times.find(std::make_pair (severity, priority));
     if ( it == times.cend() ) {
+        zsys_error ("Not known interval");
         return 0;
     }
     else {
+        zsys_error ("in %d [s]", it->second);
         return it->second;
     }
 }
@@ -310,10 +314,12 @@ void AlertList::
         return;
     }
     auto &alertDescription = it->second;
+
     if ( alertDescription._lastUpdate > alertDescription._lastNotification ) {
         // Last notification was send BEFORE last
         // important change take place -> need to notify
         needNotify = true;
+        zsys_debug ("important change -> notify");
     }
     else {
         // so, no important changes, but may be we need to
@@ -329,6 +335,7 @@ void AlertList::
              // If  lastNotification + interval < NOW
         {
             // so, we found out that we need to notify according the schedule
+            zsys_debug ("according schedule -> notify");
             needNotify = true;
         }
     }
@@ -407,6 +414,7 @@ void onAlertReceive (
         actions);
     // notify user about alert
     alertList.notify(it, emailConfiguration, elementList);
+
 
     // destroy the message
     bios_proto_destroy (message);
@@ -748,8 +756,8 @@ bios_smtp_server_test (bool verbose)
     newBody.erase(remove_if(newBody.begin(), newBody.end(), isspace), newBody.end());
 
     // expected string withoiut date
-    std::string expectedBody = "From:bios@eaton.com\nTo: scenario1.email@eaton.com\nSubject: CRITICAL alert on ASSET1 from the rule NY_RULE is active!\n\n"
-    "In the system an alert was detected.\nSource rule: NY_RULE\nAsset: ASSET1\nAlert priority: P1\nAlert severity: CRITICAL\n"
+    std::string expectedBody = "From:bios@eaton.com\nTo: scenario1.email@eaton.com\nSubject: CRITICAL alert on ASSET1 from the rule ny_rule is active!\n\n"
+    "In the system an alert was detected.\nSource rule: ny_rule\nAsset: ASSET1\nAlert priority: P1\nAlert severity: CRITICAL\n"
     "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
     assert ( expectedBody.compare(newBody) == 0 );
@@ -759,7 +767,7 @@ bios_smtp_server_test (bool verbose)
             btest_reader,
             mlm_client_sender (btest_reader),
             "BTEST-OK", "OK", NULL);
-    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
+    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 
     // scenario 2: send an alert on the unknown asset
     //      1. DO NOT send asset info
@@ -812,7 +820,49 @@ bios_smtp_server_test (bool verbose)
         zsys_debug ("No email was sent: SUCCESS");
     }
     zpoller_destroy (&poller);
-    zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
+    
+    // scenario 4:
+    //      1. send an alert on the already known asset
+    atopic = "Scenario4/CRITICAL@" + std::string (asset_name);
+    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    zsys_info ("alert message was send");
+
+    //      2. read the email generated for alert
+    msg = mlm_client_recv (btest_reader);
+    assert (msg);
+    if ( verbose ) {
+        zsys_debug ("parameters for the email:");
+        zmsg_print (msg);
+    }
+    zmsg_destroy (&msg);
+
+    //      3. send ack back, so btest can exit
+    mlm_client_sendtox (
+            btest_reader,
+            mlm_client_sender (btest_reader),
+            "BTEST-OK", "OK", NULL);
+
+    //      4. send an alert on the already known asset
+    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    zsys_info ("alert message was send");
+
+    //      5. email should not be send (it doesn't satisfy the schedule
+    poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+
+
+    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
 
     // clean up after the test
     mlm_client_destroy (&btest_reader);
