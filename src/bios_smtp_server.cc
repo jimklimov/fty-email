@@ -296,6 +296,8 @@ void AlertList::
         const EmailConfiguration &emailConfiguration,
         const ElementList &elementList)
 {
+    if ( it == _alerts.cend() )
+        return;
     //pid_t tmptmp = getpid();
     if ( emailConfiguration.isConfigured() ) {
         zsys_error("Mail system is not configured!");
@@ -820,7 +822,7 @@ bios_smtp_server_test (bool verbose)
         zsys_debug ("No email was sent: SUCCESS");
     }
     zpoller_destroy (&poller);
-    
+
     // scenario 4:
     //      1. send an alert on the already known asset
     atopic = "Scenario4/CRITICAL@" + std::string (asset_name);
@@ -861,6 +863,22 @@ bios_smtp_server_test (bool verbose)
     }
     zpoller_destroy (&poller);
 
+    // scenario 5: alert without action "EMAIL"
+    //      1. send alert message
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic3.c_str(), &msg);
+    zsys_info ("alert message was send");
+
+    //      2. No mail should be generated
+    poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
 
     zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
 
