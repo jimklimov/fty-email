@@ -68,6 +68,7 @@ int main (int argc, char** argv)
     char *smtppassword = getenv("BIOS_SMTP_PASSWD");
     char *smtpfrom     = getenv("BIOS_SMTP_FROM");
     char *smtpencrypt  = getenv("BIOS_SMTP_ENCRYPT");
+    char *msmtp_path   = getenv("_MSMTP_PATH_");
 
     // get options
     int c;
@@ -145,6 +146,10 @@ int main (int argc, char** argv)
                 smtpuser,                           // smtp username
                 smtppassword,                       // smtp password
                 NULL);
+    if (msmtp_path) {
+        zsys_info ("using alternative msmtp binary: %s", msmtp_path);
+        zstr_sendx (smtp_server, "MSMTP_PATH", msmtp_path);
+    }
 
     //  Accept and print any message back from server
     //  copy from src/malamute.c under MPL license
