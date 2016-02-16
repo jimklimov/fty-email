@@ -217,10 +217,6 @@ AlertList::AlertsConfig::iterator AlertList::
     std::string ruleNameLower = std::string (ruleName);
     std::transform(ruleNameLower.begin(), ruleNameLower.end(), ruleNameLower.begin(), ::tolower);
     auto alertKey = std::make_pair(ruleNameLower, asset);
-    std::set<std::string> actionList;
-    std::set<std::string>::iterator actit = actionList.begin();
-    cxxtools::split( '/', std::string(actions),
-        std::inserter(actionList, actit) );
 
     // try to insert a new alert
     auto newAlert = _alerts.emplace(alertKey, AlertDescription (
