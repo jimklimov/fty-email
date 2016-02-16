@@ -841,6 +841,7 @@ bios_smtp_server_test (bool verbose)
         zsys_debug ("parameters for the email:");
         zmsg_print (msg);
     }
+    zmsg_destroy (&msg);
 
     //      3. send ack back, so btest can exit
     mlm_client_sendtox (
