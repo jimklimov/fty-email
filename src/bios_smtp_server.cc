@@ -211,6 +211,9 @@ AlertList::AlertsConfig::iterator AlertList::
         int64_t timestamp,
         const char *actions)
 {
+    if (!strstr (actions, "EMAIL"))
+        return _alerts.end ();
+
     std::string ruleNameLower = std::string (ruleName);
     std::transform(ruleNameLower.begin(), ruleNameLower.end(), ruleNameLower.begin(), ::tolower);
     auto alertKey = std::make_pair(ruleNameLower, asset);
@@ -224,7 +227,6 @@ AlertList::AlertsConfig::iterator AlertList::
             description,
             state,
             severity,
-            actionList,
             timestamp
         ));
     // newAlert = pair (iterator, bool). true = inserted,
@@ -239,13 +241,11 @@ AlertList::AlertsConfig::iterator AlertList::
     if ( ( it->second._description != description ) ||
             ( it->second._state != state ) ||
             ( it->second._severity != severity ) ||
-            ( it->second._actions != actionList ) ||
             ( it->second._timestamp != timestamp ) )
     {
         it->second._description = description;
         it->second._state = state;
         it->second._severity = severity;
-        it->second._actions = actionList;
         it->second._timestamp = timestamp;
         // important information changed -> need to notify asap
         it->second._lastUpdate = ::time(NULL);
