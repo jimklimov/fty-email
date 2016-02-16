@@ -33,7 +33,6 @@ struct AlertDescription_ {
     std::string _description;
     std::string _state;
     std::string _severity;
-    std::set<std::string> _actions;
     int64_t _timestamp;
     int64_t _lastNotification;
     int64_t _lastUpdate;
@@ -42,12 +41,10 @@ struct AlertDescription_ {
         const std::string &description,
         const std::string &state,
         const std::string &severity,
-        const std::set<std::string> &actions,
         int64_t timestamp) :
             _description (description),
             _state (state),
             _severity (severity),
-            _actions (actions),
             _timestamp (timestamp),
             _lastNotification (0),
             _lastUpdate (timestamp)
