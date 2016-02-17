@@ -717,6 +717,8 @@ bios_smtp_server_test (bool verbose)
     zhash_destroy (&aux);
     zhash_destroy (&ext);
     zsys_info ("asset message was send");
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
 
     //      2. send alert message
     msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name, \
@@ -725,8 +727,6 @@ bios_smtp_server_test (bool verbose)
     std::string atopic = "NY_RULE/CRITICAL@" + std::string (asset_name);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     zsys_info ("alert message was send");
-    // Ensure, that malamute will deliver ASSET message before ALERT message
-    zclock_sleep (1000);
 
     //      3. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -880,7 +880,112 @@ bios_smtp_server_test (bool verbose)
     }
     zpoller_destroy (&poller);
 
-    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy BEFORE we'll kill malamute
+
+    zsys_debug (" scenario 6 ===============================================");
+    //
+    //------------------------------------------------------------------------------------------------> t
+    //
+    //  asset is known       alert comes    no email        asset_info        alert comes   email send
+    // (without email)                                   updated with email
+
+    const char *asset_name6 = "asset_6";
+    const char *rule_name6 = "rule_name_6";
+    std::string alert_topic6 = std::string(rule_name6) + "/CRITICAL@" + std::string (asset_name6);
+
+    //      1. send asset info without email
+    aux = zhash_new ();
+    assert (aux);
+    zhash_insert (aux, "priority", (void *)"1");
+    ext = zhash_new ();
+    assert (ext);
+    msg = bios_proto_encode_asset (aux, asset_name6, NULL, ext);
+    assert (msg);
+    rv = mlm_client_send (asset_producer, "Asset message6", &msg);
+    assert ( rv != -1 );
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
+
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, rule_name6, asset_name6, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
+    assert ( rv != -1 );
+
+    //      3. No mail should be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy
+
+    //      4. send asset info one more time, but with email
+    zhash_insert (ext, "contact_email", (void *)"scenario6.email@eaton.com");
+    msg = bios_proto_encode_asset (aux, asset_name6, NULL, ext);
+    assert (msg);
+    rv = mlm_client_send (asset_producer, "Asset message6", &msg);
+    assert ( rv != -1 );
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
+
+    //      5. send alert message again
+    msg = bios_proto_encode_alert (NULL, rule_name6, asset_name6, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
+    assert ( rv != -1 );
+
+    //      6. Email SHOULD be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which != NULL );
+    if ( verbose ) {
+        zsys_debug ("Email was sent: SUCCESS");
+    }
+    msg = mlm_client_recv (btest_reader);
+    zpoller_destroy (&poller);
+    assert (msg);
+
+    //      7. compare the email with expected output
+    fr_number = zmsg_size(msg);
+    body = NULL;
+    while ( fr_number > 0 ) {
+        zstr_free(&body);
+        body = zmsg_popstr(msg);
+        fr_number--;
+    }
+    zmsg_destroy (&msg);
+    if ( verbose ) {
+        zsys_debug ("email itself:");
+        zsys_debug ("%s", body);
+    }
+    newBody = std::string (body);
+    zstr_free(&body);
+    subject = newBody.find ("Subject:");
+    date = newBody.find ("Date:");
+    // in the body there is a line with current date -> remove it
+    newBody.replace (date, subject - date, "");
+    // need to erase white spaces, because newLines in "body" are not "\n"
+    newBody.erase(remove_if(newBody.begin(), newBody.end(), isspace), newBody.end());
+
+    // expected string withoiut date
+    expectedBody = "From:bios@eaton.com\nTo: scenario6.email@eaton.com\nSubject: CRITICAL alert on asset_6 from the rule rule_name_6 is active!\n\n"
+    "In the system an alert was detected.\nSource rule: rule_name_6\nAsset: asset_6\nAlert priority: P1\nAlert severity: CRITICAL\n"
+    "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
+    expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
+    assert ( expectedBody.compare(newBody) == 0 );
+
+     //      8. send ack back, so btest can exit
+    mlm_client_sendtox (
+            btest_reader,
+            mlm_client_sender (btest_reader),
+            "BTEST-OK", "OK", NULL);
+    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 
     // clean up after the test
     mlm_client_destroy (&btest_reader);
