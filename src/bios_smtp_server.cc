@@ -236,13 +236,11 @@ AlertList::AlertsConfig::iterator AlertList::
     auto it = newAlert.first;
     if ( ( it->second._description != description ) ||
             ( it->second._state != state ) ||
-            ( it->second._severity != severity ) ||
-            ( it->second._timestamp != timestamp ) )
+            ( it->second._severity != severity ) )
     {
         it->second._description = description;
         it->second._state = state;
         it->second._severity = severity;
-        it->second._timestamp = timestamp;
         // important information changed -> need to notify asap
         it->second._lastUpdate = ::time(NULL);
     }
