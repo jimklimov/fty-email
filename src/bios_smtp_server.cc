@@ -948,6 +948,7 @@ bios_smtp_server_test (bool verbose)
         zsys_debug ("Email was sent: SUCCESS");
     }
     msg = mlm_client_recv (btest_reader);
+    zpoller_destroy (&poller);
     assert (msg);
 
     //      7. compare the email with expected output
