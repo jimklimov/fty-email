@@ -252,6 +252,8 @@ AlertList::AlertsConfig::iterator AlertList::
 }
 
 // TODO: make it configurable without recompiling
+// If time is less 5 minutes, then email in some cases would be send aproximatly every 5 minutes,
+// as some metrics are generated only once per 5 minute -> alert in 5 minuts -> email in 5 minuts
 static int
     getNotificationInterval(
         const std::string &severity,
@@ -283,7 +285,9 @@ static int
     }
     else {
         zsys_error ("in %d [s]", it->second);
-        return it->second;
+        return it->second - 60; 
+        // BIOS-1802: time conflict with assumption:
+        // if metric is computed it is send approximatly every 5 minutes +- X sec
     }
 }
 
