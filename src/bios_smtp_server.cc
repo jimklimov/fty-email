@@ -46,20 +46,29 @@
 
 #define SMTP_STATE_FILE "/var/bios/agent-smtp/state"
 
+class ElementList 
+{
+ public:    
+    ElementList() : _path(SMTP_STATE_FILE) {};
+    ElementList(const std::string& path_to_file) : _path(path_to_file) {};
+
+    // returns number of elements with key == asset_name (0 or 1) // TODO
+    size_t  count (const std::string& asset_name) const;
+    bool    isEmpty () const;
+};
+
+ElementList::count (const std::string& asset_name) const
+{
+    return _assets.count(asset_name);
+}
+
+ElementList::isEmpty ()
+{
+    return _assets.empty();
+}
+
 class ElementList {
 public:
-
-    ElementList() :
-        _path{SMTP_STATE_FILE}
-    {};
-
-    size_t count (const std::string &assetName) const {
-        return _assets.count(assetName);
-    };
-
-    bool empty () const {
-        return _assets.empty();
-    };
 
     // throws
     const ElementDetails& getElementDetails
