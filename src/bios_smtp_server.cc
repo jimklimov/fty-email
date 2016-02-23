@@ -307,8 +307,17 @@ void AlertList::
     }
     // TODO function Need Notify()
     bool needNotify = false;
-    int64_t nowTimestamp = ::time(NULL);
-    auto &ruleName = it->first.first;
+
+    auto &alertDescription = it->second;
+    if ( ( alertDescription._state == "ACK-PAUSE" ) || 
+         ( alertDescription._state == "ACK-IGNORE" ) ||
+         ( alertDescription._state == "ACK-SILENCE" ) ||
+         ( alertDescription._state == "RESOLVED" )
+        ) {
+        zsys_debug ("in this status we do not send emails");
+        return;
+    }
+
     ElementDetails assetDetailes;
     try {
         assetDetailes = elementList.getElementDetails(it->first.second);
@@ -317,8 +326,8 @@ void AlertList::
         zsys_error ("CAN'T NOTIFY unknown asset");
         return;
     }
-    auto &alertDescription = it->second;
 
+    int64_t nowTimestamp = ::time(NULL);
     if ( alertDescription._lastUpdate > alertDescription._lastNotification ) {
         // Last notification was send BEFORE last
         // important change take place -> need to notify
@@ -354,6 +363,7 @@ void AlertList::
             return;
         }
         try {
+            auto &ruleName = it->first.first;
             emailConfiguration._smtp.sendmail(
                 assetDetailes._contactEmail,
                 EmailConfiguration::generateSubject
@@ -988,6 +998,52 @@ bios_smtp_server_test (bool verbose)
             mlm_client_sender (btest_reader),
             "BTEST-OK", "OK", NULL);
     zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
+
+
+    zsys_debug (" scenario 7 ===============================================");
+    // scenario 7:
+    //      1. send an alert on the already known asset
+    atopic = "Scenario7/CRITICAL@" + std::string (asset_name);
+    msg = bios_proto_encode_alert (NULL, "Scenario7", asset_name, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    zsys_info ("alert message was send");
+
+    //      2. read the email generated for alert
+    msg = mlm_client_recv (btest_reader);
+    assert (msg);
+    if ( verbose ) {
+        zsys_debug ("parameters for the email:");
+        zmsg_print (msg);
+    }
+    zmsg_destroy (&msg);
+
+    //      3. send ack back, so btest can exit
+    mlm_client_sendtox (
+            btest_reader,
+            mlm_client_sender (btest_reader),
+            "BTEST-OK", "OK", NULL);
+
+    //      4. send an alert on the already known asset
+    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+        "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    zsys_info ("alert message was send");
+
+    //      5. email should not be send (it  in the state, where alerts are not being send)
+    poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
+
+
+
 
     // clean up after the test
     mlm_client_destroy (&btest_reader);
