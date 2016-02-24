@@ -1069,6 +1069,102 @@ bios_smtp_server_test (bool verbose)
     zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 */
 
+    zsys_debug (" scenario 8 ===============================================");
+    //
+    //-------------------------------------------------------------------------------------------------------------------------------------> t
+    //
+    //  asset is known       alert comes    no email        asset_info        alert comes   email send    alert comes (<5min)   email send
+    // (without email)                                   updated with email
+
+    const char *asset_name8 = "ROZ.UPS36";
+    const char *rule_name8 = "rule_name_8";
+    std::string alert_topic8 = std::string(rule_name8) + "/CRITICAL@" + std::string (asset_name8);
+
+    //      1. send asset info without email
+    aux = zhash_new ();
+    assert (aux);
+    zhash_insert (aux, "priority", (void *)"1");
+    ext = zhash_new ();
+    assert (ext);
+    msg = bios_proto_encode_asset (aux, asset_name8, NULL, ext);
+    assert (msg);
+    rv = mlm_client_send (asset_producer, "Asset message8", &msg);
+    assert ( rv != -1 );
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
+
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", -1, "EMAIL/SMS");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
+    assert ( rv != -1 );
+
+    //      3. No mail should be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy
+
+    //      4. send asset info one more time, but with email
+    zhash_insert (ext, "contact_email", (void *)"scenario8.email@eaton.com");
+    msg = bios_proto_encode_asset (aux, asset_name8, NULL, ext);
+    assert (msg);
+    rv = mlm_client_send (asset_producer, "Asset message8", &msg);
+    assert ( rv != -1 );
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
+
+    //      5. send alert message again second
+    msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", -1, "EMAIL/SMS");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
+    assert ( rv != -1 );
+
+    //      6. Email SHOULD be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which != NULL );
+    if ( verbose ) {
+        zsys_debug ("Email was sent: SUCCESS");
+    }
+    msg = mlm_client_recv (btest_reader);
+    zpoller_destroy (&poller);
+    assert (msg);
+
+    zmsg_destroy (&msg);
+
+    //      7. send ack back, so btest can exit
+    mlm_client_sendtox (
+            btest_reader,
+            mlm_client_sender (btest_reader),
+            "BTEST-OK", "OK", NULL);
+    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
+
+    //      8. send alert message again third time
+    msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", -1, "EMAIL/SMS");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
+    assert ( rv != -1 );
+
+    //      9. Email SHOULD NOT be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("Email was NOT sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+
+    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 
 
     // clean up after the test
