@@ -48,147 +48,34 @@
 
 class ElementList 
 {
- public:    
-    ElementList() : _path(SMTP_STATE_FILE) {};
-    ElementList(const std::string& path_to_file) : _path(path_to_file) {};
+ public: 
+    ElementList () : _path(), _path_set(false) {};
+    ElementList(const std::string& path_to_file) : _path(path_to_file), _path_set(true) {};
+
+    // getter/setter
+    const ElementDetails& getElementDetails (const std::string& asset_name) const; // TODO
+    void  setElementDetails (const ElementDetails& elementDetails);
 
     // returns number of elements with key == asset_name (0 or 1) // TODO
-    size_t  count (const std::string& asset_name) const;
-    bool    isEmpty () const;
-};
+    size_t  count (const std::string& asset_name) const;    
+    bool    empty () const;
+    void    setFile (const std::string& path_to_file); // set _path if not set
+    int     save ();
+    int     load ();
+    std::string serialize_to_json (void) const;
 
-ElementList::count (const std::string& asset_name) const
-{
-    return _assets.count(asset_name);
-}
-
-ElementList::isEmpty ()
-{
-    return _assets.empty();
-}
-
-class ElementList {
-public:
-
-    // throws
-    const ElementDetails& getElementDetails
-        (const std::string &assetName) const
-    {
-        return _assets.at(assetName);
-    };
-
-
-    void setElementDetails (const ElementDetails &elementDetails)
-    {
-        auto assetName = elementDetails._name;
-        auto it = _assets.find(assetName);
-        if ( it == _assets.cend() ) {
-            _assets.emplace (assetName, elementDetails);
-        }
-        else {
-            it->second = elementDetails;
-        }
-    };
-
-    // Path cannot be changed during the lifetime of the agent!
-    // if you want allow users change it without killing the agent
-    // you need to save old state to the new place to support the following situation:
-    //
-    // -------------------------------------------------------------------> t
-    //      |                   |               |               |
-    // agent_start_1            |               |          agent_start_2
-    //                      path_change         |
-    //                                      system_reboot
-    //
-    // Otherwise, at point agent_start_2 state would be read from the new place
-    //  (but it is still empty)
-    void setFile (const std::string &filePath)
-    {
-        _path = filePath;
-    };
-
-
-    /*
-     * \brief Save to the file
-     */
-    int save (void) {
-        std::ofstream ofs (_path + ".new", std::ofstream::out);
-        if ( !ofs.good() ) {
-            zsys_error ("Cannot open file '%s' for write", (_path + ".new").c_str());
-            ofs.close();
-            return -1;
-        }
-        int r = std::rename (std::string ( _path).append(".new").c_str (),
-            std::string (_path.c_str ()).c_str());
-        if ( r != 0 ) {
-            zsys_error ("Cannot rename file '%s' to '%s'", _path.c_str(), _path.c_str());
-            return -2;
-        }
-        ofs << serializeJSON();
-        ofs.close();
-        return 0;
-    }
-
-    /*
-     * \brief load from  file
-     */
-    int load (void) {
-        std::ifstream ifs (_path, std::ofstream::in);
-        if ( !ifs.good() ) {
-            zsys_error ("Cannot open file '%s' for read", _path.c_str());
-            ifs.close();
-            return -1;
-        }
-        try {
-            cxxtools::SerializationInfo si;
-            std::string json_string(std::istreambuf_iterator<char>(ifs), {});
-            std::stringstream s(json_string);
-        // TODO try
-            cxxtools::JsonDeserializer json(s);
-            json.deserialize(si);
-            si >>= _assets;
-            ifs.close();
-            return 0;
-        }
-        catch ( const std::exception &e) {
-            zsys_error ("Starting without initial state. Cannot deserialize the file '%s'. Error: '%s'", _path.c_str(), e.what());
-            ifs.close();
-            return -1;
-        }
-    }
-
-    std::string serializeJSON (void) const
-    {
-        std::stringstream s;
-        cxxtools::JsonSerializer js (s);
-        js.beautify (true);
-        js.serialize (_assets).finish();
-        return s.str();
-    };
-
-private:
-
-    /*
-     * \brief Delete file
-     *
-     * \return 0 on success
-     *         non-zero on error
-     */
-    int remove (void) {
-        return std::remove (_path.c_str());
-    };
+ private:
+    int remove (void) { return std::remove (_path.c_str()); };
 
     std::map <std::string, ElementDetails> _assets;
-
-    std::string _path;
+    bool _path_set;
+    std::string _path;   
 };
 
 class AlertList {
-public :
-    AlertList(){};
+ public :
 
-    typedef typename std::map
-        <std::pair<std::string, std::string>, AlertDescription> AlertsConfig;
+    typedef typename std::map <std::pair<std::string, std::string>, AlertDescription> AlertsConfig;
 
     AlertsConfig::iterator add(
         const char *ruleName,
@@ -210,55 +97,6 @@ private:
 };
 
 
-AlertList::AlertsConfig::iterator AlertList::
-    add(
-        const char *ruleName,
-        const char *asset,
-        const char *description,
-        const char *state,
-        const char *severity,
-        int64_t timestamp,
-        const char *actions)
-{
-    if (!strstr (actions, "EMAIL"))
-        return _alerts.end ();
-
-    std::string ruleNameLower = std::string (ruleName);
-    std::transform(ruleNameLower.begin(), ruleNameLower.end(), ruleNameLower.begin(), ::tolower);
-    auto alertKey = std::make_pair(ruleNameLower, asset);
-
-    // try to insert a new alert
-    auto newAlert = _alerts.emplace(alertKey, AlertDescription (
-            description,
-            state,
-            severity,
-            timestamp
-        ));
-    // newAlert = pair (iterator, bool). true = inserted,
-    // false = not inserted
-    if ( newAlert.second == true ) {
-        // it is the first time we see this alert
-        // bacause in the map "alertKey" wasn't found
-        return newAlert.first;
-    }
-    // it is not the first time we see this alert
-    auto it = newAlert.first;
-    if ( ( it->second._description != description ) ||
-            ( it->second._state != state ) ||
-            ( it->second._severity != severity ) )
-    {
-        it->second._description = description;
-        it->second._state = state;
-        it->second._severity = severity;
-        // important information changed -> need to notify asap
-        it->second._lastUpdate = ::time(NULL);
-    }
-    else {
-        // intentionally left empty
-        // nothing changed -> inform according schedule
-    }
-    return it;
-}
 
 // TODO: make it configurable without recompiling
 // If time is less 5 minutes, then email in some cases would be send aproximatly every 5 minutes,
@@ -300,95 +138,6 @@ static int
     }
 }
 
-
-void AlertList::
-    notify(
-        const AlertsConfig::iterator it,
-        const EmailConfiguration &emailConfiguration,
-        const ElementList &elementList)
-{
-    if ( it == _alerts.cend() )
-        return;
-    //pid_t tmptmp = getpid();
-    if ( emailConfiguration.isConfigured() ) {
-        zsys_error("Mail system is not configured!");
-        return;
-    }
-    // TODO function Need Notify()
-    bool needNotify = false;
-
-    auto &alertDescription = it->second;
-
-    ElementDetails assetDetailes;
-    try {
-        assetDetailes = elementList.getElementDetails(it->first.second);
-    }
-    catch (const std::exception &e ) {
-        zsys_error ("CAN'T NOTIFY unknown asset");
-        return;
-    }
-
-    int64_t nowTimestamp = ::time(NULL);
-    if ( alertDescription._lastUpdate > alertDescription._lastNotification ) {
-        // Last notification was send BEFORE last
-        // important change take place -> need to notify
-        needNotify = true;
-        zsys_debug ("important change -> notify");
-    }
-    else {
-        // so, no important changes, but may be we need to
-        // notify according the schedule
-        if ( alertDescription._state == "RESOLVED" ) {
-            // but only for active alerts
-            needNotify = false;
-        }
-        else if ( ( nowTimestamp - alertDescription._lastNotification ) >
-                    getNotificationInterval (alertDescription._severity,
-                                             assetDetailes._priority)
-                )
-             // If  lastNotification + interval < NOW
-        {
-            // so, we found out that we need to notify according the schedule
-            zsys_debug ("according schedule -> notify");
-            if ( ( alertDescription._state == "ACK-PAUSE" ) || 
-                    ( alertDescription._state == "ACK-IGNORE" ) ||
-                    ( alertDescription._state == "ACK-SILENCE" ) ||
-                    ( alertDescription._state == "RESOLVED" )
-               ) {
-                zsys_debug ("in this status we do not send emails");
-            }
-            else {
-                needNotify = true;
-            }
-        }
-    }
-
-    if ( needNotify )
-    {
-        zsys_debug ("Want to notify");
-        if ( assetDetailes._contactEmail.empty() )
-        {
-            zsys_error ("Can't send a notification. For the asset '%s' contact email is unknown",
-                assetDetailes._name.c_str());
-            return;
-        }
-        try {
-            auto &ruleName = it->first.first;
-            emailConfiguration._smtp.sendmail(
-                assetDetailes._contactEmail,
-                EmailConfiguration::generateSubject
-                    (alertDescription, assetDetailes, ruleName),
-                EmailConfiguration::generateBody
-                    (alertDescription, assetDetailes, ruleName)
-            );
-            alertDescription._lastNotification = nowTimestamp;
-        }
-        catch (const std::runtime_error& e) {
-            zsys_error ("Error: %s", e.what());
-            // here we'll handle the error
-        }
-    }
-}
 
 
 void onAlertReceive (
@@ -1089,3 +838,232 @@ bios_smtp_server_test (bool verbose)
 
     printf ("OK\n");
 }
+
+// ----------------------------------------------------------------------------
+// implementation of classes
+
+size_t ElementList::count (const std::string& asset_name) const
+{
+    return _assets.count (asset_name);
+}
+
+ElementList::empty ()
+{
+    return _assets.empty ();
+}
+
+const ElementDetails& ElementList::getElementDetails (const std::string& asset_name) const
+{
+    return _assets.at(asset_name);
+}
+
+void ElementList::setElementDetails (const ElementDetails& elementDetails)
+{
+    auto assetName = elementDetails._name;
+    auto it = _assets.find(assetName);
+    if ( it == _assets.cend() ) {
+        _assets.emplace (assetName, elementDetails);
+    }
+    else {
+        it->second = elementDetails;
+    }
+}
+
+void ElementList::setFile (const std::string& path_to_file)
+{
+    if (_path_set == false) {
+        _path = filePath;
+        _path_set = true;
+    }
+}
+
+int ElementList::save (void) {
+    std::ofstream ofs (_path + ".new", std::ofstream::out);
+    if ( !ofs.good() ) {
+        zsys_error ("Cannot open file '%s' for write", (_path + ".new").c_str());
+        ofs.close();
+        return -1;
+    }
+    int r = std::rename (std::string ( _path).append(".new").c_str (),
+        std::string (_path.c_str ()).c_str());
+    if ( r != 0 ) {
+        zsys_error ("Cannot rename file '%s' to '%s'", _path.c_str(), _path.c_str());
+        return -2;
+    }
+    ofs << serialize_to_json();
+    ofs.close();
+    return 0;
+}
+
+int ElementList::load (void) {
+    std::ifstream ifs (_path, std::ofstream::in);
+    if ( !ifs.good() ) {
+        zsys_error ("Cannot open file '%s' for read", _path.c_str());
+        ifs.close();
+        return -1;
+    }
+    try {
+        cxxtools::SerializationInfo si;
+        std::string json_string(std::istreambuf_iterator<char>(ifs), {});
+        std::stringstream s(json_string);
+    // TODO try
+        cxxtools::JsonDeserializer json(s);
+        json.deserialize(si);
+        si >>= _assets;
+        ifs.close();
+        return 0;
+    }
+    catch ( const std::exception &e) {
+        zsys_error ("Starting without initial state. Cannot deserialize the file '%s'. Error: '%s'", _path.c_str(), e.what());
+        ifs.close();
+        return -1;
+    }
+}
+
+std::string ElementList::serialize_to_json (void) const
+{
+    std::stringstream s;
+    cxxtools::JsonSerializer js (s);
+    js.beautify (true);
+    js.serialize (_assets).finish();
+    return s.str();
+}
+
+AlertList::AlertsConfig::iterator AlertList::add (
+        const char *ruleName,
+        const char *asset,
+        const char *description,
+        const char *state,
+        const char *severity,
+        int64_t     timestamp,
+        const char *actions)
+{
+    if (!strstr (actions, "EMAIL"))
+        return _alerts.end ();
+
+    std::string ruleNameLower = std::string (ruleName);
+    std::transform(ruleNameLower.begin(), ruleNameLower.end(), ruleNameLower.begin(), ::tolower);
+    auto alertKey = std::make_pair(ruleNameLower, asset);
+
+    // try to insert a new alert
+    auto newAlert = _alerts.emplace(alertKey, AlertDescription (
+            description,
+            state,
+            severity,
+            timestamp
+        ));
+    // newAlert = pair (iterator, bool). true = inserted,
+    // false = not inserted
+    if ( newAlert.second == true ) {
+        // it is the first time we see this alert
+        // bacause in the map "alertKey" wasn't found
+        return newAlert.first;
+    }
+    // it is not the first time we see this alert
+    auto it = newAlert.first;
+    if ( ( it->second._description != description ) ||
+            ( it->second._state != state ) ||
+            ( it->second._severity != severity ) )
+    {
+        it->second._description = description;
+        it->second._state = state;
+        it->second._severity = severity;
+        // important information changed -> need to notify asap
+        it->second._lastUpdate = ::time(NULL);
+    }
+    else {
+        // intentionally left empty
+        // nothing changed -> inform according schedule
+    }
+    return it;
+}
+
+void AlertList::notify(
+        const AlertsConfig::iterator it,
+        const EmailConfiguration &emailConfiguration,
+        const ElementList &elementList)
+{
+    if ( it == _alerts.cend() )
+        return;
+    //pid_t tmptmp = getpid();
+    if ( emailConfiguration.isConfigured() ) {
+        zsys_error("Mail system is not configured!");
+        return;
+    }
+    // TODO function Need Notify()
+    bool needNotify = false;
+
+    auto &alertDescription = it->second;
+
+    ElementDetails assetDetailes;
+    try {
+        assetDetailes = elementList.getElementDetails(it->first.second);
+    }
+    catch (const std::exception &e ) {
+        zsys_error ("CAN'T NOTIFY unknown asset");
+        return;
+    }
+
+    int64_t nowTimestamp = ::time(NULL);
+    if ( alertDescription._lastUpdate > alertDescription._lastNotification ) {
+        // Last notification was send BEFORE last
+        // important change take place -> need to notify
+        needNotify = true;
+        zsys_debug ("important change -> notify");
+    }
+    else {
+        // so, no important changes, but may be we need to
+        // notify according the schedule
+        if ( alertDescription._state == "RESOLVED" ) {
+            // but only for active alerts
+            needNotify = false;
+        }
+        else if ( ( nowTimestamp - alertDescription._lastNotification ) >
+                    getNotificationInterval (alertDescription._severity,
+                                             assetDetailes._priority)
+                )
+             // If  lastNotification + interval < NOW
+        {
+            // so, we found out that we need to notify according the schedule
+            zsys_debug ("according schedule -> notify");
+            if ( ( alertDescription._state == "ACK-PAUSE" ) || 
+                    ( alertDescription._state == "ACK-IGNORE" ) ||
+                    ( alertDescription._state == "ACK-SILENCE" ) ||
+                    ( alertDescription._state == "RESOLVED" )
+               ) {
+                zsys_debug ("in this status we do not send emails");
+            }
+            else {
+                needNotify = true;
+            }
+        }
+    }
+
+    if ( needNotify )
+    {
+        zsys_debug ("Want to notify");
+        if ( assetDetailes._contactEmail.empty() )
+        {
+            zsys_error ("Can't send a notification. For the asset '%s' contact email is unknown",
+                assetDetailes._name.c_str());
+            return;
+        }
+        try {
+            auto &ruleName = it->first.first;
+            emailConfiguration._smtp.sendmail(
+                assetDetailes._contactEmail,
+                EmailConfiguration::generateSubject
+                    (alertDescription, assetDetailes, ruleName),
+                EmailConfiguration::generateBody
+                    (alertDescription, assetDetailes, ruleName)
+            );
+            alertDescription._lastNotification = nowTimestamp;
+        }
+        catch (const std::runtime_error& e) {
+            zsys_error ("Error: %s", e.what());
+            // here we'll handle the error
+        }
+    }
+}
+
+
