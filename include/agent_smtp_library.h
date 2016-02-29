@@ -34,7 +34,6 @@
 #include <biosproto.h>
 
 //  AGENT_SMTP version macros for compile-time API detection
-
 #define AGENT_SMTP_VERSION_MAJOR 0
 #define AGENT_SMTP_VERSION_MINOR 1
 #define AGENT_SMTP_VERSION_PATCH 0
@@ -45,9 +44,9 @@
     AGENT_SMTP_MAKE_VERSION(AGENT_SMTP_VERSION_MAJOR, AGENT_SMTP_VERSION_MINOR, AGENT_SMTP_VERSION_PATCH)
 
 #if defined (__WINDOWS__)
-#   if defined LIBAGENT_SMTP_STATIC
+#   if defined AGENT_SMTP_STATIC
 #       define AGENT_SMTP_EXPORT
-#   elif defined LIBAGENT_SMTP_EXPORTS
+#   elif defined AGENT_SMTP_EXPORTS
 #       define AGENT_SMTP_EXPORT __declspec(dllexport)
 #   else
 #       define AGENT_SMTP_EXPORT __declspec(dllimport)
