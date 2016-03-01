@@ -61,26 +61,26 @@ s_getNotificationInterval(
 {
     // According Aplha document (severity, priority)
     // is mapped onto the time interval [s]
-    static const std::map < std::pair<std::string, char>, int> times = {
-        { {"CRITICAL", '1'}, 5  * 60},
-        { {"CRITICAL", '2'}, 15 * 60},
-        { {"CRITICAL", '3'}, 15 * 60},
-        { {"CRITICAL", '4'}, 15 * 60},
-        { {"CRITICAL", '5'}, 15 * 60},
-        { {"WARNING", '1'}, 1 * 60 * 60},
-        { {"WARNING", '2'}, 4 * 60 * 60},
-        { {"WARNING", '3'}, 4 * 60 * 60},
-        { {"WARNING", '4'}, 4 * 60 * 60},
-        { {"WARNING", '5'}, 4 * 60 * 60},
-        { {"INFO", '1'}, 8 * 60 * 60},
-        { {"INFO", '2'}, 24 * 60 * 60},
-        { {"INFO", '3'}, 24 * 60 * 60},
-        { {"INFO", '4'}, 24 * 60 * 60},
-        { {"INFO", '5'}, 24 * 60 * 60}
+    static const std::map <std::pair <std::string, uint8_t>, uint32_t> times = {
+        { {"CRITICAL", 1}, 5  * 60},
+        { {"CRITICAL", 2}, 15 * 60},
+        { {"CRITICAL", 3}, 15 * 60},
+        { {"CRITICAL", 4}, 15 * 60},
+        { {"CRITICAL", 5}, 15 * 60},
+        { {"WARNING", 1}, 1 * 60 * 60},
+        { {"WARNING", 2}, 4 * 60 * 60},
+        { {"WARNING", 3}, 4 * 60 * 60},
+        { {"WARNING", 4}, 4 * 60 * 60},
+        { {"WARNING", 5}, 4 * 60 * 60},
+        { {"INFO", 1}, 8 * 60 * 60},
+        { {"INFO", 2}, 24 * 60 * 60},
+        { {"INFO", 3}, 24 * 60 * 60},
+        { {"INFO", 4}, 24 * 60 * 60},
+        { {"INFO", 5}, 24 * 60 * 60}
     };
-    auto it = times.find(std::make_pair (severity, priority));
-    if ( it == times.cend() ) {
-        zsys_error ("Not known interval");
+    auto it = times.find (std::make_pair (severity, priority));
+    if (it == times.end ()) {
+        zsys_error ("Not known interval for severity = '%s', priority '%d'", severity.c_str (), priority);
         return 0;
     }
     else {
@@ -97,15 +97,15 @@ s_notify (alerts_map_iterator it,
           const ElementList& elements)
 {
     bool needNotify = false;
-    auto alert = it->second;
     Element element;
     if (!elements.get (it->first.second, element)) {
         zsys_error ("CAN'T NOTIFY unknown asset");
         return;
     }
 
-    uint64_t nowTimestamp = zclock_mono ();
-    if (alert.last_update > alert.last_notification) {
+    uint64_t nowTimestamp = ::time (NULL);
+    zsys_error ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, it->second.last_notification);
+    if (it->second.last_update > it->second.last_notification) {
         // Last notification was send BEFORE last
         // important change take place -> need to notify
         needNotify = true;
@@ -114,28 +114,28 @@ s_notify (alerts_map_iterator it,
     else {
         // so, no important changes, but may be we need to
         // notify according the schedule
-        if ( alert.state == "RESOLVED" ) {
+        if ( it->second.state == "RESOLVED" ) {
             // but only for active alerts
             needNotify = false;
         }
         else
         if (
-        (nowTimestamp - alert.last_notification) > s_getNotificationInterval (alert.severity, element.priority))
+        (nowTimestamp - it->second.last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
             // If  lastNotification + interval < NOW
         {
             // so, we found out that we need to notify according the schedule
             zsys_debug ("according schedule -> notify");
-            if (alert.state == "ACK-PAUSE" || 
-                alert.state == "ACK-IGNORE" ||
-                alert.state == "ACK-SILENCE" ||
-                alert.state == "RESOLVED") {
+            if (it->second.state == "ACK-PAUSE" || 
+                it->second.state == "ACK-IGNORE" ||
+                it->second.state == "ACK-SILENCE" ||
+                it->second.state == "RESOLVED") {
                     zsys_debug ("in this status we do not send emails");
             }
             else {
                 needNotify = true;
             }
         }
-    } // Tohle je strasny, prepsat
+    } 
 
     if (needNotify) {
         zsys_debug ("Want to notify");
@@ -147,10 +147,10 @@ s_notify (alerts_map_iterator it,
         try {
             smtp.sendmail(
                 element.email,
-                generate_subject (alert, element),
-                generate_body (alert, element)
+                generate_subject (it->second, element),
+                generate_body (it->second, element)
             );
-            alert.last_notification = nowTimestamp;
+            it->second.last_notification = nowTimestamp;
         }
         catch (const std::runtime_error& e) {
             zsys_error ("Error: %s", e.what());
@@ -195,24 +195,26 @@ s_onAlertReceive (
 
     // 2. add alert to the list of alerts
     if (strcasestr (actions, "EMAIL")) {
+        zsys_error ("HAS - EMAIL");
         alerts_map_iterator search = alerts.find (std::make_pair (rule_name, asset));
         if (search == alerts.end ()) { // insert
+            zsys_error ("INSERT");
             bool inserted;
             std::tie (search, inserted) = alerts.emplace (std::make_pair (std::make_pair (rule_name, asset),
                                                           Alert (message)));
-            s_notify (search, smtp, elements);
+            assert (search != alerts.end ());
         }
         else if (search->second.state != state || 
                  search->second.severity != severity ||
                  search->second.description != description) { // update
+            zsys_error ("UPDATE");
             search->second.state = state;
             search->second.severity = severity;
             search->second.description = description;
             search->second.time = (uint64_t) time;
-            search->second.last_update = zclock_mono ();
-            s_notify (search, smtp, elements);
+            search->second.last_update = ::time (NULL);
         }
-
+        s_notify (search, smtp, elements);
     }
     bios_proto_destroy (p_message);
 }
@@ -259,7 +261,7 @@ void onAssetReceive (
     }
 
     Element newAsset;
-    newAsset.priority = priority[0];
+    newAsset.priority = std::stoul (priority);
     newAsset.name = name;
     newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
     newAsset.email = ( contact_email == NULL ? "" : contact_email );
@@ -343,7 +345,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 char* path = zmsg_popstr (msg);
                 smtp.msmtp_path (path);
                 zstr_free (&path);
-                zsock_signal (pipe, 0);
             }
             else
             if (streq (cmd, "STATE_FILE_PATH")) {
@@ -351,7 +352,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 elements.setFile (path);
                 elements.load();
                 zstr_free (&path);
-                zsock_signal (pipe, 0);
             }
             else
             if (streq (cmd, "SMTPCONFIG")) {
@@ -461,12 +461,12 @@ bios_smtp_server_test (bool verbose)
     zstr_sendx (server, "BIND", endpoint, NULL);
 
     // smtp server
-    zactor_t *smtp_server = zactor_new (bios_smtp_server, (void*)"agent-smtp");
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
     zstr_sendx (smtp_server, "STATE_FILE_PATH", "kkk.xtx", NULL);
     if (verbose)
         zstr_send (smtp_server, "VERBOSE");
     zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
-    zstr_sendx (smtp_server, "CONNECT", endpoint, NULL);
+    zstr_sendx (smtp_server, "CONNECT", endpoint, "agent-smtp", NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
     zsock_wait (smtp_server);
@@ -549,6 +549,10 @@ bios_smtp_server_test (bool verbose)
     "In the system an alert was detected.\nSource rule: ny_rule\nAsset: ASSET1\nAlert priority: P1\nAlert severity: CRITICAL\n"
     "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
+    
+    zsys_debug ("expectedBody =\n%s", expectedBody.c_str ());
+    zsys_debug ("\n");
+    zsys_debug ("newBody =\n%s", newBody.c_str ());
     assert ( expectedBody.compare(newBody) == 0 );
 
     //      5. send ack back, so btest can exit
