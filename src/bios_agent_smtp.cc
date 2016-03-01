@@ -26,7 +26,6 @@
 @end
 */
 #include <getopt.h>
-#include <fstream>
 
 #include "agent_smtp_classes.h"
 
