@@ -120,7 +120,7 @@ int main (int argc, char** argv)
     // end of the options
 
     puts ("START bios-agent-smtp - Daemon that is responsible for email notification about alerts");
-    zactor_t *smtp_server = zactor_new (bios_smtp_server, (void*) AGENT_NAME);
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, (void *) NULL);
     if ( !smtp_server ) {
         zsys_error ("cannot start the daemon");
         return -1;
@@ -133,7 +133,7 @@ int main (int argc, char** argv)
     // as it should load the state first!
     zstr_sendx (smtp_server, "STATE_FILE_PATH", "/var/lib/bios/agent-smtp/state", NULL);
     // Connect to malamute
-    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, NULL);
+    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, AGENT_NAME, NULL);
     zsock_wait (smtp_server);
     // Listen for all alerts
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);

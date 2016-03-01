@@ -13,16 +13,16 @@ AM_CXXFLAGS = \
     -std=c++11
 
 AM_CPPFLAGS = \
-    ${libsodium_CFLAGS} \
     ${libzmq_CFLAGS} \
     ${uuid_CFLAGS} \
     ${czmq_CFLAGS} \
     ${malamute_CFLAGS} \
     ${biosproto_CFLAGS} \
     ${cxxtools_CFLAGS} \
+    -D__STDC_FORMAT_MACROS \
     -I$(srcdir)/include
 
-project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${uuid_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${biosproto_LIBS} ${cxxtools_LIBS}
+project_libs = ${libzmq_LIBS} ${uuid_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${biosproto_LIBS} ${cxxtools_LIBS}
 
 SUBDIRS = doc
 DIST_SUBDIRS = doc
@@ -36,6 +36,7 @@ TESTS =
 EXTRA_DIST = \
     src/emailconfiguration.h \
     src/email.h \
+    src/elementlist.h \
     src/subprocess.h \
     src/agent_smtp_classes.h
 
