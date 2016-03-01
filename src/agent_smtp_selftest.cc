@@ -38,6 +38,7 @@ static test_item_t
 all_tests [] = {
     { "emailconfiguration", emailconfiguration_test },
     { "email", email_test },
+    { "elementlist", elementlist_test },
     { "subprocess", subprocess_test },
     { "bios_smtp_server", bios_smtp_server_test },
     {0, 0}          //  Sentinel
@@ -97,7 +98,7 @@ main (int argc, char **argv)
         else
         if (streq (argv [argn], "--number")
         ||  streq (argv [argn], "-n")) {
-            puts ("4");
+            puts ("5");
             return 0;
         }
         else
@@ -106,6 +107,7 @@ main (int argc, char **argv)
             puts ("Available tests:");
             puts ("    emailconfiguration");
             puts ("    email");
+            puts ("    elementlist");
             puts ("    subprocess");
             puts ("    bios_smtp_server");
             return 0;

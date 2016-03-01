@@ -28,20 +28,38 @@
 
 #include "agent_smtp_classes.h"
 
+#define BODY_ACTIVE \
+"In the system an alert was detected.\n\
+Source rule: ${rulename}\n\
+Asset: ${assetname}\n\
+Alert priority: P${priority}\n\
+Alert severity: ${severity}\n\
+Alert description: ${description}\n\
+Alert state: ${state}"
 
-void ElementDetails::
-    print (void)
-{
-    zsys_debug ("priority %c", _priority);
-    zsys_debug ("name %s", _name.c_str());
-    zsys_debug ("contact name %s", _contactName.c_str());
-    zsys_debug ("contact email %s", _contactEmail.c_str());
-}
+#define SUBJECT_ACTIVE \
+"${severity} alert on ${assetname}\n\
+from the rule ${rulename} is active!"
+
+#define BODY_RESOLVED \
+"In the system an alert was resolved.\n\
+Source rule: ${rulename}\n\
+Asset: ${assetname}\n\
+Alert description: ${description}"
+
+#define SUBJECT_RESOLVED \
+"Alert on ${assetname} \n\
+from the rule ${rulename} was resolved"
+
+
+// ----------------------------------------------------------------------------
+// static helper functions
 
 static std::string
-    replaceTokens (const std::string &text,
-        const std::string &pattern,
-        const std::string &replacement)
+replace_tokens (
+        const std::string& text,
+        const std::string& pattern,
+        const std::string& replacement)
 {
     std::string result = text;
     size_t pos = 0;
@@ -52,139 +70,83 @@ static std::string
     return result;
 }
 
-void operator<<= (cxxtools::SerializationInfo& si, const ElementDetails& asset)
+static std::string
+s_generateEmailBodyResolved (const Alert& alert, const Element& asset)
 {
-    si.addMember("name") <<= asset._name;
-    si.addMember("priority") <<= asset._priority;
-    si.addMember("contact_name") <<= asset._contactName;
-    si.addMember("contact_email") <<= asset._contactEmail;
-}
-
-void operator>>= (const cxxtools::SerializationInfo& si, ElementDetails& asset)
-{
-    // TODO error handling
-    si.getMember("name") >>= asset._name;
-    si.getMember("priority") >>= asset._priority;
-    si.getMember("contact_name") >>= asset._contactName;
-    si.getMember("contact_email") >>= asset._contactEmail;
-}
-
-
-std::string EmailConfiguration::
-    generateEmailBodyResolved (const AlertDescription &alert,
-        const ElementDetails &asset,
-        const std::string &ruleName)
-{
-    std::string result = _emailBodyResolvedAlertTemplate;
-    result = replaceTokens (result, "${rulename}", ruleName);
-    result = replaceTokens (result, "${assetname}", asset._name);
-    result = replaceTokens (result, "${description}", alert._description);
+    std::string result (BODY_RESOLVED);
+    result = replace_tokens (result, "${rulename}", alert.rule);
+    result = replace_tokens (result, "${assetname}", asset.name);
+    result = replace_tokens (result, "${description}", alert.description);
     return result;
 }
 
-
-std::string EmailConfiguration::
-    generateEmailBodyActive (const AlertDescription &alert,
-        const ElementDetails &asset,
-        const std::string &ruleName)
+static std::string 
+s_generateEmailBodyActive (const Alert& alert, const Element& asset)
 {
-    std::string result = _emailBodyActiveAlertTemplate;
-    result = replaceTokens (result, "${rulename}", ruleName);
-    result = replaceTokens (result, "${assetname}", asset._name);
-    result = replaceTokens (result, "${description}", alert._description);
-    result = replaceTokens (result, "${priority}", std::string(1, asset._priority));
-    result = replaceTokens (result, "${severity}", alert._severity);
-    result = replaceTokens (result, "${state}", alert._state);
+    std::string result = BODY_ACTIVE;
+    result = replace_tokens (result, "${rulename}", alert.rule);
+    result = replace_tokens (result, "${assetname}", asset.name);
+    result = replace_tokens (result, "${description}", alert.description);
+    result = replace_tokens (result, "${priority}", std::to_string (asset.priority));
+    result = replace_tokens (result, "${severity}", alert.severity);
+    result = replace_tokens (result, "${state}", alert.state);
     return result;
 }
 
-
-std::string EmailConfiguration::
-    generateEmailSubjectResolved (const AlertDescription &alert,
-        const ElementDetails &asset,
-        const std::string &ruleName)
+static std::string
+s_generateEmailSubjectResolved (const Alert& alert, const Element& asset)
 {
-    std::string result = _emailSubjectResolvedAlertTemplate;
-    result = replaceTokens (result, "${rulename}", ruleName);
-    result = replaceTokens (result, "${assetname}", asset._name);
+    std::string result = SUBJECT_RESOLVED;
+    result = replace_tokens (result, "${rulename}", alert.rule);
+    result = replace_tokens (result, "${assetname}", asset.name);
     return result;
 }
 
-
-std::string EmailConfiguration::
-    generateEmailSubjectActive (const AlertDescription &alert,
-        const ElementDetails &asset,
-        const std::string &ruleName)
+static std::string
+s_generateEmailSubjectActive (const Alert& alert, const Element& asset)
 {
-    std::string result = _emailSubjectActiveAlertTemplate;
-    result = replaceTokens (result, "${rulename}", ruleName);
-    result = replaceTokens (result, "${assetname}", asset._name);
-    result = replaceTokens (result, "${description}", alert._description);
-    result = replaceTokens (result, "${priority}", std::string(1, asset._priority));
-    result = replaceTokens (result, "${severity}", alert._severity);
-    result = replaceTokens (result, "${state}", alert._state);
+    std::string result = SUBJECT_ACTIVE;
+    result = replace_tokens (result, "${rulename}", alert.rule);
+    result = replace_tokens (result, "${assetname}", asset.name);
+    result = replace_tokens (result, "${description}", alert.description);
+    result = replace_tokens (result, "${priority}", std::to_string(asset.priority));
+    result = replace_tokens (result, "${severity}", alert.severity);
+    result = replace_tokens (result, "${state}", alert.state);
     return result;
 }
 
+// ----------------------------------------------------------------------------
+// header functions
 
-std::string EmailConfiguration::
-    generateBody (const AlertDescription &alert,
-        const ElementDetails &asset,
-        const std::string &ruleName)
+std::string
+generate_body (const Alert& alert, const Element& asset)
 {
-    if ( alert._state == "RESOLVED" ) {
-        return generateEmailBodyResolved (alert, asset, ruleName);
+    if (alert.state == "RESOLVED") {
+        return s_generateEmailBodyResolved (alert, asset);
     }
-    else {
-        return generateEmailBodyActive (alert, asset, ruleName);
-    }
+    return s_generateEmailBodyActive (alert, asset);
 }
 
-
-std::string EmailConfiguration::
-    generateSubject (const AlertDescription &alert,
-        const ElementDetails &asset,
-        const std::string &ruleName)
+std::string
+generate_subject (const Alert& alert, const Element& asset)
 {
-    if ( alert._state == "RESOLVED" ) {
-        return generateEmailSubjectResolved (alert, asset, ruleName);
+    if (alert.state == "RESOLVED") {
+        return s_generateEmailSubjectResolved (alert, asset);
     }
-    else {
-        return generateEmailSubjectActive (alert, asset, ruleName);
-    }
+    return s_generateEmailSubjectActive (alert, asset);
 }
 
-
-const std::string EmailConfiguration::
-    _emailBodyActiveAlertTemplate = "In the system an alert was detected.\n"
-        "Source rule: ${rulename}\n"
-        "Asset: ${assetname}\n"
-        "Alert priority: P${priority}\n"
-        "Alert severity: ${severity}\n"
-        "Alert description: ${description}\n"
-        "Alert state: ${state}";
-
-
-const std::string EmailConfiguration::
-    _emailSubjectActiveAlertTemplate = "${severity} alert on ${assetname} "
-        "from the rule ${rulename} is active!";
-
-
-const std::string EmailConfiguration::
-    _emailBodyResolvedAlertTemplate = "In the system an alert was resolved."
-        "\nSource rule: ${rulename}\n"
-        "Asset: ${assetname}\n"
-        "Alert description: ${description}";
-
-
-const std::string EmailConfiguration::
-    _emailSubjectResolvedAlertTemplate = "Alert on ${assetname} "
-        "from the rule ${rulename} was resolved";
-
+//  --------------------------------------------------------------------------
+//  Self test of this class
 
 void
 emailconfiguration_test (bool verbose)
 {
     printf (" * emailconfiguration: ");
+    // TODO
+    //  * replace_tokens
+    //  * generate_subject
+    //  * generate_body
     printf ("OK\n");
 }
+

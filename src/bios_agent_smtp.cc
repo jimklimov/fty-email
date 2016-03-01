@@ -119,7 +119,7 @@ int main (int argc, char** argv)
     // end of the options
 
     puts ("START bios-agent-smtp - Daemon that is responsible for email notification about alerts");
-    zactor_t *smtp_server = zactor_new (bios_smtp_server, (void*) AGENT_NAME);
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, (void *) NULL);
     if ( !smtp_server ) {
         zsys_error ("cannot start the daemon");
         return -1;
@@ -131,7 +131,7 @@ int main (int argc, char** argv)
     // ATTENTION: the path for the state should be set up before any network activity!
     // as it should load the state first!
     zstr_sendx (smtp_server, "STATE_FILE_PATH", "/var/lib/bios/agent-smtp/state", NULL);
-    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, NULL);
+    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, AGENT_NAME, NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);
     zsock_wait (smtp_server);

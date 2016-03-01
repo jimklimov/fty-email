@@ -20,16 +20,12 @@
 Source:         agent-smtp
 Section:        net
 Priority:       optional
-Maintainer:     John Doe <John.Doe@example.com>
-Uploaders:      John Doe <John.Doe@example.com>
-Standards-Version: 3.9.5
-Build-Depends: bison, debhelper (>= 8),
+Maintainer:     agent-smtp Developers <bios@eaton.com>
+Standards-Version: 3.9.7
+Build-Depends: debhelper (>= 9),
     pkg-config,
-    automake,
-    autoconf,
-    libtool,
-    libsodium-dev,
-    libzmq4-dev,
+    dh-autoreconf,
+    libzmq5-dev,
     uuid-dev,
     libczmq-dev,
     libmlm-dev,
@@ -44,12 +40,11 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: agent-smtp
  This package contains shared library for agent-smtp: xxxx
 
-Package: agent-smtp-dev
-Architecture: all
+Package: libagent-smtp-dev
+Architecture: any
 Section: libdevel
 Depends:
-    libsodium-dev,
-    libzmq4-dev,
+    libzmq5-dev,
     uuid-dev,
     libczmq-dev,
     libmlm-dev,

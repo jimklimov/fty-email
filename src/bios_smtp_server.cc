@@ -28,11 +28,11 @@
 
 #include "agent_smtp_classes.h"
 
-#include <algorithm>
 #include <iterator>
 #include <map>
 #include <set>
 #include <vector>
+#include <tuple>
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -41,246 +41,46 @@
 #include <bios_proto.h>
 #include <math.h>
 #include <functional>
-#include "emailconfiguration.h"
 #include <cxxtools/split.h>
+
+#include "email.h"
+#include "emailconfiguration.h"
 
 #define SMTP_STATE_FILE "/var/bios/agent-smtp/state"
 
-class ElementList {
-public:
-
-    ElementList() :
-        _path{SMTP_STATE_FILE}
-    {};
-
-    size_t count (const std::string &assetName) const {
-        return _assets.count(assetName);
-    };
-
-    bool empty () const {
-        return _assets.empty();
-    };
-
-    // throws
-    const ElementDetails& getElementDetails
-        (const std::string &assetName) const
-    {
-        return _assets.at(assetName);
-    };
-
-
-    void setElementDetails (const ElementDetails &elementDetails)
-    {
-        auto assetName = elementDetails._name;
-        auto it = _assets.find(assetName);
-        if ( it == _assets.cend() ) {
-            _assets.emplace (assetName, elementDetails);
-        }
-        else {
-            it->second = elementDetails;
-        }
-    };
-
-    // Path cannot be changed during the lifetime of the agent!
-    // if you want allow users change it without killing the agent
-    // you need to save old state to the new place to support the following situation:
-    //
-    // -------------------------------------------------------------------> t
-    //      |                   |               |               |
-    // agent_start_1            |               |          agent_start_2
-    //                      path_change         |
-    //                                      system_reboot
-    //
-    // Otherwise, at point agent_start_2 state would be read from the new place
-    //  (but it is still empty)
-    void setFile (const std::string &filePath)
-    {
-        _path = filePath;
-    };
-
-
-    /*
-     * \brief Save to the file
-     */
-    int save (void) {
-        std::ofstream ofs (_path + ".new", std::ofstream::out);
-        if ( !ofs.good() ) {
-            zsys_error ("Cannot open file '%s' for write", (_path + ".new").c_str());
-            ofs.close();
-            return -1;
-        }
-        int r = std::rename (std::string ( _path).append(".new").c_str (),
-            std::string (_path.c_str ()).c_str());
-        if ( r != 0 ) {
-            zsys_error ("Cannot rename file '%s' to '%s'", _path.c_str(), _path.c_str());
-            return -2;
-        }
-        ofs << serializeJSON();
-        ofs.close();
-        return 0;
-    }
-
-    /*
-     * \brief load from  file
-     */
-    int load (void) {
-        std::ifstream ifs (_path, std::ofstream::in);
-        if ( !ifs.good() ) {
-            zsys_error ("Cannot open file '%s' for read", _path.c_str());
-            ifs.close();
-            return -1;
-        }
-        try {
-            cxxtools::SerializationInfo si;
-            std::string json_string(std::istreambuf_iterator<char>(ifs), {});
-            std::stringstream s(json_string);
-        // TODO try
-            cxxtools::JsonDeserializer json(s);
-            json.deserialize(si);
-            si >>= _assets;
-            ifs.close();
-            return 0;
-        }
-        catch ( const std::exception &e) {
-            zsys_error ("Starting without initial state. Cannot deserialize the file '%s'. Error: '%s'", _path.c_str(), e.what());
-            ifs.close();
-            return -1;
-        }
-    }
-
-    std::string serializeJSON (void) const
-    {
-        std::stringstream s;
-        cxxtools::JsonSerializer js (s);
-        js.beautify (true);
-        js.serialize (_assets).finish();
-        return s.str();
-    };
-
-private:
-
-    /*
-     * \brief Delete file
-     *
-     * \return 0 on success
-     *         non-zero on error
-     */
-    int remove (void) {
-        return std::remove (_path.c_str());
-    };
-
-    std::map <std::string, ElementDetails> _assets;
-
-    std::string _path;
-};
-
-class AlertList {
-public :
-    AlertList(){};
-
-    typedef typename std::map
-        <std::pair<std::string, std::string>, AlertDescription> AlertsConfig;
-
-    AlertsConfig::iterator add(
-        const char *ruleName,
-        const char *asset,
-        const char *description,
-        const char *state,
-        const char *severity,
-        int64_t timestamp,
-        const char *actions);
-
-    void notify(
-        const AlertsConfig::iterator it,
-        const EmailConfiguration &emailConfiguration,
-        const ElementList &elementList);
-
-private:
-    // rule_name , asset_name  -> AlertDescription
-    AlertsConfig _alerts;
-};
-
-
-AlertList::AlertsConfig::iterator AlertList::
-    add(
-        const char *ruleName,
-        const char *asset,
-        const char *description,
-        const char *state,
-        const char *severity,
-        int64_t timestamp,
-        const char *actions)
-{
-    if (!strstr (actions, "EMAIL"))
-        return _alerts.end ();
-
-    std::string ruleNameLower = std::string (ruleName);
-    std::transform(ruleNameLower.begin(), ruleNameLower.end(), ruleNameLower.begin(), ::tolower);
-    auto alertKey = std::make_pair(ruleNameLower, asset);
-
-    // try to insert a new alert
-    auto newAlert = _alerts.emplace(alertKey, AlertDescription (
-            description,
-            state,
-            severity,
-            timestamp
-        ));
-    // newAlert = pair (iterator, bool). true = inserted,
-    // false = not inserted
-    if ( newAlert.second == true ) {
-        // it is the first time we see this alert
-        // bacause in the map "alertKey" wasn't found
-        return newAlert.first;
-    }
-    // it is not the first time we see this alert
-    auto it = newAlert.first;
-    if ( ( it->second._description != description ) ||
-            ( it->second._state != state ) ||
-            ( it->second._severity != severity ) )
-    {
-        it->second._description = description;
-        it->second._state = state;
-        it->second._severity = severity;
-        // important information changed -> need to notify asap
-        it->second._lastUpdate = ::time(NULL);
-    }
-    else {
-        // intentionally left empty
-        // nothing changed -> inform according schedule
-    }
-    return it;
-}
+typedef std::map <std::pair<std::string, std::string>, Alert> alerts_map;
+typedef alerts_map::iterator alerts_map_iterator;
 
 // TODO: make it configurable without recompiling
 // If time is less 5 minutes, then email in some cases would be send aproximatly every 5 minutes,
 // as some metrics are generated only once per 5 minute -> alert in 5 minuts -> email in 5 minuts
-static int
-    getNotificationInterval(
+static uint64_t
+s_getNotificationInterval(               
         const std::string &severity,
-        char priority)
+        uint8_t priority)
 {
     // According Aplha document (severity, priority)
     // is mapped onto the time interval [s]
-    static const std::map < std::pair<std::string, char>, int> times = {
-        { {"CRITICAL", '1'}, 5  * 60},
-        { {"CRITICAL", '2'}, 15 * 60},
-        { {"CRITICAL", '3'}, 15 * 60},
-        { {"CRITICAL", '4'}, 15 * 60},
-        { {"CRITICAL", '5'}, 15 * 60},
-        { {"WARNING", '1'}, 1 * 60 * 60},
-        { {"WARNING", '2'}, 4 * 60 * 60},
-        { {"WARNING", '3'}, 4 * 60 * 60},
-        { {"WARNING", '4'}, 4 * 60 * 60},
-        { {"WARNING", '5'}, 4 * 60 * 60},
-        { {"INFO", '1'}, 8 * 60 * 60},
-        { {"INFO", '2'}, 24 * 60 * 60},
-        { {"INFO", '3'}, 24 * 60 * 60},
-        { {"INFO", '4'}, 24 * 60 * 60},
-        { {"INFO", '5'}, 24 * 60 * 60}
+    static const std::map <std::pair <std::string, uint8_t>, uint32_t> times = {
+        { {"CRITICAL", 1}, 5  * 60},
+        { {"CRITICAL", 2}, 15 * 60},
+        { {"CRITICAL", 3}, 15 * 60},
+        { {"CRITICAL", 4}, 15 * 60},
+        { {"CRITICAL", 5}, 15 * 60},
+        { {"WARNING", 1}, 1 * 60 * 60},
+        { {"WARNING", 2}, 4 * 60 * 60},
+        { {"WARNING", 3}, 4 * 60 * 60},
+        { {"WARNING", 4}, 4 * 60 * 60},
+        { {"WARNING", 5}, 4 * 60 * 60},
+        { {"INFO", 1}, 8 * 60 * 60},
+        { {"INFO", 2}, 24 * 60 * 60},
+        { {"INFO", 3}, 24 * 60 * 60},
+        { {"INFO", 4}, 24 * 60 * 60},
+        { {"INFO", 5}, 24 * 60 * 60}
     };
-    auto it = times.find(std::make_pair (severity, priority));
-    if ( it == times.cend() ) {
-        zsys_error ("Not known interval");
+    auto it = times.find (std::make_pair (severity, priority));
+    if (it == times.end ()) {
+        zsys_error ("Not known interval for severity = '%s', priority '%d'", severity.c_str (), priority);
         return 0;
     }
     else {
@@ -291,36 +91,21 @@ static int
     }
 }
 
-
-void AlertList::
-    notify(
-        const AlertsConfig::iterator it,
-        const EmailConfiguration &emailConfiguration,
-        const ElementList &elementList)
+static void
+s_notify (alerts_map_iterator it,
+          Smtp& smtp,
+          const ElementList& elements)
 {
-    if ( it == _alerts.cend() )
-        return;
-    //pid_t tmptmp = getpid();
-    if ( emailConfiguration.isConfigured() ) {
-        zsys_error("Mail system is not configured!");
-        return;
-    }
-    // TODO function Need Notify()
     bool needNotify = false;
-
-    auto &alertDescription = it->second;
-
-    ElementDetails assetDetailes;
-    try {
-        assetDetailes = elementList.getElementDetails(it->first.second);
-    }
-    catch (const std::exception &e ) {
+    Element element;
+    if (!elements.get (it->first.second, element)) {
         zsys_error ("CAN'T NOTIFY unknown asset");
         return;
     }
 
-    int64_t nowTimestamp = ::time(NULL);
-    if ( alertDescription._lastUpdate > alertDescription._lastNotification ) {
+    uint64_t nowTimestamp = ::time (NULL);
+    zsys_error ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, it->second.last_notification);
+    if (it->second.last_update > it->second.last_notification) {
         // Last notification was send BEFORE last
         // important change take place -> need to notify
         needNotify = true;
@@ -329,50 +114,43 @@ void AlertList::
     else {
         // so, no important changes, but may be we need to
         // notify according the schedule
-        if ( alertDescription._state == "RESOLVED" ) {
+        if ( it->second.state == "RESOLVED" ) {
             // but only for active alerts
             needNotify = false;
         }
-        else if ( ( nowTimestamp - alertDescription._lastNotification ) >
-                    getNotificationInterval (alertDescription._severity,
-                                             assetDetailes._priority)
-                )
-             // If  lastNotification + interval < NOW
+        else
+        if (
+        (nowTimestamp - it->second.last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
+            // If  lastNotification + interval < NOW
         {
             // so, we found out that we need to notify according the schedule
             zsys_debug ("according schedule -> notify");
-            if ( ( alertDescription._state == "ACK-PAUSE" ) || 
-                    ( alertDescription._state == "ACK-IGNORE" ) ||
-                    ( alertDescription._state == "ACK-SILENCE" ) ||
-                    ( alertDescription._state == "RESOLVED" )
-               ) {
-                zsys_debug ("in this status we do not send emails");
+            if (it->second.state == "ACK-PAUSE" || 
+                it->second.state == "ACK-IGNORE" ||
+                it->second.state == "ACK-SILENCE" ||
+                it->second.state == "RESOLVED") {
+                    zsys_debug ("in this status we do not send emails");
             }
             else {
                 needNotify = true;
             }
         }
-    }
+    } 
 
-    if ( needNotify )
-    {
+    if (needNotify) {
         zsys_debug ("Want to notify");
-        if ( assetDetailes._contactEmail.empty() )
-        {
-            zsys_error ("Can't send a notification. For the asset '%s' contact email is unknown",
-                assetDetailes._name.c_str());
+        if (element.email.empty()) {
+            zsys_error ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
             return;
         }
+
         try {
-            auto &ruleName = it->first.first;
-            emailConfiguration._smtp.sendmail(
-                assetDetailes._contactEmail,
-                EmailConfiguration::generateSubject
-                    (alertDescription, assetDetailes, ruleName),
-                EmailConfiguration::generateBody
-                    (alertDescription, assetDetailes, ruleName)
+            smtp.sendmail(
+                element.email,
+                generate_subject (it->second, element),
+                generate_body (it->second, element)
             );
-            alertDescription._lastNotification = nowTimestamp;
+            it->second.last_notification = nowTimestamp;
         }
         catch (const std::runtime_error& e) {
             zsys_error ("Error: %s", e.what());
@@ -381,82 +159,84 @@ void AlertList::
     }
 }
 
-
-void onAlertReceive (
-    bios_proto_t **message,
-    AlertList &alertList,
-    ElementList &elementList,
-    EmailConfiguration &emailConfiguration)
+static void
+s_onAlertReceive (
+    bios_proto_t **p_message,
+    alerts_map& alerts,
+    ElementList& elements,
+    Smtp& smtp)
 {
-    // when some alert message received
-    bios_proto_t *messageAlert = *message;
-    // check one more time to be sure, that it is an alert message
-    if ( bios_proto_id (messageAlert) != BIOS_PROTO_ALERT )
-    {
-        zsys_error ("message bios_proto is not ALERT!");
+    if (p_message == NULL) return;
+    bios_proto_t *message = *p_message;
+    if (bios_proto_id (message) != BIOS_PROTO_ALERT) {
+        zsys_error ("bios_proto_id (message) != BIOS_PROTO_ALERT");
         return;
     }
     // decode alert message
-    const char *ruleName = bios_proto_rule (messageAlert);
-    const char *asset = bios_proto_element_src (messageAlert);
-    const char *description = bios_proto_description (messageAlert);
-    const char *state = bios_proto_state (messageAlert);
-    const char *severity = bios_proto_severity (messageAlert);
-    int64_t timestamp = bios_proto_time (messageAlert);
-    if( timestamp <= 0 ) {
-        timestamp = time(NULL);
+    const char *rule = bios_proto_rule (message);
+    std::string rule_name (rule);
+    std::transform (rule_name.begin(), rule_name.end(), rule_name.begin(), ::tolower);
+    const char *state = bios_proto_state (message);
+    const char *severity = bios_proto_severity (message);
+    const char *asset = bios_proto_element_src (message);
+    const char *description = bios_proto_description (message);
+    int64_t timestamp = bios_proto_time (message);
+    if (timestamp <= 0) {
+        timestamp = time (NULL);
     }
-    const char *actions = bios_proto_action (messageAlert);
+    const char *actions = bios_proto_action (message);
 
     // 1. Find out information about the element
-    if ( elementList.count(asset) == 0 ) {
-        zsys_error ("no information is known about the asset, REQ-REP not implemented");
-        // try to findout information about the asset
-        // TODO
+    if (!elements.exists (asset)) {
+        zsys_error ("No information is known about the asset"); 
+        // TODO: find information about the asset (query another agent)
         return;
     }
-    // information was found
-    ElementDetails assetDetailes = elementList.getElementDetails (asset);
 
     // 2. add alert to the list of alerts
-    auto it = alertList.add(
-        ruleName,
-        asset,
-        description,
-        state,
-        severity,
-        timestamp,
-        actions);
-    // notify user about alert
-    alertList.notify(it, emailConfiguration, elementList);
-
-
-    // destroy the message
-    bios_proto_destroy (message);
+    if (strcasestr (actions, "EMAIL")) {
+        zsys_error ("HAS - EMAIL");
+        alerts_map_iterator search = alerts.find (std::make_pair (rule_name, asset));
+        if (search == alerts.end ()) { // insert
+            zsys_error ("INSERT");
+            bool inserted;
+            std::tie (search, inserted) = alerts.emplace (std::make_pair (std::make_pair (rule_name, asset),
+                                                          Alert (message)));
+            assert (search != alerts.end ());
+        }
+        else if (search->second.state != state || 
+                 search->second.severity != severity ||
+                 search->second.description != description) { // update
+            zsys_error ("UPDATE");
+            search->second.state = state;
+            search->second.severity = severity;
+            search->second.description = description;
+            search->second.time = (uint64_t) time;
+            search->second.last_update = ::time (NULL);
+        }
+        s_notify (search, smtp, elements);
+    }
+    bios_proto_destroy (p_message);
 }
 
 void onAssetReceive (
-    bios_proto_t **message,
-    ElementList &elementList)
+    bios_proto_t **p_message,
+    ElementList& elements)
 {
-    // when some asset message received
-    assert (message != NULL );
-    bios_proto_t *messageAsset = *message;
-    // check one more time to be sure, that it is an asset message
-    if ( bios_proto_id (messageAsset) != BIOS_PROTO_ASSET )
-    {
-        zsys_error ("message bios_proto is not ASSET!");
-        return;
-    }
-    // decode asset message
-    // other fields in the message are not important
-    const char *assetName = bios_proto_name (messageAsset);
-    if ( assetName == NULL ) {
-        zsys_error ("asset name is missing in the mesage");
+    if (p_message == NULL) return;
+    bios_proto_t *message = *p_message;
+    if (bios_proto_id (message) != BIOS_PROTO_ASSET) {
+        zsys_error ("bios_proto_id (message) != BIOS_PROTO_ASSET");
         return;
     }
 
-    zhash_t *aux = bios_proto_aux (messageAsset);
+    const char *name = bios_proto_name (message); // was asset
+    if (name == NULL) {
+        zsys_error ("bios_proto_name () returned NULL");
+        return;
+    }
+
+    zhash_t *aux = bios_proto_aux (message);
     const char *default_priority = "5";
     const char *priority = default_priority;
     if ( aux != NULL ) {
@@ -470,7 +250,7 @@ void onAssetReceive (
 
     // now, we need to get the contact information
     // TODO insert here a code to handle multiple contacts
-    zhash_t *ext = bios_proto_ext (messageAsset);
+    zhash_t *ext = bios_proto_ext (message);
     char *contact_name = NULL;
     char *contact_email = NULL;
     if ( ext != NULL ) {
@@ -480,17 +260,16 @@ void onAssetReceive (
         zsys_error ("ext is missing");
     }
 
-
-    ElementDetails newAsset;
-    newAsset._priority = priority[0];
-    newAsset._name = assetName;
-    newAsset._contactName = ( contact_name == NULL ? "" : contact_name );
-    newAsset._contactEmail = ( contact_email == NULL ? "" : contact_email );
-    elementList.setElementDetails (newAsset);
-    newAsset.print();
-    elementList.save();
+    Element newAsset;
+    newAsset.priority = std::stoul (priority);
+    newAsset.name = name;
+    newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
+    newAsset.email = ( contact_email == NULL ? "" : contact_email );
+    elements.add (newAsset);
+    newAsset.debug_print();
+    elements.save();
     // destroy the message
-    bios_proto_destroy (message);
+    bios_proto_destroy (p_message);
 }
 
 void
@@ -498,15 +277,14 @@ bios_smtp_server (zsock_t *pipe, void* args)
 {
     bool verbose = false;
 
-    char *name = strdup ((char*) args);
-
     mlm_client_t *client = mlm_client_new ();
 
-    zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe(client), NULL);
+    zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe (client), NULL);
 
-    AlertList alertList;
-    ElementList elementList;
-    EmailConfiguration emailConfiguration;
+    alerts_map alerts;
+    ElementList elements;
+    Smtp smtp;
+
     zsock_signal (pipe, 0);
     while (!zsys_interrupted) {
 
@@ -531,11 +309,13 @@ bios_smtp_server (zsock_t *pipe, void* args)
             else
             if (streq (cmd, "CONNECT")) {
                 char* endpoint = zmsg_popstr (msg);
+                char* name = zmsg_popstr (msg);
                 int rv = mlm_client_connect (client, endpoint, 1000, name);
                 if (rv == -1) {
                     zsys_error ("%s: can't connect to malamute endpoint '%s'", name, endpoint);
                 }
                 zstr_free (&endpoint);
+                zstr_free (&name);
                 zsock_signal (pipe, 0);
             }
             else
@@ -543,7 +323,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 char* stream = zmsg_popstr (msg);
                 int rv = mlm_client_set_producer (client, stream);
                 if (rv == -1) {
-                    zsys_error ("%s: can't set producer on stream '%s'", name, stream);
+                    zsys_error ("can't set producer on stream '%s'", stream);
                 }
                 zstr_free (&stream);
                 zsock_signal (pipe, 0);
@@ -554,7 +334,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 char* pattern = zmsg_popstr (msg);
                 int rv = mlm_client_set_consumer (client, stream, pattern);
                 if (rv == -1) {
-                    zsys_error ("%s: can't set consumer on stream '%s', '%s'", name, stream, pattern);
+                    zsys_error ("can't set consumer on stream '%s', '%s'", stream, pattern);
                 }
                 zstr_free (&pattern);
                 zstr_free (&stream);
@@ -563,14 +343,14 @@ bios_smtp_server (zsock_t *pipe, void* args)
             else
             if (streq (cmd, "MSMTP_PATH")) {
                 char* path = zmsg_popstr (msg);
-                emailConfiguration._smtp.msmtp_path (path);
+                smtp.msmtp_path (path);
                 zstr_free (&path);
             }
             else
             if (streq (cmd, "STATE_FILE_PATH")) {
                 char* path = zmsg_popstr (msg);
-                elementList.setFile (path);
-                elementList.load();
+                elements.setFile (path);
+                elements.load();
                 zstr_free (&path);
             }
             else
@@ -578,27 +358,27 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 char *param;
                 // server
                 param = zmsg_popstr (msg);
-                if (param && param[0]) emailConfiguration.host(param);
+                if (param && param[0]) smtp.host(param);
                 zstr_free (&param);
                 // port
                 param = zmsg_popstr (msg);
-                if (param && param[0]) emailConfiguration.port(param);
+                if (param && param[0]) smtp.port(param);
                 zstr_free (&param);
                 // encryption
                 param = zmsg_popstr (msg);
-                if (param && param[0]) emailConfiguration.encryption(param);
+                if (param && param[0]) smtp.encryption(param);
                 zstr_free (&param);
                 // from
                 param = zmsg_popstr (msg);
-                if (param && param[0]) emailConfiguration.from(param);
+                if (param && param[0]) smtp.from(param);
                 zstr_free (&param);
                 // username
                 param = zmsg_popstr (msg);
-                if (param && param[0]) emailConfiguration.username(param);
+                if (param && param[0]) smtp.username(param);
                 zstr_free (&param);
                 // password
                 param = zmsg_popstr (msg);
-                if (param && param[0]) emailConfiguration.password(param);
+                if (param && param[0]) smtp.password(param);
                 zstr_free (&param);
             }
             else
@@ -610,10 +390,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
             continue;
         }
 
-        // This agent is a reactive agent, it reacts only on messages
-        // and doesn't do anything if there is no messages
-        // TODO: probably email also should be send every XXX seconds,
-        // even if no alerts were received
         zmsg_t *zmessage = mlm_client_recv (client);
         if ( zmessage == NULL ) {
             continue;
@@ -626,18 +402,17 @@ bios_smtp_server (zsock_t *pipe, void* args)
         //  - an alert from alert stream
         //  - an asset config message
         //  - an SMTP settings TODO
-        if( is_bios_proto (zmessage) ) {
+        if (is_bios_proto (zmessage)) {
             bios_proto_t *bmessage = bios_proto_decode (&zmessage);
-            if( ! bmessage ) {
+            if (!bmessage) {
                 zsys_error ("cannot decode bios_proto message, ignore it");
                 continue;
             }
-            if ( bios_proto_id (bmessage) == BIOS_PROTO_ALERT )  {
-                onAlertReceive (&bmessage, alertList, elementList,
-                    emailConfiguration);
+            if (bios_proto_id (bmessage) == BIOS_PROTO_ALERT)  {
+                s_onAlertReceive (&bmessage, alerts, elements, smtp);
             }
-            else if ( bios_proto_id (bmessage) == BIOS_PROTO_ASSET )  {
-                onAssetReceive (&bmessage, elementList);
+            else if (bios_proto_id (bmessage) == BIOS_PROTO_ASSET)  {
+                onAssetReceive (&bmessage, elements);
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
@@ -648,10 +423,9 @@ bios_smtp_server (zsock_t *pipe, void* args)
     }
 exit:
     // save info to persistence before I die
-    elementList.save();
+    elements.save();
     zpoller_destroy (&poller);
     mlm_client_destroy (&client);
-    zstr_free (&name);
 }
 
 
@@ -687,12 +461,12 @@ bios_smtp_server_test (bool verbose)
     zstr_sendx (server, "BIND", endpoint, NULL);
 
     // smtp server
-    zactor_t *smtp_server = zactor_new (bios_smtp_server, (void*)"agent-smtp");
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
     zstr_sendx (smtp_server, "STATE_FILE_PATH", "kkk.xtx", NULL);
     if (verbose)
         zstr_send (smtp_server, "VERBOSE");
     zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
-    zstr_sendx (smtp_server, "CONNECT", endpoint, NULL);
+    zstr_sendx (smtp_server, "CONNECT", endpoint, "agent-smtp", NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
     zsock_wait (smtp_server);
@@ -775,6 +549,10 @@ bios_smtp_server_test (bool verbose)
     "In the system an alert was detected.\nSource rule: ny_rule\nAsset: ASSET1\nAlert priority: P1\nAlert severity: CRITICAL\n"
     "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
+    
+    zsys_debug ("expectedBody =\n%s", expectedBody.c_str ());
+    zsys_debug ("\n");
+    zsys_debug ("newBody =\n%s", newBody.c_str ());
     assert ( expectedBody.compare(newBody) == 0 );
 
     //      5. send ack back, so btest can exit
