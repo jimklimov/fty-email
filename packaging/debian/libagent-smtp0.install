@@ -1,1 +1,1 @@
-debian/tmp/usr/lib/*/libagent_smtp.so.*
+usr/lib/*/libagent_smtp.so.*

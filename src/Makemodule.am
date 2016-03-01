@@ -54,10 +54,8 @@ src_bios_agent_smtp_SOURCES = src/bios_agent_smtp.cc
 src_bios_agent_smtp_configdir = $(sysconfdir)/agent-smtp
 if WITH_SYSTEMD_UNITS
 src_bios_agent_smtp_servicedir = @prefix@/lib/systemd/system
-src_bios_agent_smtp_configdir = $(sysconfdir)/agent-smtp
 src_bios_agent_smtp_service_DATA = src/bios-agent-smtp.service
 src_bios_agent_smtp_tmpfilesdir = /usr/lib/tmpfiles.d/
-src_bios_agent_smtp_tmpfiles_DATA = src/bios-agent-smtp.conf
 endif #WITH_SYSTEMD_UNITS
 endif #ENABLE_BIOS_AGENT_SMTP
 

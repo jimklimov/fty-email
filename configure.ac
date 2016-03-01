@@ -590,7 +590,6 @@ fi
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  src/libagent_smtp.pc
-                 src/bios-agent-smtp.cfg
                  ])
 
 AM_COND_IF([WITH_SYSTEMD_UNITS],

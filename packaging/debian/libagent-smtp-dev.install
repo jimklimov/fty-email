@@ -1,0 +1,3 @@
+usr/include/*
+usr/lib/*/libagent_smtp.so
+usr/lib/*/pkgconfig/libagent_smtp.pc
