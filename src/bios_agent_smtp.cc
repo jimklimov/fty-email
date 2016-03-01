@@ -26,14 +26,15 @@
 @end
 */
 #include <getopt.h>
-#include <fstream>
 
 #include "agent_smtp_classes.h"
 
 // agent's name
+// DO NOT CHANGE! as other agents can rely on this name
 static const char *AGENT_NAME = "agent-smtp";
 
-// malamute endpoint
+// malamute's endpoint
+// TODO make endpoint configurable on the start of the agent
 static const char *ENDPOINT = "ipc://@/malamute";
 
 void usage ()
@@ -131,10 +132,13 @@ int main (int argc, char** argv)
     // ATTENTION: the path for the state should be set up before any network activity!
     // as it should load the state first!
     zstr_sendx (smtp_server, "STATE_FILE_PATH", "/var/lib/bios/agent-smtp/state", NULL);
+    // Connect to malamute
     zstr_sendx (smtp_server, "CONNECT", ENDPOINT, AGENT_NAME, NULL);
     zsock_wait (smtp_server);
+    // Listen for all alerts
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);
     zsock_wait (smtp_server);
+    // Listen for all assets
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS", ".*", NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server,
@@ -165,7 +169,6 @@ int main (int argc, char** argv)
         }
     }
 
-    // TODO save info to persistence before I die
     zactor_destroy (&smtp_server);
     if (verbose) {
         zsys_info ("END bios_agent_smtp - Daemon that is responsible for email notification about alerts");
