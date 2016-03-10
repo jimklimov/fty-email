@@ -83,12 +83,11 @@ s_getNotificationInterval(
         zsys_error ("Not known interval for severity = '%s', priority '%d'", severity.c_str (), priority);
         return 0;
     }
-    else {
-        zsys_error ("in %d [s]", it->second);
-        return it->second - 60; 
-        // BIOS-1802: time conflict with assumption:
-        // if metric is computed it is send approximatly every 5 minutes +- X sec
-    }
+   
+    zsys_debug ("in %d [s]", it->second);
+    return it->second - 60; 
+    // BIOS-1802: time conflict with assumption:
+    // if metric is computed it is send approximatly every 5 minutes +- X sec
 }
 
 static void
@@ -182,7 +181,7 @@ s_onAlertReceive (
     const char *description = bios_proto_description (message);
     int64_t timestamp = bios_proto_time (message);
     if (timestamp <= 0) {
-        timestamp = time (NULL);
+        timestamp = ::time (NULL);
     }
     const char *actions = bios_proto_action (message);
 
@@ -195,10 +194,8 @@ s_onAlertReceive (
 
     // 2. add alert to the list of alerts
     if (strcasestr (actions, "EMAIL")) {
-        zsys_error ("HAS - EMAIL");
         alerts_map_iterator search = alerts.find (std::make_pair (rule_name, asset));
         if (search == alerts.end ()) { // insert
-            zsys_error ("INSERT");
             bool inserted;
             std::tie (search, inserted) = alerts.emplace (std::make_pair (std::make_pair (rule_name, asset),
                                                           Alert (message)));
@@ -207,7 +204,6 @@ s_onAlertReceive (
         else if (search->second.state != state || 
                  search->second.severity != severity ||
                  search->second.description != description) { // update
-            zsys_error ("UPDATE");
             search->second.state = state;
             search->second.severity = severity;
             search->second.description = description;
@@ -873,7 +869,7 @@ bios_smtp_server_test (bool verbose)
 
     //      2. send alert message
     msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
-        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", -1, "EMAIL/SMS");
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
     assert ( rv != -1 );
@@ -901,7 +897,7 @@ bios_smtp_server_test (bool verbose)
 
     //      5. send alert message again second
     msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
-        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", -1, "EMAIL/SMS");
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
     assert ( rv != -1 );
@@ -928,7 +924,7 @@ bios_smtp_server_test (bool verbose)
 
     //      8. send alert message again third time
     msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
-        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", -1, "EMAIL/SMS");
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
     assert ( rv != -1 );
