@@ -33,14 +33,11 @@ class Alert {
             severity (bios_proto_severity (message)),
             description (bios_proto_description (message)),
             time (bios_proto_time (message)),
-            last_notification (0)
+            last_notification (0),
+            last_update (bios_proto_time (message))
+
     {
         std::transform (rule.begin(), rule.end(), rule.begin(), ::tolower);
-        if (bios_proto_time (message) == UINT64_MAX)
-            last_update = ::time (NULL);
-        else
-            last_update = bios_proto_time (message);
-
     };
 
     std::string rule;
