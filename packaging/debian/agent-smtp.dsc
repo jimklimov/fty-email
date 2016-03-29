@@ -16,7 +16,9 @@ Build-Depends: bison, debhelper (>= 8),
     libmlm-dev,
     libbiosproto-dev,
     libcxxtools-dev,
-    dh-autoreconf
+    dh-autoreconf,
+    systemd,
+    dh-systemd
 
 Package-List:
  libagent-smtp0 deb net optional arch=any
