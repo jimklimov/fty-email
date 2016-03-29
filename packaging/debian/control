@@ -32,7 +32,8 @@ Build-Depends: debhelper (>= 9),
     libbiosproto-dev,
     libcxxtools-dev,
     dh-autoreconf,
-    systemd
+    systemd,
+    dh-systemd
 
 Package: libagent-smtp0
 Architecture: any
