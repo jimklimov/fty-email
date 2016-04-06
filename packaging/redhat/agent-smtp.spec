@@ -56,7 +56,6 @@ This package contains shared library.
 
 %files -n libagent_smtp0
 %defattr(-,root,root)
-%doc COPYING
 %{_libdir}/libagent_smtp.so.*
 
 %package devel
@@ -85,7 +84,7 @@ This package contains development files.
 
 %build
 sh autogen.sh
-%{configure} --with-systemd
+%{configure} --with-systemd-units
 make %{_smp_mflags}
 
 %install
@@ -99,6 +98,7 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %defattr(-,root,root)
 %{_bindir}/bios-agent-smtp
 %{_prefix}/lib/systemd/system/bios-agent-smtp*.service
+%{_prefix}/lib/tmpfiles.d/bios-agent-smtp.conf
 
 
 %changelog
