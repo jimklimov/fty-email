@@ -132,15 +132,7 @@ int main (int argc, char** argv)
     // ATTENTION: the path for the state should be set up before any network activity!
     // as it should load the state first!
     zstr_sendx (smtp_server, "STATE_FILE_PATH", "/var/lib/bios/agent-smtp/state", NULL);
-    // Connect to malamute
-    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, AGENT_NAME, NULL);
-    zsock_wait (smtp_server);
-    // Listen for all alerts
-    zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);
-    zsock_wait (smtp_server);
-    // Listen for all assets
-    zstr_sendx (smtp_server, "CONSUMER", "ASSETS", ".*", NULL);
-    zsock_wait (smtp_server);
+    // configure email, before we start to receive alerts
     zstr_sendx (smtp_server,
                 "SMTPCONFIG",
                 smtpserver ? smtpserver : "",       // server
@@ -154,6 +146,16 @@ int main (int argc, char** argv)
         zsys_info ("using alternative msmtp binary: %s", msmtp_path);
         zstr_sendx (smtp_server, "MSMTP_PATH", msmtp_path);
     }
+    // Connect to malamute
+    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, AGENT_NAME, NULL);
+    zsock_wait (smtp_server);
+    // Listen for all alerts
+    zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);
+    zsock_wait (smtp_server);
+    // Listen for all assets
+    zstr_sendx (smtp_server, "CONSUMER", "ASSETS", ".*", NULL);
+    zsock_wait (smtp_server);
+
 
     //  Accept and print any message back from server
     //  copy from src/malamute.c under MPL license
