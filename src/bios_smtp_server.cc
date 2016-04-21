@@ -567,7 +567,7 @@ bios_smtp_server_test (bool verbose)
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     std::string atopic1 = "NY_RULE/CRITICAL@" + std::string (asset_name1);
-    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    mlm_client_send (alert_producer, atopic1.c_str(), &msg);
     zsys_info ("alert message was send");
 
     //      3. No mail should be generated
