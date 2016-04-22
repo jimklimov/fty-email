@@ -81,18 +81,19 @@ int main (int argc, char** argv)
 
     // get options
     int c;
+    struct option long_options[] =
+    {
+        {"help",       no_argument,       &help,    1},
+        {"verbose",    no_argument,       &verbose, 1},
+        {"server",     required_argument, 0,'s'},
+        {"port",       required_argument, 0,'p'},
+        {"user",       required_argument, 0,'u'},
+        {"from",       required_argument, 0,'f'},
+        {"encryption", required_argument, 0,'e'},
+        {0, 0, 0, 0}
+    };
     while(true) {
-        static struct option long_options[] =
-        {
-            {"help",       no_argument,       &help,    1},
-            {"verbose",    no_argument,       &verbose, 1},
-            {"server",     required_argument, 0,'s'},
-            {"port",       required_argument, 0,'p'},
-            {"user",       required_argument, 0,'u'},
-            {"from",       required_argument, 0,'f'},
-            {"encryption", required_argument, 0,'e'},
-            {0, 0, 0, 0}
-        };
+
         int option_index = 0;
         c = getopt_long (argc, argv, "hvs:p:u:f:e:", long_options, &option_index);
         if (c == -1) break;
