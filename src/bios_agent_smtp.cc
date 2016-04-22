@@ -53,6 +53,14 @@ void usage ()
           "Command line option takes precedence over variable.");
 }
 
+
+static int
+s_timer_event (zloop_t *loop, int timer_id, void *output)
+{
+    zstr_send (output, "CHECK_NOW");
+    return 0;
+}
+
 int main (int argc, char** argv)
 {
     int verbose = 0;
@@ -156,21 +164,12 @@ int main (int argc, char** argv)
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS", ".*", NULL);
     zsock_wait (smtp_server);
 
-
-    //  Accept and print any message back from server
-    //  copy from src/malamute.c under MPL license
-    while (true) {
-        char *message = zstr_recv (smtp_server);
-        if (message) {
-            puts (message);
-            free (message);
-        }
-        else {
-            puts ("interrupted");
-            break;
-        }
-    }
-
+    zloop_t *send_alert_trigger = zloop_new();
+    // as 5 minutes is the smallest possible reaction time 
+    zloop_timer (send_alert_trigger, 5*60*1000, 0, s_timer_event, smtp_server);
+    zloop_start (send_alert_trigger);
+    
+    zloop_destroy (&send_alert_trigger);
     zactor_destroy (&smtp_server);
     if (verbose) {
         zsys_info ("END bios_agent_smtp - Daemon that is responsible for email notification about alerts");

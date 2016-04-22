@@ -159,6 +159,19 @@ s_notify (alerts_map_iterator it,
 }
 
 static void
+    s_notify_all (
+        alerts_map &alerts,
+        Smtp& smtp,
+        const ElementList& elements
+    )
+{
+    for ( auto it = alerts.begin(); it!= alerts.end(); it++ ) {
+        s_notify (it, smtp, elements);
+    }
+}
+
+
+static void
 s_onAlertReceive (
     bios_proto_t **p_message,
     alerts_map& alerts,
@@ -268,6 +281,7 @@ void onAssetReceive (
     bios_proto_destroy (p_message);
 }
 
+
 void
 bios_smtp_server (zsock_t *pipe, void* args)
 {
@@ -282,11 +296,9 @@ bios_smtp_server (zsock_t *pipe, void* args)
     Smtp smtp;
 
     zsock_signal (pipe, 0);
-    while (!zsys_interrupted) {
+    while ( !zsys_interrupted ) {
 
         void *which = zpoller_wait (poller, -1);
-        if (!which)
-            break;
 
         if (which == pipe) {
             zmsg_t *msg = zmsg_recv (pipe);
@@ -301,6 +313,10 @@ bios_smtp_server (zsock_t *pipe, void* args)
             else
             if (streq (cmd, "VERBOSE")) {
                 verbose = true;
+            }
+            else
+            if (streq (cmd, "CHECK_NOW")) {
+                s_notify_all (alerts, smtp, elements);
             }
             else
             if (streq (cmd, "CONNECT")) {
@@ -455,8 +471,8 @@ bios_smtp_server_test (bool verbose)
     if (verbose)
         zstr_send (server, "VERBOSE");
     zstr_sendx (server, "BIND", endpoint, NULL);
-
-    // smtp server
+    zsys_error ("malamute started");
+      // smtp server
     zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
     zstr_sendx (smtp_server, "STATE_FILE_PATH", "kkk.xtx", NULL);
     if (verbose)
@@ -468,18 +484,22 @@ bios_smtp_server_test (bool verbose)
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
     zsock_wait (smtp_server);
+    zsys_error ("alert generator started");
 
     mlm_client_t *alert_producer = mlm_client_new ();
     int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
     assert( rv != -1 );
     rv = mlm_client_set_producer (alert_producer, "ALERTS");
     assert( rv != -1 );
+    zsys_error ("alert producer started");
 
     mlm_client_t *asset_producer = mlm_client_new ();
     rv = mlm_client_connect (asset_producer, endpoint, 1000, "asset_producer");
     assert( rv != -1 );
     rv = mlm_client_set_producer (asset_producer, "ASSETS");
     assert( rv != -1 );
+    zsys_error ("asset producer started");
+
 
     // name of the client should be the same as name in the btest.cc
     mlm_client_t *btest_reader = mlm_client_new ();
