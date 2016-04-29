@@ -25,6 +25,10 @@
 @discuss
 @end
 */
+int agent_smtp_verbose = 0;
+
+#define zsys_debug1(...) \
+    do { if (agent_smtp_verbose) zsys_debug (__VA_ARGS__); } while (0);
 
 #include "agent_smtp_classes.h"
 
@@ -84,7 +88,7 @@ s_getNotificationInterval(
         return 0;
     }
    
-    zsys_debug ("in %d [s]", it->second);
+    zsys_debug1 ("in %d [s]", it->second);
     return it->second - 60; 
     // BIOS-1802: time conflict with assumption:
     // if metric is computed it is send approximatly every 5 minutes +- X sec
@@ -108,7 +112,7 @@ s_notify (alerts_map_iterator it,
         // Last notification was send BEFORE last
         // important change take place -> need to notify
         needNotify = true;
-        zsys_debug ("important change -> notify");
+        zsys_info ("important change -> notify");
     }
     else {
         // so, no important changes, but may be we need to
@@ -123,12 +127,12 @@ s_notify (alerts_map_iterator it,
             // If  lastNotification + interval < NOW
         {
             // so, we found out that we need to notify according the schedule
-            zsys_debug ("according schedule -> notify");
+            zsys_debug1 ("according schedule -> notify");
             if (it->second.state == "ACK-PAUSE" || 
                 it->second.state == "ACK-IGNORE" ||
                 it->second.state == "ACK-SILENCE" ||
                 it->second.state == "RESOLVED") {
-                    zsys_debug ("in this status we do not send emails");
+                    zsys_debug1 ("in this status we do not send emails");
             }
             else {
                 needNotify = true;
@@ -137,7 +141,7 @@ s_notify (alerts_map_iterator it,
     } 
 
     if (needNotify) {
-        zsys_debug ("Want to notify");
+        zsys_info ("Want to notify");
         if (element.email.empty()) {
             zsys_error ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
             return;
@@ -303,7 +307,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
         if (which == pipe) {
             zmsg_t *msg = zmsg_recv (pipe);
             char *cmd = zmsg_popstr (msg);
-            zsys_debug ("actor command=%s", cmd);
+            zsys_debug1 ("actor command=%s", cmd);
 
             if (streq (cmd, "$TERM")) {
                 zstr_free (&cmd);
@@ -313,6 +317,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
             else
             if (streq (cmd, "VERBOSE")) {
                 verbose = true;
+                agent_smtp_verbose = true;
+                zsys_debug1 ("VERBOSE received");
             }
             else
             if (streq (cmd, "CHECK_NOW")) {
@@ -408,7 +414,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
         }
         std::string topic = mlm_client_subject(client);
         if ( verbose ) {
-            zsys_debug("Got message '%s'", topic.c_str());
+            zsys_debug1("Got message '%s'", topic.c_str());
         }
         // There are inputs
         //  - an alert from alert stream
