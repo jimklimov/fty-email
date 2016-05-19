@@ -55,6 +55,28 @@ int agent_smtp_verbose = 0;
 typedef std::map <std::pair<std::string, std::string>, Alert> alerts_map;
 typedef alerts_map::iterator alerts_map_iterator;
 
+
+static bool isNew(const char* operation) {
+    if ( streq(operation,"create" ) )
+        return true;
+    else
+        return false;
+}
+
+static bool isUpdate(const char* operation) {
+    if ( streq(operation,"update" ) )
+        return true;
+    else
+        return false;
+}
+
+
+static bool isPartialUpdate(const char* operation) {
+    if ( streq(operation, "inventory" ) )
+        return true;
+    else
+        return false;
+}
 // TODO: make it configurable without recompiling
 // If time is less 5 minutes, then email in some cases would be send aproximatly every 5 minutes,
 // as some metrics are generated only once per 5 minute -> alert in 5 minuts -> email in 5 minuts
@@ -249,18 +271,6 @@ void onAssetReceive (
         return;
     }
 
-    zhash_t *aux = bios_proto_aux (message);
-    const char *default_priority = "5";
-    const char *priority = default_priority;
-    if ( aux != NULL ) {
-        // if we have additional information
-        priority = (char *) zhash_lookup (aux, "priority");
-        if ( priority == NULL ) {
-            // but information about priority is missing
-            priority = default_priority;
-        }
-    }
-
     // now, we need to get the contact information
     // TODO insert here a code to handle multiple contacts
     zhash_t *ext = bios_proto_ext (message);
@@ -270,16 +280,43 @@ void onAssetReceive (
         contact_name = (char *) zhash_lookup (ext, "contact_name");
         contact_email = (char *) zhash_lookup (ext, "contact_email");
     } else {
-        zsys_error ("ext is missing");
+        zsys_info ("ext is missing");
     }
 
-    Element newAsset;
-    newAsset.priority = std::stoul (priority);
-    newAsset.name = name;
-    newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
-    newAsset.email = ( contact_email == NULL ? "" : contact_email );
-    elements.add (newAsset);
-    newAsset.debug_print();
+    const char *operation = bios_proto_operation (message);
+    if ( isNew (operation) || isUpdate(operation) ) {
+        zhash_t *aux = bios_proto_aux (message);
+        const char *default_priority = "5";
+        const char *priority = default_priority;
+        if ( aux != NULL ) {
+            // if we have additional information
+            priority = (char *) zhash_lookup (aux, "priority");
+            if ( priority == NULL ) {
+                // but information about priority is missing
+                priority = default_priority;
+            }
+        }
+        Element newAsset;
+        newAsset.priority = std::stoul (priority);
+        newAsset.name = name;
+        newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
+        newAsset.email = ( contact_email == NULL ? "" : contact_email );
+        elements.add (newAsset);
+        newAsset.debug_print();
+    } else if ( isPartialUpdate(operation) ) {
+        zsys_info ("asset name = %s", name);
+        if ( contact_name ) {
+            zsys_info ("to update: contact_name = %s", contact_name);
+            elements.updateContactName (name, contact_name); 
+        }
+        if ( contact_email ) {
+            zsys_info ("to update: contact_email = %s", contact_email);
+            elements.updateEmail (name, contact_email);
+        }
+    } else {
+        zsys_error ("unsupported operation '%s' on the asset, ignore it", operation);
+    }
+
     elements.save();
     // destroy the message
     bios_proto_destroy (p_message);
@@ -520,7 +557,7 @@ bios_smtp_server_test (bool verbose)
     zhash_insert (ext, "contact_email", (void *)"scenario1.email@eaton.com");
     zhash_insert (ext, "contact_name", (void *)"eaton Support team");
     const char *asset_name = "ASSET1";
-    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, NULL, ext);
+    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, "create", ext);
     assert (msg);
     mlm_client_send (asset_producer, "Asset message1", &msg);
     zhash_destroy (&aux);
@@ -612,7 +649,7 @@ bios_smtp_server_test (bool verbose)
     ext = zhash_new ();
     zhash_insert (ext, "contact_name", (void *)"eaton Support team");
     const char *asset_name3 = "ASSET2";
-    msg = bios_proto_encode_asset (aux, asset_name3, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name3, "update", ext);
     assert (msg);
     mlm_client_send (asset_producer, "Asset message3", &msg);
     zhash_destroy (&aux);
@@ -711,7 +748,7 @@ bios_smtp_server_test (bool verbose)
     zhash_insert (aux, "priority", (void *)"1");
     ext = zhash_new ();
     assert (ext);
-    msg = bios_proto_encode_asset (aux, asset_name6, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name6, "create", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message6", &msg);
     assert ( rv != -1 );
@@ -737,7 +774,7 @@ bios_smtp_server_test (bool verbose)
 
     //      4. send asset info one more time, but with email
     zhash_insert (ext, "contact_email", (void *)"scenario6.email@eaton.com");
-    msg = bios_proto_encode_asset (aux, asset_name6, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name6, "update", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message6", &msg);
     assert ( rv != -1 );
@@ -886,7 +923,7 @@ bios_smtp_server_test (bool verbose)
     zhash_insert (aux, "priority", (void *)"1");
     ext = zhash_new ();
     assert (ext);
-    msg = bios_proto_encode_asset (aux, asset_name8, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name8, "create", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message8", &msg);
     assert ( rv != -1 );
@@ -912,7 +949,7 @@ bios_smtp_server_test (bool verbose)
 
     //      4. send asset info one more time, but with email
     zhash_insert (ext, "contact_email", (void *)"scenario8.email@eaton.com");
-    msg = bios_proto_encode_asset (aux, asset_name8, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name8, "update", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message8", &msg);
     assert ( rv != -1 );
