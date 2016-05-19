@@ -52,6 +52,8 @@ class ElementList
     int     save (); // TODO prepsat, tohle je strasny
     int     load (); // TODO prepsat, tohle je strasny
     std::string serialize_to_json () const;
+    void    updateContactName (const std::string &elementName, const std::string &contactName);
+    void    updateEmail (const std::string &elementName, const std::string &email);
 
  private:
     std::map <std::string, Element> _assets;

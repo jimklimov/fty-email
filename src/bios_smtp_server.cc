@@ -55,6 +55,28 @@ int agent_smtp_verbose = 0;
 typedef std::map <std::pair<std::string, std::string>, Alert> alerts_map;
 typedef alerts_map::iterator alerts_map_iterator;
 
+
+static bool isNew(const char* operation) {
+    if ( streq(operation,"create" ) )
+        return true;
+    else
+        return false;
+}
+
+static bool isUpdate(const char* operation) {
+    if ( streq(operation,"update" ) )
+        return true;
+    else
+        return false;
+}
+
+
+static bool isPartialUpdate(const char* operation) {
+    if ( streq(operation, "inventory" ) )
+        return true;
+    else
+        return false;
+}
 // TODO: make it configurable without recompiling
 // If time is less 5 minutes, then email in some cases would be send aproximatly every 5 minutes,
 // as some metrics are generated only once per 5 minute -> alert in 5 minuts -> email in 5 minuts
@@ -249,18 +271,6 @@ void onAssetReceive (
         return;
     }
 
-    zhash_t *aux = bios_proto_aux (message);
-    const char *default_priority = "5";
-    const char *priority = default_priority;
-    if ( aux != NULL ) {
-        // if we have additional information
-        priority = (char *) zhash_lookup (aux, "priority");
-        if ( priority == NULL ) {
-            // but information about priority is missing
-            priority = default_priority;
-        }
-    }
-
     // now, we need to get the contact information
     // TODO insert here a code to handle multiple contacts
     zhash_t *ext = bios_proto_ext (message);
@@ -270,16 +280,43 @@ void onAssetReceive (
         contact_name = (char *) zhash_lookup (ext, "contact_name");
         contact_email = (char *) zhash_lookup (ext, "contact_email");
     } else {
-        zsys_error ("ext is missing");
+        zsys_info ("ext is missing");
     }
 
-    Element newAsset;
-    newAsset.priority = std::stoul (priority);
-    newAsset.name = name;
-    newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
-    newAsset.email = ( contact_email == NULL ? "" : contact_email );
-    elements.add (newAsset);
-    newAsset.debug_print();
+    const char *operation = bios_proto_operation (message);
+    if ( isNew (operation) || isUpdate(operation) ) {
+        zhash_t *aux = bios_proto_aux (message);
+        const char *default_priority = "5";
+        const char *priority = default_priority;
+        if ( aux != NULL ) {
+            // if we have additional information
+            priority = (char *) zhash_lookup (aux, "priority");
+            if ( priority == NULL ) {
+                // but information about priority is missing
+                priority = default_priority;
+            }
+        }
+        Element newAsset;
+        newAsset.priority = std::stoul (priority);
+        newAsset.name = name;
+        newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
+        newAsset.email = ( contact_email == NULL ? "" : contact_email );
+        elements.add (newAsset);
+        newAsset.debug_print();
+    } else if ( isPartialUpdate(operation) ) {
+        zsys_info ("asset name = %s", name);
+        if ( contact_name ) {
+            zsys_info ("to update: contact_name = %s", contact_name);
+            elements.updateContactName (name, contact_name); 
+        }
+        if ( contact_email ) {
+            zsys_info ("to update: contact_email = %s", contact_email);
+            elements.updateEmail (name, contact_email);
+        }
+    } else {
+        zsys_error ("unsupported operation '%s' on the asset, ignore it", operation);
+    }
+
     elements.save();
     // destroy the message
     bios_proto_destroy (p_message);
