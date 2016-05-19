@@ -557,7 +557,7 @@ bios_smtp_server_test (bool verbose)
     zhash_insert (ext, "contact_email", (void *)"scenario1.email@eaton.com");
     zhash_insert (ext, "contact_name", (void *)"eaton Support team");
     const char *asset_name = "ASSET1";
-    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, NULL, ext);
+    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, "create", ext);
     assert (msg);
     mlm_client_send (asset_producer, "Asset message1", &msg);
     zhash_destroy (&aux);
@@ -649,7 +649,7 @@ bios_smtp_server_test (bool verbose)
     ext = zhash_new ();
     zhash_insert (ext, "contact_name", (void *)"eaton Support team");
     const char *asset_name3 = "ASSET2";
-    msg = bios_proto_encode_asset (aux, asset_name3, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name3, "update", ext);
     assert (msg);
     mlm_client_send (asset_producer, "Asset message3", &msg);
     zhash_destroy (&aux);
@@ -748,7 +748,7 @@ bios_smtp_server_test (bool verbose)
     zhash_insert (aux, "priority", (void *)"1");
     ext = zhash_new ();
     assert (ext);
-    msg = bios_proto_encode_asset (aux, asset_name6, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name6, "create", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message6", &msg);
     assert ( rv != -1 );
@@ -774,7 +774,7 @@ bios_smtp_server_test (bool verbose)
 
     //      4. send asset info one more time, but with email
     zhash_insert (ext, "contact_email", (void *)"scenario6.email@eaton.com");
-    msg = bios_proto_encode_asset (aux, asset_name6, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name6, "update", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message6", &msg);
     assert ( rv != -1 );
@@ -923,7 +923,7 @@ bios_smtp_server_test (bool verbose)
     zhash_insert (aux, "priority", (void *)"1");
     ext = zhash_new ();
     assert (ext);
-    msg = bios_proto_encode_asset (aux, asset_name8, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name8, "create", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message8", &msg);
     assert ( rv != -1 );
@@ -949,7 +949,7 @@ bios_smtp_server_test (bool verbose)
 
     //      4. send asset info one more time, but with email
     zhash_insert (ext, "contact_email", (void *)"scenario8.email@eaton.com");
-    msg = bios_proto_encode_asset (aux, asset_name8, NULL, ext);
+    msg = bios_proto_encode_asset (aux, asset_name8, "update", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message8", &msg);
     assert ( rv != -1 );
