@@ -25,8 +25,7 @@ Standards-Version: 3.9.7
 Build-Depends: debhelper (>= 9),
     pkg-config,
     dh-autoreconf,
-    libzmq4-dev,
-    uuid-dev,
+    libzmq5-dev,
     libczmq-dev,
     libmlm-dev,
     libbiosproto-dev,
@@ -45,8 +44,7 @@ Package: libagent-smtp-dev
 Architecture: any
 Section: libdevel
 Depends:
-    libzmq4-dev,
-    uuid-dev,
+    libzmq5-dev,
     libczmq-dev,
     libmlm-dev,
     libbiosproto-dev,

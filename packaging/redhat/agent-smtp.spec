@@ -33,7 +33,6 @@ BuildRequires:  pkg-config
 BuildRequires:  systemd-devel
 BuildRequires:  gcc-c++
 BuildRequires:  zeromq-devel
-BuildRequires:  uuid-devel
 BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
 BuildRequires:  biosproto-devel
@@ -56,6 +55,7 @@ This package contains shared library.
 
 %files -n libagent_smtp0
 %defattr(-,root,root)
+%doc COPYING
 %{_libdir}/libagent_smtp.so.*
 
 %package devel
@@ -63,7 +63,6 @@ Summary:        xxxx
 Group:          System/Libraries
 Requires:       libagent_smtp0 = %{version}
 Requires:       zeromq-devel
-Requires:       uuid-devel
 Requires:       czmq-devel
 Requires:       malamute-devel
 Requires:       biosproto-devel
@@ -98,7 +97,6 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %defattr(-,root,root)
 %{_bindir}/bios-agent-smtp
 %{_prefix}/lib/systemd/system/bios-agent-smtp*.service
-%{_prefix}/lib/tmpfiles.d/bios-agent-smtp.conf
 
 
 %changelog

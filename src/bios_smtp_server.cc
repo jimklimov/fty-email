@@ -32,6 +32,9 @@ int agent_smtp_verbose = 0;
 
 #include "agent_smtp_classes.h"
 
+#include <cxxtools/serializationinfo.h>
+#include <cxxtools/jsondeserializer.h>
+#include <cxxtools/jsonserializer.h>
 #include <iterator>
 #include <map>
 #include <set>
@@ -206,6 +209,7 @@ s_onAlertReceive (
     bios_proto_t *message = *p_message;
     if (bios_proto_id (message) != BIOS_PROTO_ALERT) {
         zsys_error ("bios_proto_id (message) != BIOS_PROTO_ALERT");
+        bios_proto_destroy (p_message);
         return;
     }
     // decode alert message
@@ -222,33 +226,45 @@ s_onAlertReceive (
     }
     const char *actions = bios_proto_action (message);
 
-    // 1. Find out information about the element
-    if (!elements.exists (asset)) {
-        zsys_error ("No information is known about the asset");
-        // TODO: find information about the asset (query another agent)
+    // add alert to the list of alerts
+    if ( strcasestr (actions, "EMAIL") == NULL ) {
+        // this means, that for this alert no "EMAIL" action
+        // -> we are not interested in it;
+        zsys_info ("Email action is not specified -> smtp agent is not interested in this alert");
+        bios_proto_destroy (p_message);
         return;
     }
-
-    // 2. add alert to the list of alerts
-    if (strcasestr (actions, "EMAIL")) {
-        alerts_map_iterator search = alerts.find (std::make_pair (rule_name, asset));
-        if (search == alerts.end ()) { // insert
-            bool inserted;
-            std::tie (search, inserted) = alerts.emplace (std::make_pair (std::make_pair (rule_name, asset),
-                                                          Alert (message)));
-            assert (search != alerts.end ());
-        }
-        else if (search->second.state != state ||
-                 search->second.severity != severity ||
-                 search->second.description != description) { // update
-            search->second.state = state;
-            search->second.severity = severity;
-            search->second.description = description;
-            search->second.time = (uint64_t) time;
-            search->second.last_update = ::time (NULL);
-        }
-        s_notify (search, smtp, elements);
+    // so, EMAIL is in action -> add to the list of alerts
+    alerts_map_iterator search = alerts.find (std::make_pair (rule_name, asset));
+    if ( search == alerts.end () ) {
+        // such alert is not known -> insert
+        bool inserted = false;
+        // we need an iterator to the right element
+        std::tie (search, inserted) = alerts.emplace (std::make_pair (std::make_pair (rule_name, asset),
+                    Alert (message)));
+        zsys_debug1 ("Not known alert->add");
     }
+    else if (search->second.state != state ||
+            search->second.severity != severity ||
+            search->second.description != description)
+    {
+        // such alert is already known, update info about it
+        search->second.state = state;
+        search->second.severity = severity;
+        search->second.description = description;
+        search->second.time = (uint64_t) time;
+        search->second.last_update = ::time (NULL);
+        zsys_debug1 ("Known alert->update");
+    }
+    // Find out information about the element
+    if (!elements.exists (asset)) {
+        zsys_error ("The asset '%s' is not known", asset);
+        // TODO: find information about the asset REQ-REP
+        bios_proto_destroy (p_message);
+        return;
+    }
+    // So, asset is known, try to notify about it
+    s_notify (search, smtp, elements);
     bios_proto_destroy (p_message);
 }
 
@@ -302,7 +318,7 @@ void onAssetReceive (
         elements.add (newAsset);
         newAsset.debug_print();
     } else if ( isPartialUpdate(operation) ) {
-        zsys_info ("asset name = %s", name);
+        zsys_debug1 ("asset name = %s", name);
         if ( contact_name ) {
             zsys_info ("to update: contact_name = %s", contact_name);
             elements.updateContactName (name, contact_name);
@@ -320,16 +336,80 @@ void onAssetReceive (
     bios_proto_destroy (p_message);
 }
 
+static int
+    load_alerts_state (
+        alerts_map &alerts,
+        const char *file)
+{
+    if ( file == NULL ) {
+        zsys_info ("state file for alerts is not set up, no state is persist");
+        return 0;
+    }
+    std::ifstream ifs (file, std::ios::in);
+    if ( !ifs.good() ) {
+        zsys_error ("load_alerts: Cannot open file '%s' for read", file);
+        ifs.close();
+        return -1;
+    }
+    try {
+        cxxtools::SerializationInfo si;
+        std::string json_string(std::istreambuf_iterator<char>(ifs), {});
+        std::stringstream s(json_string);
+        cxxtools::JsonDeserializer json(s);
+        json.deserialize(si);
+        si >>= alerts;
+        ifs.close();
+        return 0;
+    }
+    catch ( const std::exception &e) {
+        zsys_error ("Cannot deserialize the file '%s'. Error: '%s'", file, e.what());
+        ifs.close();
+        return -1;
+    }
+}
+
+static int
+    save_alerts_state (
+        const alerts_map &alerts,
+        const char* file)
+{
+    if ( file == NULL ) {
+        zsys_info ("state file for alerts is not set up, no state is persist");
+        return 0;
+    }
+
+    std::ofstream ofs (std::string(file) + ".new", std::ofstream::out);
+    if ( !ofs.good() ) {
+        zsys_error ("Cannot open file '%s'.new for write", file);
+        ofs.close();
+        return -1;
+    }
+    int r = std::rename (std::string ( file).append(".new").c_str (),
+        std::string (file).c_str());
+    if ( r != 0 ) {
+        zsys_error ("Cannot rename file '%s'.new to '%s'", file, file);
+        return -2;
+    }
+    std::stringstream s;
+    cxxtools::JsonSerializer js (s);
+    js.beautify (true);
+    js.serialize (alerts).finish();
+    ofs << s.str();
+    ofs.close();
+    return 0;
+}
 
 void
 bios_smtp_server (zsock_t *pipe, void* args)
 {
     bool verbose = false;
+    char* name = NULL;
 
     mlm_client_t *client = mlm_client_new ();
 
     zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe (client), NULL);
 
+    char *alerts_state_file = NULL;
     alerts_map alerts;
     ElementList elements;
     Smtp smtp;
@@ -338,11 +418,10 @@ bios_smtp_server (zsock_t *pipe, void* args)
     while ( !zsys_interrupted ) {
 
         void *which = zpoller_wait (poller, -1);
-
         if (which == pipe) {
             zmsg_t *msg = zmsg_recv (pipe);
             char *cmd = zmsg_popstr (msg);
-            zsys_debug1 ("actor command=%s", cmd);
+            zsys_debug1 ("%s:\tactor command=%s", name, cmd);
 
             if (streq (cmd, "$TERM")) {
                 zstr_free (&cmd);
@@ -362,13 +441,12 @@ bios_smtp_server (zsock_t *pipe, void* args)
             else
             if (streq (cmd, "CONNECT")) {
                 char* endpoint = zmsg_popstr (msg);
-                char* name = zmsg_popstr (msg);
+                name = zmsg_popstr (msg);
                 int rv = mlm_client_connect (client, endpoint, 1000, name);
                 if (rv == -1) {
-                    zsys_error ("%s: can't connect to malamute endpoint '%s'", name, endpoint);
+                    zsys_error ("%s:\tcan't connect to malamute endpoint '%s'", name, endpoint);
                 }
                 zstr_free (&endpoint);
-                zstr_free (&name);
                 zsock_signal (pipe, 0);
             }
             else
@@ -376,7 +454,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 char* stream = zmsg_popstr (msg);
                 int rv = mlm_client_set_producer (client, stream);
                 if (rv == -1) {
-                    zsys_error ("can't set producer on stream '%s'", stream);
+                    zsys_error ("%s:\tcan't set producer on stream '%s'",name, stream);
                 }
                 zstr_free (&stream);
                 zsock_signal (pipe, 0);
@@ -387,7 +465,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 char* pattern = zmsg_popstr (msg);
                 int rv = mlm_client_set_consumer (client, stream, pattern);
                 if (rv == -1) {
-                    zsys_error ("can't set consumer on stream '%s', '%s'", stream, pattern);
+                    zsys_error ("%s:\tcan't set consumer on stream '%s', '%s'", name, stream, pattern);
                 }
                 zstr_free (&pattern);
                 zstr_free (&stream);
@@ -408,9 +486,14 @@ bios_smtp_server (zsock_t *pipe, void* args)
             }
             else
             if (streq (cmd, "STATE_FILE_PATH_ALERTS")) {
-                char* path = zmsg_popstr (msg);
-                // do the job
-                zstr_free (&path);
+                alerts_state_file = zmsg_popstr (msg);
+                int r = load_alerts_state (alerts, alerts_state_file);
+                if ( r == 0 ) {
+                    zsys_debug1 ("State(alerts) loaded successfully");
+                }
+                else {
+                    zsys_warning ("State(alerts) is not loaded successfully. Starting with empty set");
+                }
             }
             else
             if (streq (cmd, "SMTPCONFIG")) {
@@ -469,6 +552,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
             }
             if (bios_proto_id (bmessage) == BIOS_PROTO_ALERT)  {
                 s_onAlertReceive (&bmessage, alerts, elements, smtp);
+                save_alerts_state (alerts, alerts_state_file);
             }
             else if (bios_proto_id (bmessage) == BIOS_PROTO_ASSET)  {
                 onAssetReceive (&bmessage, elements);
@@ -483,17 +567,112 @@ bios_smtp_server (zsock_t *pipe, void* args)
 exit:
     // save info to persistence before I die
     elements.save();
+    save_alerts_state (alerts, alerts_state_file);
+    zstr_free (&name);
+    zstr_free (&alerts_state_file);
     zpoller_destroy (&poller);
     mlm_client_destroy (&client);
+    zclock_sleep(1000);
 }
 
 
 //  -------------------------------------------------------------------------
 //  Self test of this class
+void
+test9 (bool verbose, const char *endpoint)
+{
+    zsys_info ("Scenario %s", __func__);
+    // test, that alert state file works correctly
+    // clean the state files, as test supposes
+    // the start from "zero"
+    const char *alerts_file = "test9_alerts.xtx";
+    const char *assets_file = "test9_assets.xtx";
+    std::remove (alerts_file);
+    std::remove (assets_file);
+    // malamute broker
+    zactor_t *server = zactor_new (mlm_server, (void*) "Malamute_test9");
+    assert ( server != NULL );
+    zstr_sendx (server, "BIND", endpoint, NULL);
+    if ( verbose )
+        zsys_info ("malamute started");
+
+    // smtp server
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
+    assert ( smtp_server != NULL );
+    zstr_sendx (smtp_server, "STATE_FILE_PATH_ASSETS", assets_file, NULL);
+    zstr_sendx (smtp_server, "STATE_FILE_PATH_ALERTS", alerts_file, NULL);
+    if (verbose)
+        zstr_send (smtp_server, "VERBOSE");
+    zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
+    zstr_sendx (smtp_server, "CONNECT", endpoint, "agent-smtp", NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
+    zsock_wait (smtp_server);
+    if ( verbose )
+        zsys_info ("smtp server started");
+
+    mlm_client_t *alert_producer = mlm_client_new ();
+    assert ( alert_producer != NULL );
+    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
+    assert ( rv != -1 );
+    rv = mlm_client_set_producer (alert_producer, "ALERTS");
+    assert ( rv != -1 );
+    if ( verbose )
+        zsys_info ("alert producer started");
+
+    // this alert is supposed to be in the file,
+    // as action EMAIL is specified
+    zmsg_t *msg = bios_proto_encode_alert (NULL, "SOME_RULE", "SOME_ASSET", \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS/EMAIL");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, "nobody-cares", &msg);
+    assert ( rv != -1 );
+    if ( verbose )
+        zsys_info ("alert message was send");
+
+    // this alert is NOT supposed to be in the file,
+    // as action EMAIL is NOT specified
+    msg = bios_proto_encode_alert (NULL, "SOME_RULE1", "SOME_ASSET", \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS");
+    assert (msg);
+    if ( verbose )
+        zsys_info ("alert message was send");
+    rv = mlm_client_send (alert_producer, "nobody-cares", &msg);
+    assert ( rv != -1 );
+
+    zclock_sleep (1000); // let smtp process messages
+    alerts_map alerts;
+    int r = load_alerts_state (alerts, alerts_file);
+    assert ( r == 0 );
+    assert ( alerts.size() == 1 );
+    // rule name is internally changed to lowercase
+    Alert a = alerts.at(std::make_pair("some_rule","SOME_ASSET"));
+    assert ( a.rule == "some_rule" );
+    assert ( a.element == "SOME_ASSET" );
+    assert ( a.state == "ACTIVE" );
+    assert ( a.severity == "CRITICAL" );
+    assert ( a.description == "ASDFKLHJH" );
+    assert ( a.time == 123456 );
+    assert ( a.last_notification == 0 );
+    assert ( a.last_update > 0 );
+
+    // clean up after
+    mlm_client_destroy (&alert_producer);
+    zactor_destroy (&smtp_server);
+    zactor_destroy (&server);
+    std::remove (alerts_file);
+    std::remove (assets_file);
+}
 
 void
 bios_smtp_server_test (bool verbose)
 {
+    const char *alerts_file = "kkk_alerts.xtx";
+    const char *assets_file = "kkk_assets.xtx";
+    std::remove (alerts_file);
+    std::remove (assets_file);
     printf (" * bios_smtp_server: ");
     static const char* pidfile = "src/btest.pid";
     if (zfile_exists (pidfile))
@@ -515,13 +694,16 @@ bios_smtp_server_test (bool verbose)
     // malamute broker
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
     assert ( server != NULL );
-    if (verbose)
-        zstr_send (server, "VERBOSE");
+//    if (verbose)
+//        zstr_send (server, "VERBOSE");
     zstr_sendx (server, "BIND", endpoint, NULL);
-    zsys_error ("malamute started");
+    if ( verbose )
+        zsys_info ("malamute started");
       // smtp server
     zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
-    zstr_sendx (smtp_server, "STATE_FILE_PATH", "kkk.xtx", NULL);
+    assert ( smtp_server != NULL );
+    zstr_sendx (smtp_server, "STATE_FILE_PATH_ASSETS", assets_file, NULL);
+    zstr_sendx (smtp_server, "STATE_FILE_PATH_ALERTS", alerts_file, NULL);
     if (verbose)
         zstr_send (smtp_server, "VERBOSE");
     zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
@@ -531,21 +713,24 @@ bios_smtp_server_test (bool verbose)
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
     zsock_wait (smtp_server);
-    zsys_error ("alert generator started");
+    if ( verbose )
+        zsys_info ("smtp server started");
 
     mlm_client_t *alert_producer = mlm_client_new ();
     int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
     assert( rv != -1 );
     rv = mlm_client_set_producer (alert_producer, "ALERTS");
     assert( rv != -1 );
-    zsys_error ("alert producer started");
+    if ( verbose )
+        zsys_info ("alert producer started");
 
     mlm_client_t *asset_producer = mlm_client_new ();
     rv = mlm_client_connect (asset_producer, endpoint, 1000, "asset_producer");
     assert( rv != -1 );
     rv = mlm_client_set_producer (asset_producer, "ASSETS");
     assert( rv != -1 );
-    zsys_error ("asset producer started");
+    if ( verbose )
+        zsys_info ("asset producer started");
 
 
     // name of the client should be the same as name in the btest.cc
@@ -1007,13 +1192,16 @@ bios_smtp_server_test (bool verbose)
 
     zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 
+    test9 (verbose, "ipc://bios-smtp-server-test9");
 
     // clean up after the test
     mlm_client_destroy (&btest_reader);
     mlm_client_destroy (&asset_producer);
     mlm_client_destroy (&alert_producer);
     zactor_destroy (&smtp_server);
+    zclock_sleep(1000);
     zactor_destroy (&server);
+    zclock_sleep(1000);
 
     printf ("OK\n");
 }

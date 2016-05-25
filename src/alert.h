@@ -1,4 +1,6 @@
 /*  =========================================================================
+    alert - Alert representation
+
     Copyright (C) 2014 - 2015 Eaton                                        
                                                                            
     This program is free software; you can redistribute it and/or modify   
@@ -17,11 +19,16 @@
     =========================================================================
 */
 
-#ifndef SRC_ALERT_H_INCLUDED
-#define SRC_ALERT_H_INCLUDED
+#ifndef ALERT_H_INCLUDED
+#define ALERT_H_INCLUDED
+
 
 #include <algorithm>
 #include <bios_proto.h>
+
+#include <cxxtools/serializationinfo.h>
+
+
 
 class Alert {
  public:
@@ -56,6 +63,17 @@ struct cmpAlertById {
         return (a.rule < b.rule) || (a.rule == b.rule && a.element < b.element);
     }
 };
+/*
+ * \brief Serialzation of Alert
+ */
+void operator<<= (cxxtools::SerializationInfo& si, const Alert& alert);
 
-#endif // SRC_ALERT_H_INCLUDED
+/*
+ * \brief Deserialzation of Alert
+ */
+void operator>>= (const cxxtools::SerializationInfo& si, Alert& alert);
 
+void
+alert_test (bool verbose);
+
+#endif
