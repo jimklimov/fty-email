@@ -50,8 +50,6 @@ int agent_smtp_verbose = 0;
 #include "email.h"
 #include "emailconfiguration.h"
 
-#define SMTP_STATE_FILE "/var/bios/agent-smtp/state"
-
 typedef std::map <std::pair<std::string, std::string>, Alert> alerts_map;
 typedef alerts_map::iterator alerts_map_iterator;
 
@@ -81,7 +79,7 @@ static bool isPartialUpdate(const char* operation) {
 // If time is less 5 minutes, then email in some cases would be send aproximatly every 5 minutes,
 // as some metrics are generated only once per 5 minute -> alert in 5 minuts -> email in 5 minuts
 static uint64_t
-s_getNotificationInterval(               
+s_getNotificationInterval(
         const std::string &severity,
         uint8_t priority)
 {
@@ -109,9 +107,9 @@ s_getNotificationInterval(
         zsys_error ("Not known interval for severity = '%s', priority '%d'", severity.c_str (), priority);
         return 0;
     }
-   
+
     zsys_debug1 ("in %d [s]", it->second);
-    return it->second - 60; 
+    return it->second - 60;
     // BIOS-1802: time conflict with assumption:
     // if metric is computed it is send approximatly every 5 minutes +- X sec
 }
@@ -150,7 +148,7 @@ s_notify (alerts_map_iterator it,
         {
             // so, we found out that we need to notify according the schedule
             zsys_debug1 ("according schedule -> notify");
-            if (it->second.state == "ACK-PAUSE" || 
+            if (it->second.state == "ACK-PAUSE" ||
                 it->second.state == "ACK-IGNORE" ||
                 it->second.state == "ACK-SILENCE" ||
                 it->second.state == "RESOLVED") {
@@ -160,7 +158,7 @@ s_notify (alerts_map_iterator it,
                 needNotify = true;
             }
         }
-    } 
+    }
 
     if (needNotify) {
         zsys_info ("Want to notify");
@@ -226,7 +224,7 @@ s_onAlertReceive (
 
     // 1. Find out information about the element
     if (!elements.exists (asset)) {
-        zsys_error ("No information is known about the asset"); 
+        zsys_error ("No information is known about the asset");
         // TODO: find information about the asset (query another agent)
         return;
     }
@@ -240,7 +238,7 @@ s_onAlertReceive (
                                                           Alert (message)));
             assert (search != alerts.end ());
         }
-        else if (search->second.state != state || 
+        else if (search->second.state != state ||
                  search->second.severity != severity ||
                  search->second.description != description) { // update
             search->second.state = state;
@@ -307,7 +305,7 @@ void onAssetReceive (
         zsys_info ("asset name = %s", name);
         if ( contact_name ) {
             zsys_info ("to update: contact_name = %s", contact_name);
-            elements.updateContactName (name, contact_name); 
+            elements.updateContactName (name, contact_name);
         }
         if ( contact_email ) {
             zsys_info ("to update: contact_email = %s", contact_email);
@@ -402,10 +400,16 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zstr_free (&path);
             }
             else
-            if (streq (cmd, "STATE_FILE_PATH")) {
+            if (streq (cmd, "STATE_FILE_PATH_ASSETS")) {
                 char* path = zmsg_popstr (msg);
                 elements.setFile (path);
                 elements.load();
+                zstr_free (&path);
+            }
+            else
+            if (streq (cmd, "STATE_FILE_PATH_ALERTS")) {
+                char* path = zmsg_popstr (msg);
+                // do the job
                 zstr_free (&path);
             }
             else
@@ -608,7 +612,7 @@ bios_smtp_server_test (bool verbose)
     "In the system an alert was detected.\nSource rule: ny_rule\nAsset: ASSET1\nAlert priority: P1\nAlert severity: CRITICAL\n"
     "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
-    
+
     zsys_debug ("expectedBody =\n%s", expectedBody.c_str ());
     zsys_debug ("\n");
     zsys_debug ("newBody =\n%s", newBody.c_str ());
