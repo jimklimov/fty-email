@@ -54,7 +54,7 @@ class ElementList
     std::string serialize_to_json () const;
     void    updateContactName (const std::string &elementName, const std::string &contactName);
     void    updateEmail (const std::string &elementName, const std::string &email);
-
+    unsigned int size(void) const;
  private:
     std::map <std::string, Element> _assets;
     std::string _path;

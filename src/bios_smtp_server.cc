@@ -577,18 +577,61 @@ exit:
 
 
 //  -------------------------------------------------------------------------
-//  Self test of this class
+//
+
+/*
+ * \brief helper function, that creates an smpt server as it would be created
+ *      in the real environment
+ *
+ *  \param[in] endpoint - endpoint of malamute where to connect
+ *  \param[in] assets_file - an absolute path to the "asset" state file
+ *  \param[in] alerts_file - an absolute path to the "alert" state file
+ *  \param[in] agent_name - what agent name should be registred in malamute
+ *  \param[in] clear_assets - do we want to clear "asset" state file before
+ *                      smpt agent will start
+ *  \param[in] clear_alerts - do we want to clear "alert" state file before
+ *                      smpt agent will start
+ *  \return smtp gent actor
+ */
+static zactor_t* create_smtp_server (
+    bool verbose,
+    const char *endpoint,
+    const char *assets_file,
+    const char *alerts_file,
+    const char *agent_name,
+    bool clear_assets,
+    bool clear_alerts
+    )
+{
+    if ( clear_assets )
+        std::remove (assets_file);
+    if ( clear_alerts )
+        std::remove (alerts_file);
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
+    assert ( smtp_server != NULL );
+    zstr_sendx (smtp_server, "STATE_FILE_PATH_ASSETS", assets_file, NULL);
+    zstr_sendx (smtp_server, "STATE_FILE_PATH_ALERTS", alerts_file, NULL);
+    if ( verbose )
+        zstr_send (smtp_server, "VERBOSE");
+    zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
+    zstr_sendx (smtp_server, "CONNECT", endpoint, agent_name, NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
+    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
+    zsock_wait (smtp_server);
+    if ( verbose )
+        zsys_info ("smtp server started");
+    return smtp_server;
+}
+
 void
 test9 (bool verbose, const char *endpoint)
 {
-    zsys_info ("Scenario %s", __func__);
+    // this test has its own maamte inside!!! -> own smtp server ans own alert_producer
     // test, that alert state file works correctly
-    // clean the state files, as test supposes
-    // the start from "zero"
-    const char *alerts_file = "test9_alerts.xtx";
-    const char *assets_file = "test9_assets.xtx";
-    std::remove (alerts_file);
-    std::remove (assets_file);
+    if ( verbose )
+        zsys_info ("Scenario %s", __func__);
     // malamute broker
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute_test9");
     assert ( server != NULL );
@@ -597,25 +640,14 @@ test9 (bool verbose, const char *endpoint)
         zsys_info ("malamute started");
 
     // smtp server
-    zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
-    assert ( smtp_server != NULL );
-    zstr_sendx (smtp_server, "STATE_FILE_PATH_ASSETS", assets_file, NULL);
-    zstr_sendx (smtp_server, "STATE_FILE_PATH_ALERTS", alerts_file, NULL);
-    if (verbose)
-        zstr_send (smtp_server, "VERBOSE");
-    zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
-    zstr_sendx (smtp_server, "CONNECT", endpoint, "agent-smtp", NULL);
-    zsock_wait (smtp_server);
-    zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
-    zsock_wait (smtp_server);
-    zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
-    zsock_wait (smtp_server);
-    if ( verbose )
-        zsys_info ("smtp server started");
+    const char *alerts_file = "test9_alerts.xtx";
+    const char *assets_file = "test9_assets.xtx";
+    zactor_t *smtp_server = create_smtp_server (
+        verbose, endpoint, assets_file, alerts_file, "agent-smtp-test9", true, true);
 
+    // alert producer
     mlm_client_t *alert_producer = mlm_client_new ();
-    assert ( alert_producer != NULL );
-    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
+    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer_test9");
     assert ( rv != -1 );
     rv = mlm_client_set_producer (alert_producer, "ALERTS");
     assert ( rv != -1 );
@@ -666,6 +698,103 @@ test9 (bool verbose, const char *endpoint)
     std::remove (assets_file);
 }
 
+
+static void s_send_asset_message (
+    bool verbose,
+    mlm_client_t *producer,
+    const char *priority,
+    const char *email,
+    const char *contact,
+    const char *operation,
+    const char *asset_name)
+{
+    zhash_t *aux = zhash_new ();
+    if ( priority )
+        zhash_insert (aux, "priority", (void *)priority);
+    zhash_t *ext = zhash_new ();
+    if ( email )
+        zhash_insert (ext, "contact_email", (void *)email);
+    if ( contact )
+        zhash_insert (ext, "contact_name", (void *)contact);
+    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, operation, ext);
+    assert (msg);
+    int rv = mlm_client_send (producer, asset_name, &msg);
+    assert ( rv == 0 );
+    if ( verbose )
+        zsys_info ("asset message was send");
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
+}
+void test10 (
+    bool verbose,
+    const char *endpoint,
+    zactor_t *mlm_server,
+    mlm_client_t *asset_producer
+    )
+{
+    // test, that ASSET messages ae processed correctly
+    if ( verbose )
+        zsys_info ("Scenario %s", __func__);
+    // we want new smtp server with empty states
+    static const char *assets_file = "test10_assets_file.txt";
+    ElementList elements; // element list to load
+    Element element; // one particular element to check
+
+    zactor_t *smtp_server = create_smtp_server
+        (verbose, endpoint, assets_file, "test10_alerts.txt", "smtp-10", true, true);
+
+    // test10-1 (create NOT known asset)
+    s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com",
+        "scenario10 Support Eaton", "create", "ASSET_10_1");
+    zclock_sleep (1000); // give time to process the message
+    elements.setFile (assets_file);
+    elements.load();
+    assert ( elements.size() == 1 );
+    assert ( elements.get ("ASSET_10_1", element) );
+    assert ( element.name == "ASSET_10_1");
+    assert ( element.priority == 1);
+    assert ( element.email == "scenario10.email@eaton.com");
+    assert ( element.contactName == "scenario10 Support Eaton");
+
+    // test10-2 (update known asset )
+    s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com",
+        "scenario10 Support Eaton", "update", "ASSET_10_1");
+    zclock_sleep (1000); // give time to process the message
+    elements.setFile (assets_file);
+    elements.load();
+    assert ( elements.size() == 1 );
+    assert ( elements.get ("ASSET_10_1", element) );
+    assert ( element.name == "ASSET_10_1");
+    assert ( element.priority == 2);
+    assert ( element.email == "scenario10.email2@eaton.com");
+    assert ( element.contactName == "scenario10 Support Eaton");
+
+    // test10-3 (inventory known asset (without email))
+    s_send_asset_message (verbose, asset_producer, NULL, NULL,
+        "scenario102 Support Eaton", "inventory", "ASSET_10_1");
+    zclock_sleep (1000); // give time to process the message
+    elements.setFile (assets_file);
+    elements.load();
+    assert ( elements.size() == 1 );
+    assert ( elements.get ("ASSET_10_1", element) );
+    assert ( element.name == "ASSET_10_1");
+    assert ( element.priority == 2);
+    assert ( element.email == "scenario10.email2@eaton.com");
+    assert ( element.contactName == "scenario102 Support Eaton");
+
+    // NOT real situations  ARE NOT tested
+    // ACE: feel free to improve the test
+    // test10-4 (create ALREADY known asset)
+    // test10-5 (update NOT known asset)
+    // test10-6 (inventory known asset (WITH email))
+    // test10-7 (inventory NOT known asset (WITH email))
+    // test10-8 (inventory NOT known asset (WITHOUT email))
+    // test10-9 (unknown operation on asset: XXX))
+
+    zactor_destroy (&smtp_server);
+}
+
+//  Self test of this class
 void
 bios_smtp_server_test (bool verbose)
 {
@@ -694,12 +823,10 @@ bios_smtp_server_test (bool verbose)
     // malamute broker
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
     assert ( server != NULL );
-//    if (verbose)
-//        zstr_send (server, "VERBOSE");
     zstr_sendx (server, "BIND", endpoint, NULL);
     if ( verbose )
         zsys_info ("malamute started");
-      // smtp server
+    // smtp server
     zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
     assert ( smtp_server != NULL );
     zstr_sendx (smtp_server, "STATE_FILE_PATH_ASSETS", assets_file, NULL);
@@ -1193,6 +1320,7 @@ bios_smtp_server_test (bool verbose)
     zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 
     test9 (verbose, "ipc://bios-smtp-server-test9");
+    test10 (verbose, endpoint, server, asset_producer);
 
     // clean up after the test
     mlm_client_destroy (&btest_reader);

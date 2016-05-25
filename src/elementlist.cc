@@ -67,7 +67,10 @@ bool ElementList::get (const std::string& asset_name, Element& element) const
     }
     return true;
 }
-
+unsigned int ElementList::size (void) const
+{
+    return _assets.size();
+}
 void ElementList::add (const Element& element)
 {
     auto search = _assets.find (element.name);
