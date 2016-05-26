@@ -24,7 +24,7 @@
 
 #include <string>
 
-#include "Alert.h"
+#include "alert.h"
 #include "elementlist.h"
 
 std::string
