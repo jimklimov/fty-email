@@ -55,7 +55,6 @@ This package contains shared library.
 
 %files -n libagent_smtp0
 %defattr(-,root,root)
-%doc COPYING
 %{_libdir}/libagent_smtp.so.*
 
 %package devel
@@ -97,6 +96,6 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %defattr(-,root,root)
 %{_bindir}/bios-agent-smtp
 %{_prefix}/lib/systemd/system/bios-agent-smtp*.service
-
+%{_prefix}/lib/tmpfiles.d/bios-agent-smtp.conf
 
 %changelog
