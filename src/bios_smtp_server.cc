@@ -583,6 +583,7 @@ exit:
  * \brief helper function, that creates an smpt server as it would be created
  *      in the real environment
  *
+ *  \param[in] verbose - if function should produce debug information or not
  *  \param[in] endpoint - endpoint of malamute where to connect
  *  \param[in] assets_file - an absolute path to the "asset" state file
  *  \param[in] alerts_file - an absolute path to the "alert" state file
@@ -623,6 +624,47 @@ static zactor_t* create_smtp_server (
     if ( verbose )
         zsys_info ("smtp server started");
     return smtp_server;
+}
+
+/*
+ * \brief Helper function for asset message sending
+ *
+ *  \param[in] verbose - if function should produce debug information or not
+ *  \param[in] producer - a client, that is  will publish ASSET message
+ *                  according parameters
+ *  \param[in] email - email for this asset (or null if not specified)
+ *  \param[in] priority - priprity of the asset (or null if not specified)
+ *  \param[in] contact - contact name of the asset (or null if not specified)
+ *  \param[in] opearion - operation on the asset (mandatory)
+ *  \param[in] asset_name - name of the assset (mandatory)
+ */
+static void s_send_asset_message (
+    bool verbose,
+    mlm_client_t *producer,
+    const char *priority,
+    const char *email,
+    const char *contact,
+    const char *operation,
+    const char *asset_name)
+{
+    assert (operation);
+    assert (asset_name);
+    zhash_t *aux = zhash_new ();
+    if ( priority )
+        zhash_insert (aux, "priority", (void *)priority);
+    zhash_t *ext = zhash_new ();
+    if ( email )
+        zhash_insert (ext, "contact_email", (void *)email);
+    if ( contact )
+        zhash_insert (ext, "contact_name", (void *)contact);
+    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, operation, ext);
+    assert (msg);
+    int rv = mlm_client_send (producer, asset_name, &msg);
+    assert ( rv == 0 );
+    if ( verbose )
+        zsys_info ("asset message was send");
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
 }
 
 void
@@ -699,32 +741,6 @@ test9 (bool verbose, const char *endpoint)
 }
 
 
-static void s_send_asset_message (
-    bool verbose,
-    mlm_client_t *producer,
-    const char *priority,
-    const char *email,
-    const char *contact,
-    const char *operation,
-    const char *asset_name)
-{
-    zhash_t *aux = zhash_new ();
-    if ( priority )
-        zhash_insert (aux, "priority", (void *)priority);
-    zhash_t *ext = zhash_new ();
-    if ( email )
-        zhash_insert (ext, "contact_email", (void *)email);
-    if ( contact )
-        zhash_insert (ext, "contact_name", (void *)contact);
-    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, operation, ext);
-    assert (msg);
-    int rv = mlm_client_send (producer, asset_name, &msg);
-    assert ( rv == 0 );
-    if ( verbose )
-        zsys_info ("asset message was send");
-    zhash_destroy (&aux);
-    zhash_destroy (&ext);
-}
 void test10 (
     bool verbose,
     const char *endpoint,
