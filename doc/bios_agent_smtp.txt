@@ -1,0 +1,25 @@
+Name(7)
+=======
+
+
+NAME
+----
+bios_agent_smtp - XXXX
+
+
+SYNOPSIS
+--------
+----
+#include <agent_smtp.h>
+
+cc ['flags'] 'files' -lagent_smtp ['libraries']
+----
+
+
+DESCRIPTION
+-----------
+
+Classes
+~~~~~~~
+
+Something.
