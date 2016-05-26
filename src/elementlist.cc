@@ -82,6 +82,10 @@ void ElementList::add (const Element& element)
     }
 }
 
+void ElementList::remove (const char *asset_name) {
+    _assets.erase(asset_name);
+}
+
 void ElementList::updateContactName (const std::string &elementName, const std::string &contactName)
 {
     auto search = _assets.find (elementName);

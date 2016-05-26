@@ -78,6 +78,14 @@ static bool isPartialUpdate(const char* operation) {
     else
         return false;
 }
+
+static bool isDelete(const char* operation) {
+    if ( streq(operation, "delete" ) )
+        return true;
+    else
+        return false;
+}
+
 // TODO: make it configurable without recompiling
 // If time is less 5 minutes, then email in some cases would be send aproximatly every 5 minutes,
 // as some metrics are generated only once per 5 minute -> alert in 5 minuts -> email in 5 minuts
@@ -327,7 +335,11 @@ void onAssetReceive (
             zsys_info ("to update: contact_email = %s", contact_email);
             elements.updateEmail (name, contact_email);
         }
-    } else {
+    } else if ( isDelete(operation) ) {
+        zsys_debug1 ("Asset:delete: '%s'", name);
+        elements.remove (name);
+    }
+    else {
         zsys_error ("unsupported operation '%s' on the asset, ignore it", operation);
     }
 
