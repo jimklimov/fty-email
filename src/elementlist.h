@@ -45,6 +45,7 @@ class ElementList
     //  * false - element with 'asset_name' does not exist and 'element' is not changed
     bool    get (const std::string& asset_name, Element& element) const;
     void    add (const Element& element);
+    void    remove (const char *asset_name);
     bool    exists (const std::string& asset_name) const;
     bool    empty () const;
     void    setFile (const std::string& path_to_file);
