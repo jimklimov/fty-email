@@ -1,21 +1,21 @@
 /*  =========================================================================
     bios_smtp_server - Smtp actor
 
-    Copyright (C) 2014 - 2015 Eaton                                        
-                                                                           
-    This program is free software; you can redistribute it and/or modify   
-    it under the terms of the GNU General Public License as published by   
-    the Free Software Foundation; either version 2 of the License, or      
-    (at your option) any later version.                                    
-                                                                           
-    This program is distributed in the hope that it will be useful,        
-    but WITHOUT ANY WARRANTY; without even the implied warranty of         
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
-    GNU General Public License for more details.                           
-                                                                           
+    Copyright (C) 2014 - 2015 Eaton
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
     =========================================================================
 */
 
@@ -1213,7 +1213,7 @@ bios_smtp_server_test (bool verbose)
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     zsys_info ("alert message was send");
-    
+
     //      5. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
     assert (msg);
@@ -1231,7 +1231,7 @@ bios_smtp_server_test (bool verbose)
 
     // wait for 5 minutes
     zclock_sleep (5*60*1000);
-    
+
     //      7. send an alert again
     msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
