@@ -1,21 +1,21 @@
 /*  =========================================================================
     bios_smtp_server - Smtp actor
 
-    Copyright (C) 2014 - 2015 Eaton                                        
-                                                                           
-    This program is free software; you can redistribute it and/or modify   
-    it under the terms of the GNU General Public License as published by   
-    the Free Software Foundation; either version 2 of the License, or      
-    (at your option) any later version.                                    
-                                                                           
-    This program is distributed in the hope that it will be useful,        
-    but WITHOUT ANY WARRANTY; without even the implied warranty of         
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
-    GNU General Public License for more details.                           
-                                                                           
+    Copyright (C) 2014 - 2015 Eaton
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
     =========================================================================
 */
 
@@ -810,14 +810,141 @@ void test10 (
     assert ( element.email == "scenario10.email2@eaton.com");
     assert ( element.contactName == "scenario102 Support Eaton");
 
-    // NOT real situations  ARE NOT tested
-    // ACE: feel free to improve the test
     // test10-4 (create ALREADY known asset)
+    if ( verbose )
+        zsys_info ("___________________________Test10-4_________________________________");
+    s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com",
+        "scenario10 Support Eaton", "create", "ASSET_10_1");
+    zclock_sleep (1000); // give time to process the message
+    elements.setFile (assets_file);
+    elements.load();
+    assert ( elements.size() == 1 );
+    assert ( elements.get ("ASSET_10_1", element) );
+    assert ( element.name == "ASSET_10_1");
+    assert ( element.priority == 1);
+    assert ( element.email == "scenario10.email@eaton.com");
+    assert ( element.contactName == "scenario10 Support Eaton");
+
     // test10-5 (update NOT known asset)
+    if ( verbose )
+        zsys_info ("___________________________Test10-5_________________________________");
+    s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com",
+        "scenario10 Support Eaton", "update", "ASSET_10_2");
+    zclock_sleep (1000); // give time to process the message
+    elements.setFile (assets_file);
+    elements.load();
+    assert ( elements.size() == 2 );
+    assert ( elements.get ("ASSET_10_1", element) );
+    assert ( element.name == "ASSET_10_1");
+    assert ( element.priority == 1);
+    assert ( element.email == "scenario10.email@eaton.com");
+    assert ( element.contactName == "scenario10 Support Eaton");
+
+    assert ( elements.get ("ASSET_10_2", element) );
+    assert ( element.name == "ASSET_10_2");
+    assert ( element.priority == 2);
+    assert ( element.email == "scenario10.email2@eaton.com");
+    assert ( element.contactName == "scenario10 Support Eaton");
+
     // test10-6 (inventory known asset (WITH email))
+    // inventory doesn't update priority even if it is provided
+    if ( verbose )
+        zsys_info ("___________________________Test10-6_________________________________");
+    s_send_asset_message (verbose, asset_producer, "3", "scenario10.email@eaton.com",
+        "scenario103 Support Eaton", "inventory", "ASSET_10_1");
+    zclock_sleep (1000); // give time to process the message
+    elements.setFile (assets_file);
+    elements.load();
+    assert ( elements.size() == 2 );
+    assert ( elements.get ("ASSET_10_1", element) );
+    assert ( element.name == "ASSET_10_1");
+    assert ( element.priority == 1);
+    assert ( element.email == "scenario10.email@eaton.com");
+    assert ( element.contactName == "scenario103 Support Eaton");
+
+    assert ( elements.get ("ASSET_10_2", element) );
+    assert ( element.name == "ASSET_10_2");
+    assert ( element.priority == 2);
+    assert ( element.email == "scenario10.email2@eaton.com");
+    assert ( element.contactName == "scenario10 Support Eaton");
+
+
     // test10-7 (inventory NOT known asset (WITH email))
+    if ( verbose )
+        zsys_info ("___________________________Test10-7_________________________________");
+    s_send_asset_message (verbose, asset_producer, "3", "scenario103.email@eaton.com",
+        "scenario103 Support Eaton", "inventory", "ASSET_10_3");
+    zclock_sleep (1000); // give time to process the message
+    elements.setFile (assets_file);
+    elements.load();
+    if (elements.get ("ASSET_10_3", element)) {
+        zsys_info("ASSET FOUND! %s", element.name.c_str() );
+    } else {
+            if ( verbose )   zsys_info("ASSET_10_3 NOT FOUND - AS EXPECTED when inventoring not known asset" );
+}
+
+    assert ( elements.size() == 2 );
+    assert ( elements.get ("ASSET_10_1", element) );
+    assert ( element.name == "ASSET_10_1");
+    assert ( element.priority == 1);
+    assert ( element.email == "scenario10.email@eaton.com");
+    assert ( element.contactName == "scenario103 Support Eaton");
+
+    assert ( elements.get ("ASSET_10_2", element) );
+    assert ( element.name == "ASSET_10_2");
+    assert ( element.priority == 2);
+    assert ( element.email == "scenario10.email2@eaton.com");
+    assert ( element.contactName == "scenario10 Support Eaton");
+
     // test10-8 (inventory NOT known asset (WITHOUT email))
+    if ( verbose )
+        zsys_info ("___________________________Test10-8_________________________________");
+    s_send_asset_message (verbose, asset_producer, NULL, NULL,
+        "scenario104 Support Eaton", "inventory", "ASSET_10_4");
+    zclock_sleep (1000); // give time to process the message
+    elements.setFile (assets_file);
+    elements.load();
+    if (elements.get ("ASSET_10_4", element)) {
+        zsys_info("ASSET FOUND! %s", element.name.c_str() );
+    } else {
+            if ( verbose )   zsys_info("ASSET_10_4 NOT FOUND - AS EXPECTED when inventoring not known asset" );
+}
+    assert ( elements.size() == 2 );
+    assert ( elements.get ("ASSET_10_1", element) );
+    assert ( element.name == "ASSET_10_1");
+    assert ( element.priority == 1);
+    assert ( element.email == "scenario10.email@eaton.com");
+    assert ( element.contactName == "scenario103 Support Eaton");
+
+    assert ( elements.get ("ASSET_10_2", element) );
+    assert ( element.name == "ASSET_10_2");
+    assert ( element.priority == 2);
+    assert ( element.email == "scenario10.email2@eaton.com");
+    assert ( element.contactName == "scenario10 Support Eaton");
+
     // test10-9 (unknown operation on asset: XXX))
+    if ( verbose )
+        zsys_info ("___________________________Test10-9_________________________________");
+    s_send_asset_message (verbose, asset_producer, "5", "scenario105.email@eaton.com",
+        "scenario105 Support Eaton", "unknown_operation", "ASSET_10_1");
+    zclock_sleep (1000); // give time to process the message
+    elements.setFile (assets_file);
+    elements.load();
+
+    assert ( elements.size() == 2 );
+    assert ( elements.get ("ASSET_10_1", element) );
+    assert ( element.name == "ASSET_10_1");
+    assert ( element.priority == 1);
+    assert ( element.email == "scenario10.email@eaton.com");
+    assert ( element.contactName == "scenario103 Support Eaton");
+
+    assert ( elements.get ("ASSET_10_2", element) );
+    assert ( element.name == "ASSET_10_2");
+    assert ( element.priority == 2);
+    assert ( element.email == "scenario10.email2@eaton.com");
+    assert ( element.contactName == "scenario10 Support Eaton");
+    if ( verbose )
+        zsys_info ("________________________All tests passed____________________________");
 
     zactor_destroy (&smtp_server);
 }
@@ -1213,7 +1340,7 @@ bios_smtp_server_test (bool verbose)
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     zsys_info ("alert message was send");
-    
+
     //      5. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
     assert (msg);
@@ -1231,7 +1358,7 @@ bios_smtp_server_test (bool verbose)
 
     // wait for 5 minutes
     zclock_sleep (5*60*1000);
-    
+
     //      7. send an alert again
     msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
