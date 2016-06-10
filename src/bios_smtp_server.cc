@@ -260,7 +260,7 @@ s_onAlertReceive (
         search->second.state = state;
         search->second.severity = severity;
         search->second.description = description;
-        search->second.time = (uint64_t) time;
+        search->second.time = (uint64_t) timestamp;
         search->second.last_update = ::time (NULL);
         zsys_debug1 ("Known alert->update");
     }
