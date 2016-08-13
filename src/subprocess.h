@@ -1,6 +1,6 @@
 /*
 Copyright (C) 2014 Eaton
- 
+
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
@@ -44,7 +44,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
  *
  * Note that SubProcess instance is tied to one process only, so cannot be reused
  * to execute more than one subprocess. This is due "simulate" dynamic nature
- * of a processes. Therefor for a code running unspecified amount of processes, 
+ * of a processes. Therefor for a code running unspecified amount of processes,
  * instances must be heap allocated using new constructor.
  *
  * For that reason copy/move constructor and operator are disallowed.
@@ -74,7 +74,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
  */
 
 
-//! \brief list of arguments    
+//! \brief list of arguments
 typedef std::vector<std::string> Argv;
 
 class SubProcess {
@@ -83,7 +83,7 @@ class SubProcess {
         static const int STDIN_PIPE=0x01;
         static const int STDOUT_PIPE=0x02;
         static const int STDERR_PIPE=0x04;
-       
+
         static const int PIPE_DEFAULT = -1;
         static const int PIPE_DISABLED = -2;
 
@@ -103,20 +103,20 @@ class SubProcess {
 
         // \brief return the commandline as a space delimited string
         std::string argvString() const;
-        
+
         //! \brief return pid of executed command
         pid_t getPid() const { return _fork.getPid(); }
-        
+
         //! \brief get the pipe ends connected to stdin of started program, or -1 if not started
         int getStdin() const { return _inpair[1]; }
 
         //! \brief get the pipe ends connected to stdout of started program, or -1 if not started
         int getStdout() const { return _outpair[0]; }
-        
+
         //! \brief get the pipe ends connected to stderr of started program, or -1 if not started
         int getStderr() const { return _errpair[0]; }
 
-        //! \brief returns last checked status of the process 
+        //! \brief returns last checked status of the process
         bool isRunning() { poll(); return _state == SubProcessState::RUNNING; }
 
         //! \brief get the return code, \see wait for meaning
@@ -144,7 +144,7 @@ class SubProcess {
         //  @return positive return value of a process
         //          negative is a number of a signal which terminates process
         int wait(unsigned int timeout);
-        
+
         //! \brief no hanging variant of /see wait
         int poll() {  return wait(true); }
 
@@ -163,7 +163,7 @@ class SubProcess {
         int terminate();
 
         const char* state() const;
-    
+
     protected:
 
         enum class SubProcessState {
