@@ -396,19 +396,18 @@ static int
         ofs.close();
         return -1;
     }
-    int r = std::rename (std::string ( file).append(".new").c_str (),
+    std::stringstream s;
+    cxxtools::JsonSerializer js (s);
+    js.beautify (true);
+    js.serialize (alerts).finish ();
+    ofs << s.str();
+    ofs.close();
+    int r = std::rename (std::string (file).append(".new").c_str (),
         std::string (file).c_str());
     if ( r != 0 ) {
         zsys_error ("Cannot rename file '%s'.new to '%s'", file, file);
         return -2;
     }
-    std::stringstream s;
-    cxxtools::JsonSerializer js (s);
-    js.beautify (true);
-    js.serialize (alerts);
-    js.finish();
-    ofs << s.str();
-    ofs.close();
     return 0;
 }
 
