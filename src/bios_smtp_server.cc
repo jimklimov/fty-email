@@ -405,7 +405,8 @@ static int
     std::stringstream s;
     cxxtools::JsonSerializer js (s);
     js.beautify (true);
-    js.serialize (alerts).finish();
+    js.serialize (alerts);
+    js.finish();
     ofs << s.str();
     ofs.close();
     return 0;

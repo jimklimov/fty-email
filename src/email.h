@@ -44,6 +44,7 @@ Example:
 
 #include <string>
 #include <vector>
+#include <functional>
 
 #include "subprocess.h"
 
