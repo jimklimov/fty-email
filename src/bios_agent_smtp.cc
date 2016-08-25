@@ -167,10 +167,10 @@ int main (int argc, char** argv)
     zsock_wait (smtp_server);
 
     zloop_t *send_alert_trigger = zloop_new();
-    // as 5 minutes is the smallest possible reaction time 
+    // as 5 minutes is the smallest possible reaction time
     zloop_timer (send_alert_trigger, 5*60*1000, 0, s_timer_event, smtp_server);
     zloop_start (send_alert_trigger);
-    
+
     zloop_destroy (&send_alert_trigger);
     zactor_destroy (&smtp_server);
     if (verbose) {

@@ -436,6 +436,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
             zsys_debug1 ("%s:\tactor command=%s", name, cmd);
 
             if (streq (cmd, "$TERM")) {
+                zsys_info ("Got $TERM");
                 zstr_free (&cmd);
                 zmsg_destroy (&msg);
                 goto exit;
