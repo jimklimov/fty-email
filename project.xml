@@ -32,6 +32,5 @@
     <main name = "bios-agent-smtp" service = "1" no_config = "1" >
         XXXDaemon evaluating rules and producing alerts
     </main>
-    <main name = "btest" private = "1" >Testing binary</main>
 
 </project>

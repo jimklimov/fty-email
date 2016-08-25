@@ -44,6 +44,7 @@ Example:
 
 #include <string>
 #include <vector>
+#include <functional>
 
 #include "subprocess.h"
 
@@ -103,6 +104,17 @@ class Smtp
          *
          */
         void msmtp_path (const std::string& msmtp_path) { _msmtp = msmtp_path; };
+
+        /**
+         * \brief set sendmail testing function
+         *
+         * \param function to be used in sendmail instead of msmtp binary
+         * This is for testing purposes of protocol only!
+         */
+        void sendmail_set_test_fn (std::function <void(const std::string&)> fn) {
+            _has_fn = true;
+            _fn = fn;
+        }
 
         /**
          * \brief send the email
@@ -165,6 +177,8 @@ class Smtp
         std::string _username;
         std::string _password;
         std::string _msmtp;
+        bool _has_fn;
+        std::function <void(const std::string&)> _fn;
 };
 
 void email_test (bool verbose);

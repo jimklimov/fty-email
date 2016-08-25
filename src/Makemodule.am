@@ -62,13 +62,6 @@ src_bios_agent_smtp_tmpfiles_DATA = src/bios-agent-smtp.conf
 endif #WITH_SYSTEMD_UNITS
 endif #ENABLE_BIOS_AGENT_SMTP
 
-if ENABLE_BTEST
-noinst_PROGRAMS += src/btest
-src_btest_CPPFLAGS = ${AM_CPPFLAGS}
-src_btest_LDADD = ${program_libs}
-src_btest_SOURCES = src/btest.cc
-endif #ENABLE_BTEST
-
 if ENABLE_AGENT_SMTP_SELFTEST
 check_PROGRAMS += src/agent_smtp_selftest
 noinst_PROGRAMS += src/agent_smtp_selftest
@@ -80,7 +73,6 @@ endif #ENABLE_AGENT_SMTP_SELFTEST
 # define custom target for all products of /src
 src:
 	src/bios-agent-smtp \
-	src/btest \
 	src/agent_smtp_selftest \
 	src/libagent_smtp.la
 
