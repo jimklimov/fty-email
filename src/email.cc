@@ -40,7 +40,8 @@ Smtp::Smtp():
     _encryption { Enctryption::NONE },
     _username {},
     _password {},
-    _msmtp { "/usr/bin/msmtp" }
+    _msmtp { "/usr/bin/msmtp" },
+    _has_fn {false}
 {
 
 }
@@ -150,6 +151,12 @@ void Smtp::sendmail(
 void Smtp::sendmail(
         const std::string& data)    const
 {
+
+    if (_has_fn) {
+        _fn (data);
+        return;
+    }
+
     std::string cfg = createConfigFile();
     Argv argv = { _msmtp, "-t", "-C", cfg };
     SubProcess proc{argv, SubProcess::STDIN_PIPE | SubProcess::STDOUT_PIPE | SubProcess::STDERR_PIPE};
