@@ -492,6 +492,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 smtp.msmtp_path (path);
                 zstr_free (&path);
             }
+            else
             if (streq (cmd, "_MSMTP_TEST")) {
                 test_reader_name = zmsg_popstr (msg);
                 test_client = mlm_client_new ();
