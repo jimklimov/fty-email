@@ -396,19 +396,18 @@ static int
         ofs.close();
         return -1;
     }
-    int r = std::rename (std::string ( file).append(".new").c_str (),
+    std::stringstream s;
+    cxxtools::JsonSerializer js (s);
+    js.beautify (true);
+    js.serialize (alerts).finish ();
+    ofs << s.str();
+    ofs.close();
+    int r = std::rename (std::string (file).append(".new").c_str (),
         std::string (file).c_str());
     if ( r != 0 ) {
         zsys_error ("Cannot rename file '%s'.new to '%s'", file, file);
         return -2;
     }
-    std::stringstream s;
-    cxxtools::JsonSerializer js (s);
-    js.beautify (true);
-    js.serialize (alerts);
-    js.finish();
-    ofs << s.str();
-    ofs.close();
     return 0;
 }
 
@@ -493,6 +492,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 smtp.msmtp_path (path);
                 zstr_free (&path);
             }
+            else
             if (streq (cmd, "_MSMTP_TEST")) {
                 test_reader_name = zmsg_popstr (msg);
                 test_client = mlm_client_new ();
@@ -1036,11 +1036,10 @@ bios_smtp_server_test (bool verbose)
     if ( verbose )
         zsys_info ("asset producer started");
 
-
-    // name of the client should be the same as name in the btest.cc
     mlm_client_t *btest_reader = mlm_client_new ();
     rv = mlm_client_connect (btest_reader, endpoint, 1000, "btest-reader");
     assert( rv != -1 );
+
 
     // scenario 1: send asset + send an alert on the already known correct asset
     //      1. send asset info
@@ -1106,13 +1105,6 @@ bios_smtp_server_test (bool verbose)
     zsys_debug ("\n");
     zsys_debug ("newBody =\n%s", newBody.c_str ());
     assert ( expectedBody.compare(newBody) == 0 );
-
-    //      5. send ack back, so btest can exit
-    mlm_client_sendtox (
-            btest_reader,
-            mlm_client_sender (btest_reader),
-            "BTEST-OK", "OK", NULL);
-    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 
     // scenario 2: send an alert on the unknown asset
     //      1. DO NOT send asset info
@@ -1184,12 +1176,6 @@ bios_smtp_server_test (bool verbose)
     }
     zmsg_destroy (&msg);
 
-    //      3. send ack back, so btest can exit
-    mlm_client_sendtox (
-            btest_reader,
-            mlm_client_sender (btest_reader),
-            "BTEST-OK", "OK", NULL);
-
     //      4. send an alert on the already known asset
     msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
@@ -1224,7 +1210,7 @@ bios_smtp_server_test (bool verbose)
     zpoller_destroy (&poller);
 
 
-    zsys_debug (" scenario 6 ===============================================");
+    // scenario 6 ===============================================
     //
     //------------------------------------------------------------------------------------------------> t
     //
@@ -1323,14 +1309,7 @@ bios_smtp_server_test (bool verbose)
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
     assert ( expectedBody.compare(newBody) == 0 );
 
-     //      8. send ack back, so btest can exit
-    mlm_client_sendtox (
-            btest_reader,
-            mlm_client_sender (btest_reader),
-            "BTEST-OK", "OK", NULL);
-    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
-
-/* ACE: test is too long for make check, but it works
+#if 0
     zsys_debug (" scenario 7 ===============================================");
     // scenario 7:
     //      1. send an alert on the already known asset
@@ -1350,12 +1329,6 @@ bios_smtp_server_test (bool verbose)
     }
     zmsg_destroy (&msg);
 
-    //      3. send ack back, so btest can exit
-    mlm_client_sendtox (
-            btest_reader,
-            mlm_client_sender (btest_reader),
-            "BTEST-OK", "OK", NULL);
-
     //      4. send an alert on the already known asset
     msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
@@ -1371,12 +1344,6 @@ bios_smtp_server_test (bool verbose)
         zmsg_print (msg);
     }
     zmsg_destroy (&msg);
-
-    //      6. send ack back, so btest can exit
-    mlm_client_sendtox (
-            btest_reader,
-            mlm_client_sender (btest_reader),
-            "BTEST-OK", "OK", NULL);
 
     // wait for 5 minutes
     zclock_sleep (5*60*1000);
@@ -1397,9 +1364,9 @@ bios_smtp_server_test (bool verbose)
     }
     zpoller_destroy (&poller);
     zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
-*/
+#endif //0
 
-    zsys_debug (" scenario 8 ===============================================");
+    // scenario 8 ===============================================
     //
     //-------------------------------------------------------------------------------------------------------------------------------------> t
     //
@@ -1471,13 +1438,6 @@ bios_smtp_server_test (bool verbose)
 
     zmsg_destroy (&msg);
 
-    //      7. send ack back, so btest can exit
-    mlm_client_sendtox (
-            btest_reader,
-            mlm_client_sender (btest_reader),
-            "BTEST-OK", "OK", NULL);
-    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
-
     //      8. send alert message again third time
     msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
         "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
@@ -1496,17 +1456,17 @@ bios_smtp_server_test (bool verbose)
 
     zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 
-    test9 (verbose, "ipc://bios-smtp-server-test9");
+    //MVY: this test leaks memory - in general it's a bad idea to publish
+    //messages to broker without reading them :)
+    //test9 (verbose, "ipc://bios-smtp-server-test9");
     test10 (verbose, endpoint, server, asset_producer);
 
     // clean up after the test
+    zactor_destroy (&smtp_server);
     mlm_client_destroy (&btest_reader);
     mlm_client_destroy (&asset_producer);
     mlm_client_destroy (&alert_producer);
-    zactor_destroy (&smtp_server);
-    zclock_sleep(1000);
     zactor_destroy (&server);
-    zclock_sleep(1000);
 
     printf ("OK\n");
 }
