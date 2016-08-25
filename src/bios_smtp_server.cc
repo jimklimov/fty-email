@@ -416,7 +416,10 @@ bios_smtp_server (zsock_t *pipe, void* args)
 {
     bool verbose = false;
     char* name = NULL;
+    char *endpoint = NULL;
+    char *test_reader_name = NULL;
 
+    mlm_client_t *test_client = NULL;
     mlm_client_t *client = mlm_client_new ();
 
     zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe (client), NULL);
@@ -439,7 +442,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zsys_info ("Got $TERM");
                 zstr_free (&cmd);
                 zmsg_destroy (&msg);
-                goto exit;
+                break;
             }
             else
             if (streq (cmd, "VERBOSE")) {
@@ -453,13 +456,12 @@ bios_smtp_server (zsock_t *pipe, void* args)
             }
             else
             if (streq (cmd, "CONNECT")) {
-                char* endpoint = zmsg_popstr (msg);
+                endpoint = zmsg_popstr (msg);
                 name = zmsg_popstr (msg);
                 int rv = mlm_client_connect (client, endpoint, 1000, name);
                 if (rv == -1) {
                     zsys_error ("%s:\tcan't connect to malamute endpoint '%s'", name, endpoint);
                 }
-                zstr_free (&endpoint);
                 zsock_signal (pipe, 0);
             }
             else
@@ -489,6 +491,21 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 char* path = zmsg_popstr (msg);
                 smtp.msmtp_path (path);
                 zstr_free (&path);
+            }
+            if (streq (cmd, "_MSMTP_TEST")) {
+                test_reader_name = zmsg_popstr (msg);
+                test_client = mlm_client_new ();
+                assert (test_client);
+                assert (endpoint);
+                int rv = mlm_client_connect (test_client, endpoint, 1000, "smtp-test-client");
+                if (rv == -1) {
+                    zsys_error ("%s\t:can't connect on test_client, endpoint=%s", name, endpoint);
+                }
+                std::function <void (const std::string &)> cb = \
+                    [test_client, test_reader_name] (const std::string &data) {
+                        mlm_client_sendtox (test_client, test_reader_name, "btest", data.c_str ());
+                    };
+                smtp.sendmail_set_test_fn (cb);
             }
             else
             if (streq (cmd, "STATE_FILE_PATH_ASSETS")) {
@@ -577,14 +594,17 @@ bios_smtp_server (zsock_t *pipe, void* args)
         }
         zmsg_destroy (&zmessage);
     }
-exit:
+
     // save info to persistence before I die
     elements.save();
     save_alerts_state (alerts, alerts_state_file);
     zstr_free (&name);
+    zstr_free (&endpoint);
+    zstr_free (&test_reader_name);
     zstr_free (&alerts_state_file);
     zpoller_destroy (&poller);
     mlm_client_destroy (&client);
+    mlm_client_destroy (&test_client);
     zclock_sleep(1000);
 }
 
@@ -974,7 +994,7 @@ bios_smtp_server_test (bool verbose)
     }
 
     //  @selftest
-    static const char* endpoint = "ipc://bios-smtp-server-test";
+    static const char* endpoint = "inproc://bios-smtp-server-test";
 
     // malamute broker
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
@@ -989,13 +1009,13 @@ bios_smtp_server_test (bool verbose)
     zstr_sendx (smtp_server, "STATE_FILE_PATH_ALERTS", alerts_file, NULL);
     if (verbose)
         zstr_send (smtp_server, "VERBOSE");
-    zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
     zstr_sendx (smtp_server, "CONNECT", endpoint, "agent-smtp", NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
     zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "_MSMTP_TEST", "btest-reader", NULL);
     if ( verbose )
         zsys_info ("smtp server started");
 
