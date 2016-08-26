@@ -1056,7 +1056,8 @@ bios_smtp_server_test (bool verbose)
     mlm_client_send (asset_producer, "Asset message1", &msg);
     zhash_destroy (&aux);
     zhash_destroy (&ext);
-    zsys_info ("asset message was send");
+    if (verbose)
+        zsys_info ("asset message was send");
     // Ensure, that malamute will deliver ASSET message before ALERT message
     zclock_sleep (1000);
 
@@ -1066,7 +1067,8 @@ bios_smtp_server_test (bool verbose)
     assert (msg);
     std::string atopic = "NY_RULE/CRITICAL@" + std::string (asset_name);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      3. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1103,9 +1105,11 @@ bios_smtp_server_test (bool verbose)
     "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
 
-    zsys_debug ("expectedBody =\n%s", expectedBody.c_str ());
-    zsys_debug ("\n");
-    zsys_debug ("newBody =\n%s", newBody.c_str ());
+    if (verbose) {
+        zsys_debug ("expectedBody =\n%s", expectedBody.c_str ());
+        zsys_debug ("\n");
+        zsys_debug ("newBody =\n%s", newBody.c_str ());
+    }
     assert ( expectedBody.compare(newBody) == 0 );
 
     // scenario 2: send an alert on the unknown asset
@@ -1118,7 +1122,8 @@ bios_smtp_server_test (bool verbose)
     assert (msg);
     std::string atopic1 = "NY_RULE/CRITICAL@" + std::string (asset_name1);
     mlm_client_send (alert_producer, atopic1.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      3. No mail should be generated
     zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1141,7 +1146,8 @@ bios_smtp_server_test (bool verbose)
     mlm_client_send (asset_producer, "Asset message3", &msg);
     zhash_destroy (&aux);
     zhash_destroy (&ext);
-    zsys_info ("asset message was send");
+    if (verbose)
+        zsys_info ("asset message was send");
 
     //      2. send alert message
     msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
@@ -1149,7 +1155,8 @@ bios_smtp_server_test (bool verbose)
     assert (msg);
     std::string atopic3 = "NY_RULE/CRITICAL@" + std::string (asset_name3);
     mlm_client_send (alert_producer, atopic3.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      3. No mail should be generated
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1167,7 +1174,8 @@ bios_smtp_server_test (bool verbose)
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      2. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1182,8 +1190,10 @@ bios_smtp_server_test (bool verbose)
     msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
-    mlm_client_send (alert_producer, atopic.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      5. email should not be send (it doesn't satisfy the schedule
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1200,7 +1210,8 @@ bios_smtp_server_test (bool verbose)
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS");
     assert (msg);
     mlm_client_send (alert_producer, atopic3.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      2. No mail should be generated
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
