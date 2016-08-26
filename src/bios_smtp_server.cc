@@ -238,7 +238,7 @@ s_onAlertReceive (
     if ( strcasestr (actions, "EMAIL") == NULL ) {
         // this means, that for this alert no "EMAIL" action
         // -> we are not interested in it;
-        zsys_info ("Email action is not specified -> smtp agent is not interested in this alert");
+        zsys_debug1 ("Email action is not specified -> smtp agent is not interested in this alert");
         bios_proto_destroy (p_message);
         return;
     }
@@ -302,7 +302,7 @@ void onAssetReceive (
         contact_name = (char *) zhash_lookup (ext, "contact_name");
         contact_email = (char *) zhash_lookup (ext, "contact_email");
     } else {
-        zsys_info ("ext is missing");
+        zsys_debug1 ("ext for asset %s is missing", name);
     }
 
     const char *operation = bios_proto_operation (message);
@@ -328,11 +328,11 @@ void onAssetReceive (
     } else if ( isPartialUpdate(operation) ) {
         zsys_debug1 ("asset name = %s", name);
         if ( contact_name ) {
-            zsys_info ("to update: contact_name = %s", contact_name);
+            zsys_debug1 ("to update: contact_name = %s", contact_name);
             elements.updateContactName (name, contact_name);
         }
         if ( contact_email ) {
-            zsys_info ("to update: contact_email = %s", contact_email);
+            zsys_debug1 ("to update: contact_email = %s", contact_email);
             elements.updateEmail (name, contact_email);
         }
     } else if ( isDelete(operation) ) {
@@ -354,7 +354,7 @@ static int
         const char *file)
 {
     if ( file == NULL ) {
-        zsys_info ("state file for alerts is not set up, no state is persist");
+        zsys_warning ("state file for alerts is not set up, no state is persist");
         return 0;
     }
     std::ifstream ifs (file, std::ios::in);
@@ -386,7 +386,7 @@ static int
         const char* file)
 {
     if ( file == NULL ) {
-        zsys_info ("state file for alerts is not set up, no state is persist");
+        zsys_warning ("state file for alerts is not set up, no state is persist");
         return 0;
     }
 
@@ -556,7 +556,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
             }
             else
             {
-                zsys_info ("unhandled command %s", cmd);
+                zsys_error ("unhandled command %s", cmd);
             }
             zstr_free (&cmd);
             zmsg_destroy (&msg);
