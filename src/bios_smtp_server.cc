@@ -278,7 +278,8 @@ s_onAlertReceive (
 
 void onAssetReceive (
     bios_proto_t **p_message,
-    ElementList& elements)
+    ElementList& elements,
+    bool verbose)
 {
     if (p_message == NULL) return;
     bios_proto_t *message = *p_message;
@@ -324,7 +325,8 @@ void onAssetReceive (
         newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
         newAsset.email = ( contact_email == NULL ? "" : contact_email );
         elements.add (newAsset);
-        newAsset.debug_print();
+        if (verbose)
+            newAsset.debug_print();
     } else if ( isPartialUpdate(operation) ) {
         zsys_debug1 ("asset name = %s", name);
         if ( contact_name ) {
@@ -586,7 +588,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 //save_alerts_state (alerts, alerts_state_file);
             }
             else if (bios_proto_id (bmessage) == BIOS_PROTO_ASSET)  {
-                onAssetReceive (&bmessage, elements);
+                onAssetReceive (&bmessage, elements, verbose);
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
