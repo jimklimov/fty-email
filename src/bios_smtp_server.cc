@@ -1190,8 +1190,7 @@ bios_smtp_server_test (bool verbose)
     msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
-    if (verbose)
-        mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
         zsys_info ("alert message was send");
 
