@@ -61,3 +61,43 @@
         fun:_dl_init
         obj:/lib64/ld-2.19.so
 }
+{
+   <cxxtools_locale_facets01>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:_Znam
+   fun:_ZNSt16__numpunct_cacheIN8cxxtools4CharEE8_M_cacheERKSt6locale
+   fun:operator()
+   fun:_ZNKSt7num_putIN8cxxtools4CharESt19ostreambuf_iteratorIS1_St11char_traitsIS1_EEE13_M_insert_intIyEES5_S5_RSt8ios_baseS1_T_
+   fun:_ZNKSt7num_putIN8cxxtools4CharESt19ostreambuf_iteratorIS1_St11char_traitsIS1_EEE6do_putES5_RSt8ios_baseS1_y
+   fun:_ZNSt13basic_ostreamIN8cxxtools4CharESt11char_traitsIS1_EE9_M_insertIyEERS4_T_
+   fun:_ZN8cxxtools13JsonFormatter16addValueUnsignedERKSsS2_y
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:format
+   fun:serialize<std::map<std::pair<std::basic_string<char>, std::basic_string<char> >, Alert> >
+   fun:save_alerts_state
+   ...
+}
+{
+   <cxxtools_locale_facets03>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:_Znwm
+   fun:operator()
+   fun:_ZNKSt7num_putIN8cxxtools4CharESt19ostreambuf_iteratorIS1_St11char_traitsIS1_EEE13_M_insert_intIyEES5_S5_RSt8ios_baseS1_T_
+   fun:_ZNKSt7num_putIN8cxxtools4CharESt19ostreambuf_iteratorIS1_St11char_traitsIS1_EEE6do_putES5_RSt8ios_baseS1_y
+   fun:_ZNSt13basic_ostreamIN8cxxtools4CharESt11char_traitsIS1_EE9_M_insertIyEERS4_T_
+   fun:_ZN8cxxtools13JsonFormatter16addValueUnsignedERKSsS2_y
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:format
+   fun:serialize<std::map<std::pair<std::basic_string<char>, std::basic_string<char> >, Alert> >
+   fun:save_alerts_state
+   fun:bios_smtp_server
+   ...
+}
