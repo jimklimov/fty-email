@@ -181,6 +181,36 @@ class Smtp
         std::function <void(const std::string&)> _fn;
 };
 
+/**
+ *  \brief Ciprian's algorithm to obtain email address for given phone number
+ *
+ *  \param [in] gw_template     template for SMS gateway. The # characters are then replaced by
+ *                              numbers from given
+ *  \param [in] phone_number    phone number - free form string in whatever national convention
+ *  \return email address for sending an email
+ *  \throws std::logic_error if provided phone_number does not have sufficient number of
+ *          digits
+ *
+ *  Example:
+ *
+ *       std::string to = sms_email_address ("0#####@hyper.mobile", "+79 (0) 123456");
+ *       assert (to == "023456@hyper.mobile");
+ *
+ *  Ciprian's algorithm:
+ *      1. Phone number is normalized to contain only digits (790123456)
+ *      2. Then each last # in template is replaced by last digit from number
+ *          0####6@hyper.mobile
+ *          0###56@hyper.mobile
+ *          ...
+ *          023456@hyper.mobile
+ *
+ */
+
+std::string
+    sms_email_address (
+        const std::string& gw_template,
+        const std::string& phone_number);
+
 void email_test (bool verbose);
 
 #endif

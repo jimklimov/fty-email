@@ -194,6 +194,32 @@ void Smtp::sendmail(
 
 }
 
+std::string
+sms_email_address (
+        const std::string& gw_template,
+        const std::string& phone_number)
+{
+    std::string ret = gw_template;
+    std::string clean_phone_number;
+    for (const char ch : phone_number) {
+        if (::isdigit (ch))
+            clean_phone_number.push_back (ch);
+    }
+
+    ssize_t idx = clean_phone_number.size () -1;
+    for (;;) {
+        auto it = ret.find_last_of ('#');
+        if (it == std::string::npos)
+            break;
+        if (idx < 0)
+            throw std::logic_error ("Cannot apply number " + phone_number + "onto template" + gw_template + ". Not enough numbers in phone number");
+        ret [it] = clean_phone_number [idx];
+        idx --;
+    }
+
+    return ret;
+}
+
 
 //  --------------------------------------------------------------------------
 //  Self test of this class
@@ -204,7 +230,35 @@ email_test (bool verbose)
     printf (" * email: ");
 
     //  @selftest
-    //  Simple create/destroy test
+
+    // test case 01 - normal operation
+    std::string to = sms_email_address ("0#####@hyper.mobile", "+79 (0) 123456");
+    assert (to == "023456@hyper.mobile");
+
+    // test case 02 - not enough numbers
+    try {
+        to = sms_email_address ("0#####@hyper.mobile", "456");
+        assert (false); // <<< due exception throwed up, we should not reach this place
+    }
+    catch (std::logic_error &e) {
+    }
+
+    // test case 03 - no # in template
+    to = sms_email_address ("0^^^^^@hyper.mobile", "456");
+    assert (to == "0^^^^^@hyper.mobile");
+
+    // test case 04 empty template
+    to = sms_email_address ("", "+79 (0) 123456");
+    assert (to.empty ());
+
+    // test case 05 empty number
+    try {
+        to = sms_email_address ("0#####@hyper.mobile", "");
+        assert (false); // <<< due exception throwed up, we should not reach this place
+    }
+    catch (std::logic_error &e) {
+    }
+
     //  @end
     printf ("OK\n");
 }
