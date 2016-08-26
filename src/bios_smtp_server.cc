@@ -138,12 +138,12 @@ s_notify (alerts_map_iterator it,
     }
 
     uint64_t nowTimestamp = ::time (NULL);
-    zsys_error ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, it->second.last_notification);
+    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, it->second.last_notification);
     if (it->second.last_update > it->second.last_notification) {
         // Last notification was send BEFORE last
         // important change take place -> need to notify
         needNotify = true;
-        zsys_info ("important change -> notify");
+        zsys_debug1 ("important change -> notify");
     }
     else {
         // so, no important changes, but may be we need to
@@ -172,9 +172,9 @@ s_notify (alerts_map_iterator it,
     }
 
     if (needNotify) {
-        zsys_info ("Want to notify");
+        zsys_debug1 ("Want to notify");
         if (element.email.empty()) {
-            zsys_error ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
+            zsys_debug1 ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
             return;
         }
 
