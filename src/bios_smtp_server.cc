@@ -138,12 +138,12 @@ s_notify (alerts_map_iterator it,
     }
 
     uint64_t nowTimestamp = ::time (NULL);
-    zsys_error ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, it->second.last_notification);
+    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, it->second.last_notification);
     if (it->second.last_update > it->second.last_notification) {
         // Last notification was send BEFORE last
         // important change take place -> need to notify
         needNotify = true;
-        zsys_info ("important change -> notify");
+        zsys_debug1 ("important change -> notify");
     }
     else {
         // so, no important changes, but may be we need to
@@ -172,9 +172,9 @@ s_notify (alerts_map_iterator it,
     }
 
     if (needNotify) {
-        zsys_info ("Want to notify");
+        zsys_debug1 ("Want to notify");
         if (element.email.empty()) {
-            zsys_error ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
+            zsys_debug1 ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
             return;
         }
 
@@ -238,7 +238,7 @@ s_onAlertReceive (
     if ( strcasestr (actions, "EMAIL") == NULL ) {
         // this means, that for this alert no "EMAIL" action
         // -> we are not interested in it;
-        zsys_info ("Email action is not specified -> smtp agent is not interested in this alert");
+        zsys_debug1 ("Email action is not specified -> smtp agent is not interested in this alert");
         bios_proto_destroy (p_message);
         return;
     }
@@ -278,7 +278,8 @@ s_onAlertReceive (
 
 void onAssetReceive (
     bios_proto_t **p_message,
-    ElementList& elements)
+    ElementList& elements,
+    bool verbose)
 {
     if (p_message == NULL) return;
     bios_proto_t *message = *p_message;
@@ -302,7 +303,7 @@ void onAssetReceive (
         contact_name = (char *) zhash_lookup (ext, "contact_name");
         contact_email = (char *) zhash_lookup (ext, "contact_email");
     } else {
-        zsys_info ("ext is missing");
+        zsys_debug1 ("ext for asset %s is missing", name);
     }
 
     const char *operation = bios_proto_operation (message);
@@ -324,15 +325,16 @@ void onAssetReceive (
         newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
         newAsset.email = ( contact_email == NULL ? "" : contact_email );
         elements.add (newAsset);
-        newAsset.debug_print();
+        if (verbose)
+            newAsset.debug_print();
     } else if ( isPartialUpdate(operation) ) {
         zsys_debug1 ("asset name = %s", name);
         if ( contact_name ) {
-            zsys_info ("to update: contact_name = %s", contact_name);
+            zsys_debug1 ("to update: contact_name = %s", contact_name);
             elements.updateContactName (name, contact_name);
         }
         if ( contact_email ) {
-            zsys_info ("to update: contact_email = %s", contact_email);
+            zsys_debug1 ("to update: contact_email = %s", contact_email);
             elements.updateEmail (name, contact_email);
         }
     } else if ( isDelete(operation) ) {
@@ -354,7 +356,7 @@ static int
         const char *file)
 {
     if ( file == NULL ) {
-        zsys_info ("state file for alerts is not set up, no state is persist");
+        zsys_warning ("state file for alerts is not set up, no state is persist");
         return 0;
     }
     std::ifstream ifs (file, std::ios::in);
@@ -386,7 +388,7 @@ static int
         const char* file)
 {
     if ( file == NULL ) {
-        zsys_info ("state file for alerts is not set up, no state is persist");
+        zsys_warning ("state file for alerts is not set up, no state is persist");
         return 0;
     }
 
@@ -556,7 +558,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
             }
             else
             {
-                zsys_info ("unhandled command %s", cmd);
+                zsys_error ("unhandled command %s", cmd);
             }
             zstr_free (&cmd);
             zmsg_destroy (&msg);
@@ -586,7 +588,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 save_alerts_state (alerts, alerts_state_file);
             }
             else if (bios_proto_id (bmessage) == BIOS_PROTO_ASSET)  {
-                onAssetReceive (&bmessage, elements);
+                onAssetReceive (&bmessage, elements, verbose);
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
@@ -1054,7 +1056,8 @@ bios_smtp_server_test (bool verbose)
     mlm_client_send (asset_producer, "Asset message1", &msg);
     zhash_destroy (&aux);
     zhash_destroy (&ext);
-    zsys_info ("asset message was send");
+    if (verbose)
+        zsys_info ("asset message was send");
     // Ensure, that malamute will deliver ASSET message before ALERT message
     zclock_sleep (1000);
 
@@ -1064,7 +1067,8 @@ bios_smtp_server_test (bool verbose)
     assert (msg);
     std::string atopic = "NY_RULE/CRITICAL@" + std::string (asset_name);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      3. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1101,9 +1105,11 @@ bios_smtp_server_test (bool verbose)
     "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
 
-    zsys_debug ("expectedBody =\n%s", expectedBody.c_str ());
-    zsys_debug ("\n");
-    zsys_debug ("newBody =\n%s", newBody.c_str ());
+    if (verbose) {
+        zsys_debug ("expectedBody =\n%s", expectedBody.c_str ());
+        zsys_debug ("\n");
+        zsys_debug ("newBody =\n%s", newBody.c_str ());
+    }
     assert ( expectedBody.compare(newBody) == 0 );
 
     // scenario 2: send an alert on the unknown asset
@@ -1116,7 +1122,8 @@ bios_smtp_server_test (bool verbose)
     assert (msg);
     std::string atopic1 = "NY_RULE/CRITICAL@" + std::string (asset_name1);
     mlm_client_send (alert_producer, atopic1.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      3. No mail should be generated
     zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1139,7 +1146,8 @@ bios_smtp_server_test (bool verbose)
     mlm_client_send (asset_producer, "Asset message3", &msg);
     zhash_destroy (&aux);
     zhash_destroy (&ext);
-    zsys_info ("asset message was send");
+    if (verbose)
+        zsys_info ("asset message was send");
 
     //      2. send alert message
     msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
@@ -1147,7 +1155,8 @@ bios_smtp_server_test (bool verbose)
     assert (msg);
     std::string atopic3 = "NY_RULE/CRITICAL@" + std::string (asset_name3);
     mlm_client_send (alert_producer, atopic3.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      3. No mail should be generated
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1165,7 +1174,8 @@ bios_smtp_server_test (bool verbose)
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      2. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1181,7 +1191,8 @@ bios_smtp_server_test (bool verbose)
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      5. email should not be send (it doesn't satisfy the schedule
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1198,7 +1209,8 @@ bios_smtp_server_test (bool verbose)
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS");
     assert (msg);
     mlm_client_send (alert_producer, atopic3.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      2. No mail should be generated
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1309,7 +1321,8 @@ bios_smtp_server_test (bool verbose)
     expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
     assert ( expectedBody.compare(newBody) == 0 );
 
-#if 0
+    // intentionally left formatting intact, so git blame will reffer to original author ;-)
+    if (verbose) {
     zsys_debug (" scenario 7 ===============================================");
     // scenario 7:
     //      1. send an alert on the already known asset
@@ -1318,7 +1331,8 @@ bios_smtp_server_test (bool verbose)
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      2. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1334,7 +1348,8 @@ bios_smtp_server_test (bool verbose)
         "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      5. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1353,7 +1368,8 @@ bios_smtp_server_test (bool verbose)
         "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
-    zsys_info ("alert message was send");
+    if (verbose)
+        zsys_info ("alert message was send");
 
     //      8. email should not be send (it  in the state, where alerts are not being send)
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1364,7 +1380,7 @@ bios_smtp_server_test (bool verbose)
     }
     zpoller_destroy (&poller);
     zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
-#endif //0
+    }
 
     // scenario 8 ===============================================
     //
@@ -1453,8 +1469,6 @@ bios_smtp_server_test (bool verbose)
         zsys_debug ("Email was NOT sent: SUCCESS");
     }
     zpoller_destroy (&poller);
-
-    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 
     //MVY: this test leaks memory - in general it's a bad idea to publish
     //messages to broker without reading them :)
