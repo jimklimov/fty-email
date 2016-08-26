@@ -583,7 +583,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
             }
             if (bios_proto_id (bmessage) == BIOS_PROTO_ALERT)  {
                 s_onAlertReceive (&bmessage, alerts, elements, smtp);
-                save_alerts_state (alerts, alerts_state_file);
+                //save_alerts_state (alerts, alerts_state_file);
             }
             else if (bios_proto_id (bmessage) == BIOS_PROTO_ASSET)  {
                 onAssetReceive (&bmessage, elements);
@@ -1453,8 +1453,6 @@ bios_smtp_server_test (bool verbose)
         zsys_debug ("Email was NOT sent: SUCCESS");
     }
     zpoller_destroy (&poller);
-
-    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
 
     //MVY: this test leaks memory - in general it's a bad idea to publish
     //messages to broker without reading them :)
