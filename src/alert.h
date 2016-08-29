@@ -39,22 +39,31 @@ class Alert {
             state (bios_proto_state (message)),
             severity (bios_proto_severity (message)),
             description (bios_proto_description (message)),
+            action (bios_proto_action (message)),
             time (bios_proto_time (message)),
             last_notification (0),
-            last_update (bios_proto_time (message))
+            last_update (bios_proto_time (message)),
+            last_sms_notification (0),
+            last_sms_update (bios_proto_time (message))
 
     {
         std::transform (rule.begin(), rule.end(), rule.begin(), ::tolower);
     };
+
+    bool action_email () { return strcasestr (action.c_str (), "EMAIL") != NULL; }
+    bool action_sms () { return strcasestr (action.c_str (), "SMS") != NULL; }
 
     std::string rule;
     std::string element;
     std::string state;
     std::string severity;
     std::string description;
+    std::string action;
     uint64_t time;
     uint64_t last_notification;
     uint64_t last_update;
+    uint64_t last_sms_notification;
+    uint64_t last_sms_update;
 };
 
 // Alerts are compared by pair [rule, element]

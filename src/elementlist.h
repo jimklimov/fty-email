@@ -30,6 +30,7 @@ class Element {
     uint8_t priority;
     std::string contactName;
     std::string email;
+    std::string sms_email;
 
     void debug_print () const;
 };
@@ -55,6 +56,7 @@ class ElementList
     std::string serialize_to_json () const;
     void    updateContactName (const std::string &elementName, const std::string &contactName);
     void    updateEmail (const std::string &elementName, const std::string &email);
+    void    updateSMSEmail (const std::string &elementName, const std::string &email);
     unsigned int size(void) const;
  private:
     std::map <std::string, Element> _assets;

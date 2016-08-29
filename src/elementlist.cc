@@ -102,6 +102,14 @@ void ElementList::updateEmail (const std::string &elementName, const std::string
     }
 }
 
+void ElementList::updateSMSEmail (const std::string &elementName, const std::string &email)
+{
+    auto search = _assets.find (elementName);
+    if ( search != _assets.cend ()) {
+        search->second.sms_email = email;
+    }
+}
+
 bool ElementList::exists (const std::string& asset_name) const
 {
     auto search =_assets.find (asset_name);

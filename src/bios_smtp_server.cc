@@ -126,20 +126,21 @@ s_getNotificationInterval(
 }
 
 static void
-s_notify (alerts_map_iterator it,
+s_notify_base (alerts_map_iterator it,
           Smtp& smtp,
-          const ElementList& elements)
+          const Element& element,
+          const std::string& to,
+          uint64_t &last_notification,
+          uint64_t &last_update
+          )
 {
-    bool needNotify = false;
-    Element element;
-    if (!elements.get (it->first.second, element)) {
-        zsys_error ("CAN'T NOTIFY unknown asset");
+    if (to.empty ())
         return;
-    }
+    bool needNotify = false;
 
     uint64_t nowTimestamp = ::time (NULL);
-    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, it->second.last_notification);
-    if (it->second.last_update > it->second.last_notification) {
+    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", last_update, last_notification);
+    if (last_update > last_notification) {
         // Last notification was send BEFORE last
         // important change take place -> need to notify
         needNotify = true;
@@ -154,7 +155,7 @@ s_notify (alerts_map_iterator it,
         }
         else
         if (
-        (nowTimestamp - it->second.last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
+        (nowTimestamp - last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
             // If  lastNotification + interval < NOW
         {
             // so, we found out that we need to notify according the schedule
@@ -180,17 +181,48 @@ s_notify (alerts_map_iterator it,
 
         try {
             smtp.sendmail(
-                element.email,
+                to,
                 generate_subject (it->second, element),
                 generate_body (it->second, element)
             );
-            it->second.last_notification = nowTimestamp;
+            last_notification = nowTimestamp;
         }
         catch (const std::runtime_error& e) {
             zsys_error ("Error: %s", e.what());
             // here we'll handle the error
         }
     }
+}
+
+static void
+s_notify (alerts_map_iterator it,
+          Smtp& smtp,
+          const ElementList& elements)
+{
+    Element element;
+    if (!elements.get (it->first.second, element)) {
+        zsys_error ("CAN'T NOTIFY unknown asset");
+        return;
+    }
+    if (it->second.action_email ())
+        s_notify_base (
+            it,
+            smtp,
+            element,
+            element.email,
+            it->second.last_notification,
+            it->second.last_update
+        );
+    if (it->second.action_sms ())
+        s_notify_base (
+            it,
+            smtp,
+            element,
+            element.sms_email,
+            it->second.last_sms_notification,
+            it->second.last_sms_update
+        );
+
 }
 
 static void
@@ -235,10 +267,11 @@ s_onAlertReceive (
     const char *actions = bios_proto_action (message);
 
     // add alert to the list of alerts
-    if ( strcasestr (actions, "EMAIL") == NULL ) {
+    if (  (strcasestr (actions, "EMAIL") == NULL)
+       && (strcasestr (actions, "SMS") == NULL )) {
         // this means, that for this alert no "EMAIL" action
         // -> we are not interested in it;
-        zsys_debug1 ("Email action is not specified -> smtp agent is not interested in this alert");
+        zsys_debug1 ("Email action (%s) is not specified -> smtp agent is not interested in this alert", actions);
         bios_proto_destroy (p_message);
         return;
     }
@@ -279,6 +312,7 @@ s_onAlertReceive (
 void onAssetReceive (
     bios_proto_t **p_message,
     ElementList& elements,
+    const char* sms_gateway,
     bool verbose)
 {
     if (p_message == NULL) return;
@@ -299,9 +333,11 @@ void onAssetReceive (
     zhash_t *ext = bios_proto_ext (message);
     char *contact_name = NULL;
     char *contact_email = NULL;
+    char *contact_phone = NULL;
     if ( ext != NULL ) {
         contact_name = (char *) zhash_lookup (ext, "contact_name");
         contact_email = (char *) zhash_lookup (ext, "contact_email");
+        contact_phone = (char *) zhash_lookup (ext, "contact_phone");
     } else {
         zsys_debug1 ("ext for asset %s is missing", name);
     }
@@ -324,6 +360,8 @@ void onAssetReceive (
         newAsset.name = name;
         newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
         newAsset.email = ( contact_email == NULL ? "" : contact_email );
+        if (sms_gateway && contact_phone)
+            newAsset.sms_email = sms_email_address (sms_gateway, contact_phone);
         elements.add (newAsset);
         if (verbose)
             newAsset.debug_print();
@@ -336,6 +374,9 @@ void onAssetReceive (
         if ( contact_email ) {
             zsys_debug1 ("to update: contact_email = %s", contact_email);
             elements.updateEmail (name, contact_email);
+        }
+        if (sms_gateway && contact_phone) {
+            elements.updateSMSEmail (name, sms_email_address (sms_gateway, contact_phone));
         }
     } else if ( isDelete(operation) ) {
         zsys_debug1 ("Asset:delete: '%s'", name);
@@ -420,6 +461,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
     char* name = NULL;
     char *endpoint = NULL;
     char *test_reader_name = NULL;
+    char *sms_gateway = NULL;
 
     mlm_client_t *test_client = NULL;
     mlm_client_t *client = mlm_client_new ();
@@ -493,6 +535,10 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 char* path = zmsg_popstr (msg);
                 smtp.msmtp_path (path);
                 zstr_free (&path);
+            }
+            else
+            if (streq (cmd, "SMS_GATEWAY")) {
+                sms_gateway = zmsg_popstr (msg);
             }
             else
             if (streq (cmd, "_MSMTP_TEST")) {
@@ -588,7 +634,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 save_alerts_state (alerts, alerts_state_file);
             }
             else if (bios_proto_id (bmessage) == BIOS_PROTO_ASSET)  {
-                onAssetReceive (&bmessage, elements, verbose);
+                onAssetReceive (&bmessage, elements, sms_gateway, verbose);
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
@@ -605,6 +651,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
     zstr_free (&endpoint);
     zstr_free (&test_reader_name);
     zstr_free (&alerts_state_file);
+    zstr_free (&sms_gateway);
     zpoller_destroy (&poller);
     mlm_client_destroy (&client);
     mlm_client_destroy (&test_client);
@@ -1456,7 +1503,7 @@ bios_smtp_server_test (bool verbose)
 
     //      8. send alert message again third time
     msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
-        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL");
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
     assert ( rv != -1 );
