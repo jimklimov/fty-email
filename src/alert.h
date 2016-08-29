@@ -48,6 +48,9 @@ class Alert {
         std::transform (rule.begin(), rule.end(), rule.begin(), ::tolower);
     };
 
+    bool action_email () { return strcasestr (action.c_str (), "EMAIL") != NULL; }
+    bool action_sms () { return strcasestr (action.c_str (), "SMS") != NULL; }
+
     std::string rule;
     std::string element;
     std::string state;
