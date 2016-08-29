@@ -126,20 +126,19 @@ s_getNotificationInterval(
 }
 
 static void
-s_notify (alerts_map_iterator it,
+s_notify_base (alerts_map_iterator it,
           Smtp& smtp,
-          const ElementList& elements)
+          const Element& element,
+          const std::string& to,
+          uint64_t &last_notification,
+          uint64_t &last_update
+          )
 {
     bool needNotify = false;
-    Element element;
-    if (!elements.get (it->first.second, element)) {
-        zsys_error ("CAN'T NOTIFY unknown asset");
-        return;
-    }
 
     uint64_t nowTimestamp = ::time (NULL);
-    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, it->second.last_notification);
-    if (it->second.last_update > it->second.last_notification) {
+    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", last_update, last_notification);
+    if (last_update > last_notification) {
         // Last notification was send BEFORE last
         // important change take place -> need to notify
         needNotify = true;
@@ -154,7 +153,7 @@ s_notify (alerts_map_iterator it,
         }
         else
         if (
-        (nowTimestamp - it->second.last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
+        (nowTimestamp - last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
             // If  lastNotification + interval < NOW
         {
             // so, we found out that we need to notify according the schedule
@@ -180,17 +179,48 @@ s_notify (alerts_map_iterator it,
 
         try {
             smtp.sendmail(
-                element.email,
+                to,
                 generate_subject (it->second, element),
                 generate_body (it->second, element)
             );
-            it->second.last_notification = nowTimestamp;
+            last_notification = nowTimestamp;
         }
         catch (const std::runtime_error& e) {
             zsys_error ("Error: %s", e.what());
             // here we'll handle the error
         }
     }
+}
+
+static void
+s_notify (alerts_map_iterator it,
+          Smtp& smtp,
+          const ElementList& elements)
+{
+    Element element;
+    if (!elements.get (it->first.second, element)) {
+        zsys_error ("CAN'T NOTIFY unknown asset");
+        return;
+    }
+    if (it->second.action_email ())
+        s_notify_base (
+            it,
+            smtp,
+            element,
+            element.email,
+            it->second.last_notification,
+            it->second.last_update
+        );
+    if (it->second.action_sms ())
+        s_notify_base (
+            it,
+            smtp,
+            element,
+            element.sms_email,
+            it->second.last_sms_notification,
+            it->second.last_sms_update
+        );
+
 }
 
 static void
@@ -235,8 +265,8 @@ s_onAlertReceive (
     const char *actions = bios_proto_action (message);
 
     // add alert to the list of alerts
-    if (  (strcasestr (actions, "EMAIL") == NULL ) {
-       (|| strcasestr (actions, "SMS") == NULL )) {
+    if (  (strcasestr (actions, "EMAIL") == NULL)
+       || (strcasestr (actions, "SMS") == NULL )) {
         // this means, that for this alert no "EMAIL" action
         // -> we are not interested in it;
         zsys_debug1 ("Email action is not specified -> smtp agent is not interested in this alert");

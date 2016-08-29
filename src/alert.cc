@@ -42,6 +42,8 @@ void operator<<= (cxxtools::SerializationInfo& si, const Alert& alert)
     si.addMember("last_update") <<= alert.last_update;
     si.addMember("last_notification") <<= alert.last_notification;
     si.addMember("action") <<= alert.action;
+    si.addMember("last_sms_update") <<= alert.last_sms_update;
+    si.addMember("last_sms_notification") <<= alert.last_sms_notification;
 }
 
 /*
@@ -62,6 +64,18 @@ void operator>>= (const cxxtools::SerializationInfo& si, Alert& alert)
     }
     catch (const cxxtools::SerializationError &e) {
         alert.action = "EMAIL/SMS";
+    }
+    try {
+        si.getMember ("last_sms_update") >>= alert.last_sms_update;
+    }
+    catch (const cxxtools::SerializationError &e) {
+        alert.last_sms_update = 0;
+    }
+    try {
+        si.getMember ("last_sms_notification") >>= alert.last_sms_notification;
+    }
+    catch (const cxxtools::SerializationError &e) {
+        alert.last_sms_notification = 0;
     }
 }
 
