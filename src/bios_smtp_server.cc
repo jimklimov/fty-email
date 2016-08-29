@@ -312,6 +312,7 @@ s_onAlertReceive (
 void onAssetReceive (
     bios_proto_t **p_message,
     ElementList& elements,
+    const char* sms_gateway,
     bool verbose)
 {
     if (p_message == NULL) return;
@@ -633,7 +634,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 save_alerts_state (alerts, alerts_state_file);
             }
             else if (bios_proto_id (bmessage) == BIOS_PROTO_ASSET)  {
-                onAssetReceive (&bmessage, elements, verbose);
+                onAssetReceive (&bmessage, elements, sms_gateway, verbose);
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
