@@ -235,7 +235,8 @@ s_onAlertReceive (
     const char *actions = bios_proto_action (message);
 
     // add alert to the list of alerts
-    if ( strcasestr (actions, "EMAIL") == NULL ) {
+    if (  (strcasestr (actions, "EMAIL") == NULL ) {
+       (|| strcasestr (actions, "SMS") == NULL )) {
         // this means, that for this alert no "EMAIL" action
         // -> we are not interested in it;
         zsys_debug1 ("Email action is not specified -> smtp agent is not interested in this alert");
