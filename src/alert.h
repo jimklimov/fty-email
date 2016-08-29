@@ -39,6 +39,7 @@ class Alert {
             state (bios_proto_state (message)),
             severity (bios_proto_severity (message)),
             description (bios_proto_description (message)),
+            action (bios_proto_action (message)),
             time (bios_proto_time (message)),
             last_notification (0),
             last_update (bios_proto_time (message))
@@ -52,6 +53,7 @@ class Alert {
     std::string state;
     std::string severity;
     std::string description;
+    std::string action;
     uint64_t time;
     uint64_t last_notification;
     uint64_t last_update;
