@@ -376,6 +376,7 @@ void onAssetReceive (
             elements.updateEmail (name, contact_email);
         }
         if (sms_gateway && contact_phone) {
+            zsys_debug1 ("to update: contact_phone = %s", contact_phone);
             elements.updateSMSEmail (name, sms_email_address (sms_gateway, contact_phone));
         }
     } else if ( isDelete(operation) ) {

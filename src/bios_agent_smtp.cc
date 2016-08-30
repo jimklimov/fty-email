@@ -156,6 +156,8 @@ int main (int argc, char** argv)
         zsys_info ("using alternative msmtp binary: %s", msmtp_path);
         zstr_sendx (smtp_server, "MSMTP_PATH", msmtp_path);
     }
+    if (getenv ("BIOS_SMTP_SMS_GATEWAY"))
+        zstr_sendx (smtp_server, "SMS_GATEWAY", getenv ("BIOS_SMTP_SMS_GATEWAY"));
     // Connect to malamute
     zstr_sendx (smtp_server, "CONNECT", ENDPOINT, AGENT_NAME, NULL);
     zsock_wait (smtp_server);
