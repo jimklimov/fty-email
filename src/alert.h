@@ -32,7 +32,7 @@
 
 class Alert {
  public:
-    Alert () : time(0), last_email_notification(0), last_update(0) {};
+    Alert () : time(0), last_email_notification(0), last_update(0), last_sms_notification(0) {};
     Alert (bios_proto_t *message) :
             rule (bios_proto_rule (message)),
             element (bios_proto_element_src (message)),
