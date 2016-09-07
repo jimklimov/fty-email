@@ -32,7 +32,7 @@
 
 class Alert {
  public:
-    Alert () : time(0), last_notification(0), last_update(0) {};
+    Alert () : time(0), last_email_notification(0), last_update(0) {};
     Alert (bios_proto_t *message) :
             rule (bios_proto_rule (message)),
             element (bios_proto_element_src (message)),
@@ -41,7 +41,7 @@ class Alert {
             description (bios_proto_description (message)),
             action (bios_proto_action (message)),
             time (bios_proto_time (message)),
-            last_notification (0),
+            last_email_notification (0),
             last_update (bios_proto_time (message)),
             last_sms_notification (0)
     {
@@ -58,7 +58,7 @@ class Alert {
     std::string description;
     std::string action;
     uint64_t time; // when alert started
-    uint64_t last_notification; // last email notification was sent
+    uint64_t last_email_notification; // last email notification was sent
     uint64_t last_update; // last time, when alert was changed (for example serevity/status/description)
     uint64_t last_sms_notification; // when last sms notification was sent
 };

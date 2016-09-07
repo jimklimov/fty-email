@@ -125,6 +125,8 @@ s_getNotificationInterval(
     // if metric is computed it is send approximatly every 5 minutes +- X sec
 }
 
+
+
 static void
 s_notify_base (alerts_map_iterator it,
           Smtp& smtp,
@@ -209,7 +211,7 @@ s_notify (alerts_map_iterator it,
             smtp,
             element,
             element.email,
-            it->second.last_notification
+            it->second.last_email_notification
         );
     if (it->second.action_sms ()) {
         s_notify_base (
@@ -830,7 +832,7 @@ test9 (bool verbose, const char *endpoint)
     assert ( a.severity == "CRITICAL" );
     assert ( a.description == "ASDFKLHJH" );
     assert ( a.time == 123456 );
-    assert ( a.last_notification == 0 );
+    assert ( a.last_email_notification == 0 );
     assert ( a.last_update > 0 );
 
     // clean up after
