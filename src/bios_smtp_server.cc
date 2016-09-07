@@ -361,7 +361,7 @@ void onAssetReceive (
         newAsset.name = name;
         newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
         newAsset.email = ( contact_email == NULL ? "" : contact_email );
-        newAsset.contactPhone = ( contact_phone == NULL ? "" : contact_phone );
+        newAsset.phone = ( contact_phone == NULL ? "" : contact_phone );
         if (sms_gateway && contact_phone)
             newAsset.sms_email = sms_email_address (sms_gateway, contact_phone);
         elements.add (newAsset);
@@ -377,9 +377,12 @@ void onAssetReceive (
             zsys_debug1 ("to update: contact_email = %s", contact_email);
             elements.updateEmail (name, contact_email);
         }
-        if (sms_gateway && contact_phone) {
-            zsys_debug1 ("to update: contact_phone = %s", contact_phone);
-            elements.updateSMSEmail (name, sms_email_address (sms_gateway, contact_phone));
+        if ( contact_phone ) {
+            zsys_debug1 ("to update: contact_phone = %s", contact_email);
+            elements.updatePhone (name, contact_phone);
+            if (sms_gateway) {
+                elements.updateSMSEmail (name, sms_email_address (sms_gateway, contact_phone));
+            }
         }
     } else if ( isDelete(operation) ) {
         zsys_debug1 ("Asset:delete: '%s'", name);
@@ -563,7 +566,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
             if (streq (cmd, "STATE_FILE_PATH_ASSETS")) {
                 char* path = zmsg_popstr (msg);
                 elements.setFile (path);
-                elements.load();
+                // NOTE1234: this implies, that sms_gateway shpuld be specified before !
+                elements.load(sms_gateway?sms_gateway : "");
                 zstr_free (&path);
             }
             else
@@ -853,21 +857,21 @@ void test10 (
         "scenario10 Support Eaton", "create", "ASSET_10_1", "somephone");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 1 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
     assert ( element.priority == 1);
     assert ( element.email == "scenario10.email@eaton.com");
     assert ( element.contactName == "scenario10 Support Eaton");
-    assert ( element.contactPhone == "somephone");
+    assert ( element.phone == "somephone");
 
     // test10-2 (update known asset )
     s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com",
         "scenario10 Support Eaton", "update", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 1 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -880,7 +884,7 @@ void test10 (
         "scenario102 Support Eaton", "inventory", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 1 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -895,7 +899,7 @@ void test10 (
         "scenario10 Support Eaton", "create", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 1 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -910,7 +914,7 @@ void test10 (
         "scenario10 Support Eaton", "update", "ASSET_10_2");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -932,7 +936,7 @@ void test10 (
         "scenario103 Support Eaton", "inventory", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -954,7 +958,7 @@ void test10 (
         "scenario103 Support Eaton", "inventory", "ASSET_10_3");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     if (elements.get ("ASSET_10_3", element)) {
         zsys_info("ASSET FOUND! %s", element.name.c_str() );
     } else {
@@ -981,7 +985,7 @@ void test10 (
         "scenario104 Support Eaton", "inventory", "ASSET_10_4");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     if (elements.get ("ASSET_10_4", element)) {
         zsys_info("ASSET FOUND! %s", element.name.c_str() );
     } else {
@@ -1007,7 +1011,7 @@ void test10 (
         "scenario105 Support Eaton", "unknown_operation", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
 
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );
