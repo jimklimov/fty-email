@@ -42,7 +42,6 @@ void operator<<= (cxxtools::SerializationInfo& si, const Alert& alert)
     si.addMember("last_update") <<= alert.last_update;
     si.addMember("last_notification") <<= alert.last_notification;
     si.addMember("action") <<= alert.action;
-    si.addMember("last_sms_update") <<= alert.last_sms_update;
     si.addMember("last_sms_notification") <<= alert.last_sms_notification;
 }
 
@@ -66,12 +65,6 @@ void operator>>= (const cxxtools::SerializationInfo& si, Alert& alert)
         alert.action = "EMAIL/SMS";
     }
     try {
-        si.getMember ("last_sms_update") >>= alert.last_sms_update;
-    }
-    catch (const cxxtools::SerializationError &e) {
-        alert.last_sms_update = 0;
-    }
-    try {
         si.getMember ("last_sms_notification") >>= alert.last_sms_notification;
     }
     catch (const cxxtools::SerializationError &e) {
@@ -87,7 +80,13 @@ void
 alert_test (bool verbose)
 {
     printf (" * alert: ");
-
+    
+    Alert a;
+    assert ( a.action_sms() == false );
+    assert ( a.action_email() == false );
+    a.action = "EMAIL/SMS";
+    assert ( a.action_sms() == true );
+    assert ( a.action_email() == true );
     //  @selftest
     //  @end
     printf ("OK\n");

@@ -130,8 +130,7 @@ s_notify_base (alerts_map_iterator it,
           Smtp& smtp,
           const Element& element,
           const std::string& to,
-          uint64_t &last_notification,
-          uint64_t &last_update
+          uint64_t &last_notification
           )
 {
     if (to.empty ())
@@ -139,8 +138,8 @@ s_notify_base (alerts_map_iterator it,
     bool needNotify = false;
 
     uint64_t nowTimestamp = ::time (NULL);
-    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", last_update, last_notification);
-    if (last_update > last_notification) {
+    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, last_notification);
+    if (it->second.last_update > last_notification) {
         // Last notification was send BEFORE last
         // important change take place -> need to notify
         needNotify = true;
@@ -210,8 +209,7 @@ s_notify (alerts_map_iterator it,
             smtp,
             element,
             element.email,
-            it->second.last_notification,
-            it->second.last_update
+            it->second.last_notification
         );
     if (it->second.action_sms ()) {
         s_notify_base (
@@ -219,8 +217,7 @@ s_notify (alerts_map_iterator it,
             smtp,
             element,
             element.sms_email,
-            it->second.last_sms_notification,
-            it->second.last_sms_update
+            it->second.last_sms_notification
         );
     }
 

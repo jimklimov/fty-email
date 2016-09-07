@@ -43,9 +43,7 @@ class Alert {
             time (bios_proto_time (message)),
             last_notification (0),
             last_update (bios_proto_time (message)),
-            last_sms_notification (0),
-            last_sms_update (bios_proto_time (message))
-
+            last_sms_notification (0)
     {
         std::transform (rule.begin(), rule.end(), rule.begin(), ::tolower);
     };
@@ -59,11 +57,10 @@ class Alert {
     std::string severity;
     std::string description;
     std::string action;
-    uint64_t time;
-    uint64_t last_notification;
-    uint64_t last_update;
-    uint64_t last_sms_notification;
-    uint64_t last_sms_update;
+    uint64_t time; // when alert started
+    uint64_t last_notification; // last email notification was sent
+    uint64_t last_update; // last time, when alert was changed (for example serevity/status/description)
+    uint64_t last_sms_notification; // when last sms notification was sent
 };
 
 // Alerts are compared by pair [rule, element]
