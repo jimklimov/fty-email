@@ -362,8 +362,14 @@ void onAssetReceive (
         newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
         newAsset.email = ( contact_email == NULL ? "" : contact_email );
         newAsset.phone = ( contact_phone == NULL ? "" : contact_phone );
-        if (sms_gateway && contact_phone)
-            newAsset.sms_email = sms_email_address (sms_gateway, contact_phone);
+        if (sms_gateway && contact_phone) {
+            try {
+                newAsset.sms_email = sms_email_address (sms_gateway, contact_phone);
+            }
+            catch ( const std::exception &e ) {
+                zsys_error (e.what());
+            }
+        }
         elements.add (newAsset);
         if (verbose)
             newAsset.debug_print();
@@ -381,7 +387,12 @@ void onAssetReceive (
             zsys_debug1 ("to update: contact_phone = %s", contact_email);
             elements.updatePhone (name, contact_phone);
             if (sms_gateway) {
-                elements.updateSMSEmail (name, sms_email_address (sms_gateway, contact_phone));
+                try {
+                    elements.updateSMSEmail (name, sms_email_address (sms_gateway, contact_phone));
+                }
+                catch ( const std::exception &e ) {
+                   zsys_error (e.what());
+                }
             }
         }
     } else if ( isDelete(operation) ) {
