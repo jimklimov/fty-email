@@ -213,7 +213,7 @@ s_notify (alerts_map_iterator it,
             it->second.last_notification,
             it->second.last_update
         );
-    if (it->second.action_sms ())
+    if (it->second.action_sms ()) {
         s_notify_base (
             it,
             smtp,
@@ -222,6 +222,7 @@ s_notify (alerts_map_iterator it,
             it->second.last_sms_notification,
             it->second.last_sms_update
         );
+    }
 
 }
 
@@ -269,7 +270,7 @@ s_onAlertReceive (
     // add alert to the list of alerts
     if (  (strcasestr (actions, "EMAIL") == NULL)
        && (strcasestr (actions, "SMS") == NULL )) {
-        // this means, that for this alert no "EMAIL" action
+        // this means, that for this alert no "SMS/EMAIL" action
         // -> we are not interested in it;
         zsys_debug1 ("Email action (%s) is not specified -> smtp agent is not interested in this alert", actions);
         bios_proto_destroy (p_message);
@@ -360,6 +361,7 @@ void onAssetReceive (
         newAsset.name = name;
         newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
         newAsset.email = ( contact_email == NULL ? "" : contact_email );
+        newAsset.contactPhone = ( contact_phone == NULL ? "" : contact_phone );
         if (sms_gateway && contact_phone)
             newAsset.sms_email = sms_email_address (sms_gateway, contact_phone);
         elements.add (newAsset);
@@ -729,7 +731,8 @@ static void s_send_asset_message (
     const char *email,
     const char *contact,
     const char *operation,
-    const char *asset_name)
+    const char *asset_name,
+    const char *phone = NULL)
 {
     assert (operation);
     assert (asset_name);
@@ -741,6 +744,8 @@ static void s_send_asset_message (
         zhash_insert (ext, "contact_email", (void *)email);
     if ( contact )
         zhash_insert (ext, "contact_name", (void *)contact);
+    if ( phone )
+        zhash_insert (ext, "contact_phone", (void *)phone);
     zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, operation, ext);
     assert (msg);
     int rv = mlm_client_send (producer, asset_name, &msg);
@@ -832,7 +837,7 @@ void test10 (
     mlm_client_t *asset_producer
     )
 {
-    // test, that ASSET messages ae processed correctly
+    // test, that ASSET messages are processed correctly
     if ( verbose )
         zsys_info ("Scenario %s", __func__);
     // we want new smtp server with empty states
@@ -845,7 +850,7 @@ void test10 (
 
     // test10-1 (create NOT known asset)
     s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com",
-        "scenario10 Support Eaton", "create", "ASSET_10_1");
+        "scenario10 Support Eaton", "create", "ASSET_10_1", "somephone");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
     elements.load();
@@ -855,6 +860,7 @@ void test10 (
     assert ( element.priority == 1);
     assert ( element.email == "scenario10.email@eaton.com");
     assert ( element.contactName == "scenario10 Support Eaton");
+    assert ( element.contactPhone == "somephone");
 
     // test10-2 (update known asset )
     s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com",
@@ -953,7 +959,7 @@ void test10 (
         zsys_info("ASSET FOUND! %s", element.name.c_str() );
     } else {
             if ( verbose )   zsys_info("ASSET_10_3 NOT FOUND - AS EXPECTED when inventoring not known asset" );
-}
+    }
 
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );
@@ -980,7 +986,7 @@ void test10 (
         zsys_info("ASSET FOUND! %s", element.name.c_str() );
     } else {
             if ( verbose )   zsys_info("ASSET_10_4 NOT FOUND - AS EXPECTED when inventoring not known asset" );
-}
+    }
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");

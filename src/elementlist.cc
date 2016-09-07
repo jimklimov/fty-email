@@ -35,6 +35,7 @@ void operator<<= (cxxtools::SerializationInfo& si, const Element& element)
     si.addMember("priority") <<= std::to_string (element.priority); // ARM workaround
     si.addMember("contact_name") <<= element.contactName;
     si.addMember("contact_email") <<= element.email;
+    si.addMember("contact_phone") <<= element.contactPhone;
 }
 
 void operator>>= (const cxxtools::SerializationInfo& si, Element& asset)
@@ -55,6 +56,7 @@ void operator>>= (const cxxtools::SerializationInfo& si, Element& asset)
     si.getMember("name") >>= asset.name;
     si.getMember("contact_name") >>= asset.contactName;
     si.getMember("contact_email") >>= asset.email;
+    si.getMember("contact_phone") >>= asset.contactPhone;
 }
 
 bool ElementList::get (const std::string& asset_name, Element& element) const
@@ -199,6 +201,7 @@ void Element::debug_print () const
     zsys_debug ("priority = '%d'", priority);
     zsys_debug ("contact name = '%s'", contactName.c_str ());
     zsys_debug ("contact email = '%s'", email.c_str ());
+    zsys_debug ("contact phone = '%s'", contactPhone.c_str ());
 }
 
 void

@@ -31,6 +31,7 @@ class Element {
     std::string contactName;
     std::string email;
     std::string sms_email;
+    std::string contactPhone;
 
     void debug_print () const;
 };
