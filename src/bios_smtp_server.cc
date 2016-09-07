@@ -125,6 +125,43 @@ s_getNotificationInterval(
     // if metric is computed it is send approximatly every 5 minutes +- X sec
 }
 
+static bool
+s_need_to_notify (alerts_map_iterator it,
+          const Element& element,
+          uint64_t &last_notification,
+          uint64_t nowTimestamp
+          )
+{
+    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, last_notification);
+    if (it->second.last_update > last_notification) {
+        // Last notification was send BEFORE last
+        // important change take place -> need to notify
+        zsys_debug1 ("important change -> notify");
+        return true;
+    }
+    // so, no important changes, but may be we need to
+    // notify according the schedule
+    if ( it->second.state == "RESOLVED" ) {
+        // but only for resolved alerts
+        return false;
+    }
+    if ((nowTimestamp - last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
+        // If  lastNotification + interval < NOW
+    {
+        // so, we found out that we need to notify according the schedule
+        if (    it->second.state == "ACK-PAUSE"
+             || it->second.state == "ACK-IGNORE"
+             || it->second.state == "ACK-SILENCE"
+             || it->second.state == "RESOLVED")
+        {
+            zsys_debug1 ("in this status we do not send emails");
+            return false;
+        }
+        zsys_debug1 ("according schedule -> notify");
+        return true;
+    }
+    return false;
+}
 
 
 static void
@@ -135,63 +172,31 @@ s_notify_base (alerts_map_iterator it,
           uint64_t &last_notification
           )
 {
+    uint64_t nowTimestamp = ::time (NULL);
+    if ( !s_need_to_notify (it, element, last_notification, nowTimestamp) ) {
+        // no notification is needed
+        return;
+    }
+    zsys_debug1 ("Want to notify");
     if (to.empty ())
         return;
-    bool needNotify = false;
 
-    uint64_t nowTimestamp = ::time (NULL);
-    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, last_notification);
-    if (it->second.last_update > last_notification) {
-        // Last notification was send BEFORE last
-        // important change take place -> need to notify
-        needNotify = true;
-        zsys_debug1 ("important change -> notify");
-    }
-    else {
-        // so, no important changes, but may be we need to
-        // notify according the schedule
-        if ( it->second.state == "RESOLVED" ) {
-            // but only for active alerts
-            needNotify = false;
-        }
-        else
-        if (
-        (nowTimestamp - last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
-            // If  lastNotification + interval < NOW
-        {
-            // so, we found out that we need to notify according the schedule
-            zsys_debug1 ("according schedule -> notify");
-            if (it->second.state == "ACK-PAUSE" ||
-                it->second.state == "ACK-IGNORE" ||
-                it->second.state == "ACK-SILENCE" ||
-                it->second.state == "RESOLVED") {
-                    zsys_debug1 ("in this status we do not send emails");
-            }
-            else {
-                needNotify = true;
-            }
-        }
+    if (element.email.empty()) {
+        zsys_debug1 ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
+        return;
     }
 
-    if (needNotify) {
-        zsys_debug1 ("Want to notify");
-        if (element.email.empty()) {
-            zsys_debug1 ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
-            return;
-        }
-
-        try {
-            smtp.sendmail(
+    try {
+        smtp.sendmail(
                 to,
                 generate_subject (it->second, element),
                 generate_body (it->second, element)
-            );
-            last_notification = nowTimestamp;
-        }
-        catch (const std::runtime_error& e) {
-            zsys_error ("Error: %s", e.what());
-            // here we'll handle the error
-        }
+                );
+        last_notification = nowTimestamp;
+    }
+    catch (const std::runtime_error& e) {
+        zsys_error ("Error: %s", e.what());
+        // here we'll handle the error
     }
 }
 
