@@ -178,11 +178,8 @@ s_notify_base (alerts_map_iterator it,
         return;
     }
     zsys_debug1 ("Want to notify");
-    if (to.empty ())
-        return;
-
-    if (element.email.empty()) {
-        zsys_debug1 ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
+    if (to.empty ()) {
+        zsys_debug1 ("Can't send a notification. For the asset '%s' contact email or sms_email is unknown", element.name.c_str ());
         return;
     }
 
