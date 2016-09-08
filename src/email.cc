@@ -212,7 +212,7 @@ sms_email_address (
         if (it == std::string::npos)
             break;
         if (idx < 0)
-            throw std::logic_error ("Cannot apply number " + phone_number + "onto template" + gw_template + ". Not enough numbers in phone number");
+            throw std::logic_error ("Cannot apply number '" + phone_number + "' onto template '" + gw_template + "'. Not enough numbers in phone number");
         ret [it] = clean_phone_number [idx];
         idx --;
     }
