@@ -138,6 +138,10 @@ int main (int argc, char** argv)
     if (verbose) {
         zstr_sendx (smtp_server, "VERBOSE", NULL);
     }
+    // NOTE1234: sms_gateway MUST be set up before load of the state
+    if (getenv ("BIOS_SMTP_SMS_GATEWAY"))
+        zstr_sendx (smtp_server, "SMS_GATEWAY", getenv ("BIOS_SMTP_SMS_GATEWAY"));
+
     // ATTENTION: the path for the state should be set up before any network activity!
     // as it should load the state first!
     zstr_sendx (smtp_server, "STATE_FILE_PATH_ASSETS", "/var/lib/bios/agent-smtp/state", NULL);
@@ -156,8 +160,6 @@ int main (int argc, char** argv)
         zsys_info ("using alternative msmtp binary: %s", msmtp_path);
         zstr_sendx (smtp_server, "MSMTP_PATH", msmtp_path);
     }
-    if (getenv ("BIOS_SMTP_SMS_GATEWAY"))
-        zstr_sendx (smtp_server, "SMS_GATEWAY", getenv ("BIOS_SMTP_SMS_GATEWAY"));
     // Connect to malamute
     zstr_sendx (smtp_server, "CONNECT", ENDPOINT, AGENT_NAME, NULL);
     zsock_wait (smtp_server);

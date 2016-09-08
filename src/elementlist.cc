@@ -24,6 +24,7 @@
 #include <cxxtools/jsonserializer.h>
 #include <cxxtools/jsondeserializer.h>
 #include <czmq.h>
+#include "email.h"
 
 #include "elementlist.h"
 
@@ -35,6 +36,7 @@ void operator<<= (cxxtools::SerializationInfo& si, const Element& element)
     si.addMember("priority") <<= std::to_string (element.priority); // ARM workaround
     si.addMember("contact_name") <<= element.contactName;
     si.addMember("contact_email") <<= element.email;
+    si.addMember("contact_phone") <<= element.phone;
 }
 
 void operator>>= (const cxxtools::SerializationInfo& si, Element& asset)
@@ -55,6 +57,7 @@ void operator>>= (const cxxtools::SerializationInfo& si, Element& asset)
     si.getMember("name") >>= asset.name;
     si.getMember("contact_name") >>= asset.contactName;
     si.getMember("contact_email") >>= asset.email;
+    si.getMember("contact_phone") >>= asset.phone;
 }
 
 bool ElementList::get (const std::string& asset_name, Element& element) const
@@ -99,6 +102,14 @@ void ElementList::updateEmail (const std::string &elementName, const std::string
     auto search = _assets.find (elementName);
     if ( search != _assets.cend ()) {
         search->second.email = email;
+    }
+}
+
+void ElementList::updatePhone (const std::string &elementName, const std::string &phone)
+{
+    auto search = _assets.find (elementName);
+    if ( search != _assets.cend ()) {
+        search->second.phone = phone;
     }
 }
 
@@ -158,7 +169,7 @@ int ElementList::save () {
     return 0;
 }
 
-int ElementList::load () {
+int ElementList::load (const std::string &sms_gateway) {
     // TODO if !is file
     std::ifstream ifs (_path, std::ios::in | std::ios::binary);
     if ( !ifs.good() ) {
@@ -175,6 +186,15 @@ int ElementList::load () {
         json.deserialize(si);
         si >>= _assets;
         ifs.close();
+
+        for ( auto &it : _assets ) {
+            try {
+                it.second.sms_email = sms_email_address (sms_gateway, it.second.phone);
+            }
+            catch ( const std::exception &e ) {
+                zsys_error (e.what());
+            }
+        }
         return 0;
     }
     catch ( const std::exception &e) {
@@ -199,6 +219,7 @@ void Element::debug_print () const
     zsys_debug ("priority = '%d'", priority);
     zsys_debug ("contact name = '%s'", contactName.c_str ());
     zsys_debug ("contact email = '%s'", email.c_str ());
+    zsys_debug ("contact phone = '%s'", phone.c_str ());
 }
 
 void

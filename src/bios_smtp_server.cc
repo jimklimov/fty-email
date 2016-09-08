@@ -125,72 +125,75 @@ s_getNotificationInterval(
     // if metric is computed it is send approximatly every 5 minutes +- X sec
 }
 
+static bool
+s_need_to_notify (alerts_map_iterator it,
+          const Element& element,
+          uint64_t &last_notification,
+          uint64_t nowTimestamp
+          )
+{
+    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, last_notification);
+    if (it->second.last_update > last_notification) {
+        // Last notification was send BEFORE last
+        // important change take place -> need to notify
+        zsys_debug1 ("important change -> notify");
+        return true;
+    }
+    // so, no important changes, but may be we need to
+    // notify according the schedule
+    if ( it->second.state == "RESOLVED" ) {
+        // but only for resolved alerts
+        return false;
+    }
+    if ((nowTimestamp - last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
+        // If  lastNotification + interval < NOW
+    {
+        // so, we found out that we need to notify according the schedule
+        if (    it->second.state == "ACK-PAUSE"
+             || it->second.state == "ACK-IGNORE"
+             || it->second.state == "ACK-SILENCE"
+             || it->second.state == "RESOLVED")
+        {
+            zsys_debug1 ("in this status we do not send emails");
+            return false;
+        }
+        zsys_debug1 ("according schedule -> notify");
+        return true;
+    }
+    return false;
+}
+
+
 static void
 s_notify_base (alerts_map_iterator it,
           Smtp& smtp,
           const Element& element,
           const std::string& to,
-          uint64_t &last_notification,
-          uint64_t &last_update
+          uint64_t &last_notification
           )
 {
-    if (to.empty ())
-        return;
-    bool needNotify = false;
-
     uint64_t nowTimestamp = ::time (NULL);
-    zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", last_update, last_notification);
-    if (last_update > last_notification) {
-        // Last notification was send BEFORE last
-        // important change take place -> need to notify
-        needNotify = true;
-        zsys_debug1 ("important change -> notify");
+    if ( !s_need_to_notify (it, element, last_notification, nowTimestamp) ) {
+        // no notification is needed
+        return;
     }
-    else {
-        // so, no important changes, but may be we need to
-        // notify according the schedule
-        if ( it->second.state == "RESOLVED" ) {
-            // but only for active alerts
-            needNotify = false;
-        }
-        else
-        if (
-        (nowTimestamp - last_notification) > s_getNotificationInterval (it->second.severity, element.priority))
-            // If  lastNotification + interval < NOW
-        {
-            // so, we found out that we need to notify according the schedule
-            zsys_debug1 ("according schedule -> notify");
-            if (it->second.state == "ACK-PAUSE" ||
-                it->second.state == "ACK-IGNORE" ||
-                it->second.state == "ACK-SILENCE" ||
-                it->second.state == "RESOLVED") {
-                    zsys_debug1 ("in this status we do not send emails");
-            }
-            else {
-                needNotify = true;
-            }
-        }
+    zsys_debug1 ("Want to notify");
+    if (to.empty ()) {
+        zsys_debug1 ("Can't send a notification. For the asset '%s' contact email or sms_email is unknown", element.name.c_str ());
+        return;
     }
 
-    if (needNotify) {
-        zsys_debug1 ("Want to notify");
-        if (element.email.empty()) {
-            zsys_debug1 ("Can't send a notification. For the asset '%s' contact email is unknown", element.name.c_str ());
-            return;
-        }
-
-        try {
-            smtp.sendmail(
+    try {
+        smtp.sendmail(
                 to,
                 generate_subject (it->second, element),
                 generate_body (it->second, element)
-            );
-            last_notification = nowTimestamp;
-        }
-        catch (const std::runtime_error& e) {
-            zsys_error ("Error: %s", e.what());
-            // here we'll handle the error
-        }
+                );
+        last_notification = nowTimestamp;
+    }
+    catch (const std::runtime_error& e) {
+        zsys_error ("Error: %s", e.what());
+        // here we'll handle the error
     }
 }
 
@@ -210,18 +213,17 @@ s_notify (alerts_map_iterator it,
             smtp,
             element,
             element.email,
-            it->second.last_notification,
-            it->second.last_update
+            it->second.last_email_notification
         );
-    if (it->second.action_sms ())
+    if (it->second.action_sms ()) {
         s_notify_base (
             it,
             smtp,
             element,
             element.sms_email,
-            it->second.last_sms_notification,
-            it->second.last_sms_update
+            it->second.last_sms_notification
         );
+    }
 
 }
 
@@ -269,7 +271,7 @@ s_onAlertReceive (
     // add alert to the list of alerts
     if (  (strcasestr (actions, "EMAIL") == NULL)
        && (strcasestr (actions, "SMS") == NULL )) {
-        // this means, that for this alert no "EMAIL" action
+        // this means, that for this alert no "SMS/EMAIL" action
         // -> we are not interested in it;
         zsys_debug1 ("Email action (%s) is not specified -> smtp agent is not interested in this alert", actions);
         bios_proto_destroy (p_message);
@@ -360,8 +362,15 @@ void onAssetReceive (
         newAsset.name = name;
         newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
         newAsset.email = ( contact_email == NULL ? "" : contact_email );
-        if (sms_gateway && contact_phone)
-            newAsset.sms_email = sms_email_address (sms_gateway, contact_phone);
+        newAsset.phone = ( contact_phone == NULL ? "" : contact_phone );
+        if (sms_gateway && contact_phone) {
+            try {
+                newAsset.sms_email = sms_email_address (sms_gateway, contact_phone);
+            }
+            catch ( const std::exception &e ) {
+                zsys_error (e.what());
+            }
+        }
         elements.add (newAsset);
         if (verbose)
             newAsset.debug_print();
@@ -375,9 +384,17 @@ void onAssetReceive (
             zsys_debug1 ("to update: contact_email = %s", contact_email);
             elements.updateEmail (name, contact_email);
         }
-        if (sms_gateway && contact_phone) {
-            zsys_debug1 ("to update: contact_phone = %s", contact_phone);
-            elements.updateSMSEmail (name, sms_email_address (sms_gateway, contact_phone));
+        if ( contact_phone ) {
+            zsys_debug1 ("to update: contact_phone = %s", contact_email);
+            elements.updatePhone (name, contact_phone);
+            if (sms_gateway) {
+                try {
+                    elements.updateSMSEmail (name, sms_email_address (sms_gateway, contact_phone));
+                }
+                catch ( const std::exception &e ) {
+                   zsys_error (e.what());
+                }
+            }
         }
     } else if ( isDelete(operation) ) {
         zsys_debug1 ("Asset:delete: '%s'", name);
@@ -561,7 +578,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
             if (streq (cmd, "STATE_FILE_PATH_ASSETS")) {
                 char* path = zmsg_popstr (msg);
                 elements.setFile (path);
-                elements.load();
+                // NOTE1234: this implies, that sms_gateway shpuld be specified before !
+                elements.load(sms_gateway?sms_gateway : "");
                 zstr_free (&path);
             }
             else
@@ -729,7 +747,8 @@ static void s_send_asset_message (
     const char *email,
     const char *contact,
     const char *operation,
-    const char *asset_name)
+    const char *asset_name,
+    const char *phone = NULL)
 {
     assert (operation);
     assert (asset_name);
@@ -741,6 +760,8 @@ static void s_send_asset_message (
         zhash_insert (ext, "contact_email", (void *)email);
     if ( contact )
         zhash_insert (ext, "contact_name", (void *)contact);
+    if ( phone )
+        zhash_insert (ext, "contact_phone", (void *)phone);
     zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, operation, ext);
     assert (msg);
     int rv = mlm_client_send (producer, asset_name, &msg);
@@ -813,7 +834,7 @@ test9 (bool verbose, const char *endpoint)
     assert ( a.severity == "CRITICAL" );
     assert ( a.description == "ASDFKLHJH" );
     assert ( a.time == 123456 );
-    assert ( a.last_notification == 0 );
+    assert ( a.last_email_notification == 0 );
     assert ( a.last_update > 0 );
 
     // clean up after
@@ -832,7 +853,7 @@ void test10 (
     mlm_client_t *asset_producer
     )
 {
-    // test, that ASSET messages ae processed correctly
+    // test, that ASSET messages are processed correctly
     if ( verbose )
         zsys_info ("Scenario %s", __func__);
     // we want new smtp server with empty states
@@ -845,23 +866,24 @@ void test10 (
 
     // test10-1 (create NOT known asset)
     s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com",
-        "scenario10 Support Eaton", "create", "ASSET_10_1");
+        "scenario10 Support Eaton", "create", "ASSET_10_1", "somephone");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 1 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
     assert ( element.priority == 1);
     assert ( element.email == "scenario10.email@eaton.com");
     assert ( element.contactName == "scenario10 Support Eaton");
+    assert ( element.phone == "somephone");
 
     // test10-2 (update known asset )
     s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com",
         "scenario10 Support Eaton", "update", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 1 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -874,7 +896,7 @@ void test10 (
         "scenario102 Support Eaton", "inventory", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 1 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -889,7 +911,7 @@ void test10 (
         "scenario10 Support Eaton", "create", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 1 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -904,7 +926,7 @@ void test10 (
         "scenario10 Support Eaton", "update", "ASSET_10_2");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -926,7 +948,7 @@ void test10 (
         "scenario103 Support Eaton", "inventory", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -948,12 +970,12 @@ void test10 (
         "scenario103 Support Eaton", "inventory", "ASSET_10_3");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     if (elements.get ("ASSET_10_3", element)) {
         zsys_info("ASSET FOUND! %s", element.name.c_str() );
     } else {
             if ( verbose )   zsys_info("ASSET_10_3 NOT FOUND - AS EXPECTED when inventoring not known asset" );
-}
+    }
 
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );
@@ -975,12 +997,12 @@ void test10 (
         "scenario104 Support Eaton", "inventory", "ASSET_10_4");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
     if (elements.get ("ASSET_10_4", element)) {
         zsys_info("ASSET FOUND! %s", element.name.c_str() );
     } else {
             if ( verbose )   zsys_info("ASSET_10_4 NOT FOUND - AS EXPECTED when inventoring not known asset" );
-}
+    }
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );
     assert ( element.name == "ASSET_10_1");
@@ -1001,7 +1023,7 @@ void test10 (
         "scenario105 Support Eaton", "unknown_operation", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
-    elements.load();
+    elements.load("notimportant");
 
     assert ( elements.size() == 2 );
     assert ( elements.get ("ASSET_10_1", element) );

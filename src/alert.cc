@@ -40,9 +40,9 @@ void operator<<= (cxxtools::SerializationInfo& si, const Alert& alert)
     si.addMember("description") <<= alert.description;
     si.addMember("time") <<= alert.time;
     si.addMember("last_update") <<= alert.last_update;
-    si.addMember("last_notification") <<= alert.last_notification;
+    // TODO consider to rename this in state file
+    si.addMember("last_notification") <<= alert.last_email_notification;
     si.addMember("action") <<= alert.action;
-    si.addMember("last_sms_update") <<= alert.last_sms_update;
     si.addMember("last_sms_notification") <<= alert.last_sms_notification;
 }
 
@@ -58,18 +58,12 @@ void operator>>= (const cxxtools::SerializationInfo& si, Alert& alert)
     si.getMember("description") >>= alert.description;
     si.getMember("time") >>= alert.time;
     si.getMember("last_update") >>= alert.last_update;
-    si.getMember("last_notification") >>= alert.last_notification;
+    si.getMember("last_notification") >>= alert.last_email_notification;
     try {
         si.getMember ("action") >>= alert.action;
     }
     catch (const cxxtools::SerializationError &e) {
         alert.action = "EMAIL/SMS";
-    }
-    try {
-        si.getMember ("last_sms_update") >>= alert.last_sms_update;
-    }
-    catch (const cxxtools::SerializationError &e) {
-        alert.last_sms_update = 0;
     }
     try {
         si.getMember ("last_sms_notification") >>= alert.last_sms_notification;
@@ -87,7 +81,13 @@ void
 alert_test (bool verbose)
 {
     printf (" * alert: ");
-
+    
+    Alert a;
+    assert ( a.action_sms() == false );
+    assert ( a.action_email() == false );
+    a.action = "EMAIL/SMS";
+    assert ( a.action_sms() == true );
+    assert ( a.action_email() == true );
     //  @selftest
     //  @end
     printf ("OK\n");

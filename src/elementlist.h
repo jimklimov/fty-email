@@ -31,6 +31,7 @@ class Element {
     std::string contactName;
     std::string email;
     std::string sms_email;
+    std::string phone;
 
     void debug_print () const;
 };
@@ -52,11 +53,12 @@ class ElementList
     void    setFile (const std::string& path_to_file);
     void    setFile ();
     int     save (); // TODO prepsat, tohle je strasny
-    int     load (); // TODO prepsat, tohle je strasny
+    int     load (const std::string &sms_gateway); // TODO prepsat, tohle je strasny
     std::string serialize_to_json () const;
     void    updateContactName (const std::string &elementName, const std::string &contactName);
     void    updateEmail (const std::string &elementName, const std::string &email);
     void    updateSMSEmail (const std::string &elementName, const std::string &email);
+    void    updatePhone (const std::string &elementName, const std::string &phone);
     unsigned int size(void) const;
  private:
     std::map <std::string, Element> _assets;
