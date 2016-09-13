@@ -78,6 +78,7 @@ int main (int argc, char** argv)
     char *smtpfrom     = getenv("BIOS_SMTP_FROM");
     char *smtpencrypt  = getenv("BIOS_SMTP_ENCRYPT");
     char *msmtp_path   = getenv("_MSMTP_PATH_");
+    char *smsgateway   = getenv("BIOS_SMTP_SMS_GATEWAY");
 
     // get options
     int c;
@@ -139,8 +140,8 @@ int main (int argc, char** argv)
         zstr_sendx (smtp_server, "VERBOSE", NULL);
     }
     // NOTE1234: sms_gateway MUST be set up before load of the state
-    if (getenv ("BIOS_SMTP_SMS_GATEWAY"))
-        zstr_sendx (smtp_server, "SMS_GATEWAY", getenv ("BIOS_SMTP_SMS_GATEWAY"));
+    if (smsgateway)
+        zstr_sendx (smtp_server, "SMS_GATEWAY", smsgateway);
 
     // ATTENTION: the path for the state should be set up before any network activity!
     // as it should load the state first!
