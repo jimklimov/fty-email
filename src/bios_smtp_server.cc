@@ -507,10 +507,75 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 break;
             }
             else
-            if (streq (cmd, "VERBOSE")) {
-                verbose = true;
-                agent_smtp_verbose = true;
-                zsys_debug1 ("VERBOSE received");
+            if (streq (cmd, "LOAD")) {
+                char * config_file = zmsg_popstr (msg);
+                zsys_debug1 ("LOAD: %s", config_file);
+
+                zconfig_t *config = zconfig_load (config_file);
+                if (!config) {
+                    zsys_error ("Failed to load config file %s", config_file);
+                    zstr_free (&config_file);
+                    break;
+                }
+
+                // VERBOSE
+                if (streq (zconfig_get (config, "server/verbose", "0"), "1")) {
+                    verbose = true;
+                    agent_smtp_verbose = true;
+                    zsys_debug1 ("VERBOSE received");
+                }
+                // SMS_GATEWAY
+                if (zconfig_get (config, "smtp/smsgateway", NULL)) {
+                    sms_gateway = strdup (zconfig_get (config, "smtp/smsgateway", NULL));
+                }
+                // MSMTP_PATH
+                if (zconfig_get (config, "smtp/msmtppath", NULL)) {
+                    smtp.msmtp_path (zconfig_get (config, "smtp/msmtppath", NULL));
+                }
+                //STATE_FILE_PATH_ASSETS
+                if (zconfig_get (config, "server/assets", NULL)) {
+                    char *path = zconfig_get (config, "server/assets", NULL);
+                    elements.setFile (path);
+                    // NOTE1234: this implies, that sms_gateway should be specified before !
+                    elements.load(sms_gateway?sms_gateway : "");
+                }
+                //STATE_FILE_PATH_ALERTS
+                if (zconfig_get (config, "server/alerts", NULL)) {
+                    alerts_state_file = strdup (zconfig_get (config, "server/alerts", NULL));
+                    int r = load_alerts_state (alerts, alerts_state_file);
+                    if ( r == 0 ) {
+                        zsys_debug1 ("State(alerts) loaded successfully");
+                    }
+                    else {
+                        zsys_warning ("State(alerts) is not loaded successfully. Starting with empty set");
+                    }
+                }
+
+                // smtp
+                if (zconfig_get (config, "smtp/server", NULL)) {
+                    smtp.host (zconfig_get (config, "smtp/server", NULL));
+                }
+                if (zconfig_get (config, "smtp/port", NULL)) {
+                    smtp.port (zconfig_get (config, "smtp/port", NULL));
+                }
+                if (zconfig_get (config, "smtp/encryption", NULL)) {
+                    smtp.port (zconfig_get (config, "smtp/encryption", NULL));
+                }
+                if (zconfig_get (config, "smtp/encryption", NULL)) {
+                    smtp.encryption (zconfig_get (config, "smtp/encryption", NULL));
+                }
+                if (zconfig_get (config, "smtp/user", NULL)) {
+                    smtp.username (zconfig_get (config, "smtp/user", NULL));
+                }
+                if (zconfig_get (config, "smtp/password", NULL)) {
+                    smtp.password (zconfig_get (config, "smtp/password", NULL));
+                }
+                if (zconfig_get (config, "smtp/from", NULL)) {
+                    smtp.from (zconfig_get (config, "smtp/from", NULL));
+                }
+
+                zconfig_destroy (&config);
+                zstr_free (&config_file);
             }
             else
             if (streq (cmd, "CHECK_NOW")) {
@@ -549,16 +614,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 zsock_signal (pipe, 0);
             }
             else
-            if (streq (cmd, "MSMTP_PATH")) {
-                char* path = zmsg_popstr (msg);
-                smtp.msmtp_path (path);
-                zstr_free (&path);
-            }
-            else
-            if (streq (cmd, "SMS_GATEWAY")) {
-                sms_gateway = zmsg_popstr (msg);
-            }
-            else
             if (streq (cmd, "_MSMTP_TEST")) {
                 test_reader_name = zmsg_popstr (msg);
                 test_client = mlm_client_new ();
@@ -573,53 +628,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
                         mlm_client_sendtox (test_client, test_reader_name, "btest", data.c_str ());
                     };
                 smtp.sendmail_set_test_fn (cb);
-            }
-            else
-            if (streq (cmd, "STATE_FILE_PATH_ASSETS")) {
-                char* path = zmsg_popstr (msg);
-                elements.setFile (path);
-                // NOTE1234: this implies, that sms_gateway shpuld be specified before !
-                elements.load(sms_gateway?sms_gateway : "");
-                zstr_free (&path);
-            }
-            else
-            if (streq (cmd, "STATE_FILE_PATH_ALERTS")) {
-                alerts_state_file = zmsg_popstr (msg);
-                int r = load_alerts_state (alerts, alerts_state_file);
-                if ( r == 0 ) {
-                    zsys_debug1 ("State(alerts) loaded successfully");
-                }
-                else {
-                    zsys_warning ("State(alerts) is not loaded successfully. Starting with empty set");
-                }
-            }
-            else
-            if (streq (cmd, "SMTPCONFIG")) {
-                char *param;
-                // server
-                param = zmsg_popstr (msg);
-                if (param && param[0]) smtp.host(param);
-                zstr_free (&param);
-                // port
-                param = zmsg_popstr (msg);
-                if (param && param[0]) smtp.port(param);
-                zstr_free (&param);
-                // encryption
-                param = zmsg_popstr (msg);
-                if (param && param[0]) smtp.encryption(param);
-                zstr_free (&param);
-                // from
-                param = zmsg_popstr (msg);
-                if (param && param[0]) smtp.from(param);
-                zstr_free (&param);
-                // username
-                param = zmsg_popstr (msg);
-                if (param && param[0]) smtp.username(param);
-                zstr_free (&param);
-                // password
-                param = zmsg_popstr (msg);
-                if (param && param[0]) smtp.password(param);
-                zstr_free (&param);
             }
             else
             {
@@ -712,11 +720,14 @@ static zactor_t* create_smtp_server (
         std::remove (alerts_file);
     zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
     assert ( smtp_server != NULL );
-    zstr_sendx (smtp_server, "STATE_FILE_PATH_ASSETS", assets_file, NULL);
-    zstr_sendx (smtp_server, "STATE_FILE_PATH_ALERTS", alerts_file, NULL);
+    zconfig_t *config = zconfig_new ("root", NULL);
+    zconfig_put (config, "server/alerts", alerts_file);
+    zconfig_put (config, "server/assets", assets_file);
+    zconfig_save (config, "src/smtp.cfg");
+    zconfig_destroy (&config);
     if ( verbose )
         zstr_send (smtp_server, "VERBOSE");
-    zstr_sendx (smtp_server, "MSMTP_PATH", "src/btest", NULL);
+    zstr_sendx (smtp_server, "LOAD", "src/smtp.cfg", NULL);
     zstr_sendx (smtp_server, "CONNECT", endpoint, agent_name, NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
@@ -1078,10 +1089,16 @@ bios_smtp_server_test (bool verbose)
     // smtp server
     zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
     assert ( smtp_server != NULL );
-    zstr_sendx (smtp_server, "STATE_FILE_PATH_ASSETS", assets_file, NULL);
-    zstr_sendx (smtp_server, "STATE_FILE_PATH_ALERTS", alerts_file, NULL);
+
+    zconfig_t *config = zconfig_new ("root", NULL);
+    zconfig_put (config, "server/alerts", alerts_file);
+    zconfig_put (config, "server/assets", assets_file);
+    zconfig_save (config, "src/smtp.cfg");
+    zconfig_destroy (&config);
+
     if (verbose)
         zstr_send (smtp_server, "VERBOSE");
+    zstr_sendx (smtp_server, "LOAD", "src/smtp.cfg", NULL);
     zstr_sendx (smtp_server, "CONNECT", endpoint, "agent-smtp", NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
