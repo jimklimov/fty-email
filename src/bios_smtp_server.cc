@@ -574,6 +574,28 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     smtp.from (zconfig_get (config, "smtp/from", NULL));
                 }
 
+                // malamute
+                if (zconfig_get (config, "malamute/verbose", NULL)) {
+                    mlm_client_set_verbose (client, true);
+                }
+                if (!mlm_client_connected (client)) {
+                    if (   zconfig_get (config, "malamute/endpoint", NULL)
+                        && zconfig_get (config, "malamute/address", NULL)) {
+
+                        endpoint = strdup (zconfig_get (config, "malamute/endpoint", NULL));
+                        name = strdup (zconfig_get (config, "malamute/address", NULL));
+                        uint32_t timeout;
+                        sscanf ("%" SCNu32, zconfig_get (config, "malamute/timeout", "1000"), &timeout);
+
+                        zsys_debug1 ("%s: mlm_client_connect (%s, %" PRIu32 ", %s)", name, endpoint, timeout, name);
+                        int r = mlm_client_connect (client, endpoint, timeout, name);
+                        if (r == -1)
+                            zsys_debug1 ("%s: mlm_client_connect (%s, %" PRIu32 ", %s) = %d FAILED", name, endpoint, timeout, name, r);
+                    }
+                    else
+                        zsys_warning ("<smtp>: malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
+                }
+
                 zconfig_destroy (&config);
                 zstr_free (&config_file);
             }
@@ -1093,14 +1115,18 @@ bios_smtp_server_test (bool verbose)
     zconfig_t *config = zconfig_new ("root", NULL);
     zconfig_put (config, "server/alerts", alerts_file);
     zconfig_put (config, "server/assets", assets_file);
+    zconfig_put (config, "malamute/endpoint", endpoint);
+    zconfig_put (config, "malamute/address", "agent-smtp");
     zconfig_save (config, "src/smtp.cfg");
     zconfig_destroy (&config);
 
     if (verbose)
         zstr_send (smtp_server, "VERBOSE");
     zstr_sendx (smtp_server, "LOAD", "src/smtp.cfg", NULL);
+    /*
     zstr_sendx (smtp_server, "CONNECT", endpoint, "agent-smtp", NULL);
     zsock_wait (smtp_server);
+    */
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
