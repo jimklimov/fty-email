@@ -37,6 +37,8 @@ static const char *AGENT_NAME = "agent-smtp";
 // TODO make endpoint configurable on the start of the agent
 static const char *ENDPOINT = "ipc://@/malamute";
 
+static const char *CONFIG_PATH = "/etc/agent-smtp/bios-agent-smtp.cfg";
+
 void usage ()
 {
     puts ("bios-agent-smtp [options]\n"
@@ -78,6 +80,10 @@ int main (int argc, char** argv)
     char *smtpfrom     = getenv("BIOS_SMTP_FROM");
     char *smtpencrypt  = getenv("BIOS_SMTP_ENCRYPT");
     char *msmtp_path   = getenv("_MSMTP_PATH_");
+    char *smsgateway   = getenv("BIOS_SMTP_SMS_GATEWAY");
+
+    char *config_file = NULL;
+    zconfig_t *config = NULL;
 
     // get options
     int c;
@@ -90,6 +96,7 @@ int main (int argc, char** argv)
         {"user",       required_argument, 0,'u'},
         {"from",       required_argument, 0,'f'},
         {"encryption", required_argument, 0,'e'},
+        {"config", required_argument, 0,'c'},
         {0, 0, 0, 0}
     };
     while(true) {
@@ -116,6 +123,9 @@ int main (int argc, char** argv)
         case 'e':
             smtpencrypt = optarg;
             break;
+        case 'c':
+            config_file = optarg;
+            break;
         case 0:
             // just now walking trough some long opt
             break;
@@ -127,6 +137,45 @@ int main (int argc, char** argv)
     }
     if (help) { usage(); exit(1); }
     // end of the options
+    
+    if (!config_file) {
+        zsys_info ("No config file specified, falling back to enviromental variables.\nNote this is deprecated and will be removed!");
+        config = zconfig_new ("root", NULL);
+        zconfig_put (config, "server/verbose", verbose? "1" : "0");
+        zconfig_put (config, "server/assets", "/var/lib/bios/agent-smtp/state");
+        zconfig_put (config, "server/alerts", "/var/lib/bios/agent-smtp/state-alerts");
+
+        zconfig_put (config, "smtp/server", smtpserver);
+        zconfig_put (config, "smtp/port", smtpport);
+        zconfig_put (config, "smtp/user", smtpuser);
+        zconfig_put (config, "smtp/password", smtppassword);
+        zconfig_put (config, "smtp/from", smtpfrom);
+        zconfig_put (config, "smtp/encryption", smtpencrypt ? smtpencrypt : "none");
+        if (msmtp_path)
+            zconfig_put (config, "smtp/msmtppath", msmtp_path);
+        zconfig_put (config, "smtp/smsgateway", smsgateway);
+
+        zconfig_put (config, "malamute/endpoint", ENDPOINT);
+        zconfig_put (config, "malamute/address", AGENT_NAME);
+        zconfig_put (config, "malamute/consumers/ALERTS", ".*");
+        zconfig_put (config, "malamute/consumer/ASSETS", ".*");
+        zconfig_print (config);
+
+        int r = zconfig_save (config, CONFIG_PATH);
+        if (r == -1) {
+            zsys_error ("Error while saving config file %s: %m", CONFIG_PATH);
+            exit (EXIT_FAILURE);
+        }
+        zconfig_destroy (&config);
+    }
+    else {
+        config = zconfig_load (config_file);
+        if (!config) {
+            zsys_error ("Failed to load config file %s: %m", config_file);
+            exit (EXIT_FAILURE);
+        }
+        zconfig_destroy (&config);
+    }
 
     puts ("START bios-agent-smtp - Daemon that is responsible for email notification about alerts");
     zactor_t *smtp_server = zactor_new (bios_smtp_server, (void *) NULL);
@@ -135,40 +184,9 @@ int main (int argc, char** argv)
         return -1;
     }
 
-    if (verbose) {
+    if (verbose)
         zstr_sendx (smtp_server, "VERBOSE", NULL);
-    }
-    // NOTE1234: sms_gateway MUST be set up before load of the state
-    if (getenv ("BIOS_SMTP_SMS_GATEWAY"))
-        zstr_sendx (smtp_server, "SMS_GATEWAY", getenv ("BIOS_SMTP_SMS_GATEWAY"));
-
-    // ATTENTION: the path for the state should be set up before any network activity!
-    // as it should load the state first!
-    zstr_sendx (smtp_server, "STATE_FILE_PATH_ASSETS", "/var/lib/bios/agent-smtp/state", NULL);
-    zstr_sendx (smtp_server, "STATE_FILE_PATH_ALERTS", "/var/lib/bios/agent-smtp/state-alerts", NULL);
-    // configure email, before we start to receive alerts
-    zstr_sendx (smtp_server,
-                "SMTPCONFIG",
-                smtpserver ? smtpserver : "",       // server
-                smtpport ? smtpport : "25",         // port
-                smtpencrypt ? smtpencrypt : "none", // encryption
-                smtpfrom ? smtpfrom : "",           // mail from
-                smtpuser,                           // smtp username
-                smtppassword,                       // smtp password
-                NULL);
-    if (msmtp_path) {
-        zsys_info ("using alternative msmtp binary: %s", msmtp_path);
-        zstr_sendx (smtp_server, "MSMTP_PATH", msmtp_path);
-    }
-    // Connect to malamute
-    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, AGENT_NAME, NULL);
-    zsock_wait (smtp_server);
-    // Listen for all alerts
-    zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);
-    zsock_wait (smtp_server);
-    // Listen for all assets
-    zstr_sendx (smtp_server, "CONSUMER", "ASSETS", ".*", NULL);
-    zsock_wait (smtp_server);
+    zstr_sendx (smtp_server, "LOAD", config_file ? config_file : CONFIG_PATH, NULL);
 
     zloop_t *send_alert_trigger = zloop_new();
     // as 5 minutes is the smallest possible reaction time
