@@ -1170,14 +1170,6 @@ bios_smtp_server_test (bool verbose)
     if (verbose)
         zstr_send (smtp_server, "VERBOSE");
     zstr_sendx (smtp_server, "LOAD", "src/smtp.cfg", NULL);
-    /*
-    zstr_sendx (smtp_server, "CONNECT", endpoint, "agent-smtp", NULL);
-    zsock_wait (smtp_server);
-    zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
-    zsock_wait (smtp_server);
-    zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
-    zsock_wait (smtp_server);
-    */
     zstr_sendx (smtp_server, "_MSMTP_TEST", "btest-reader", NULL);
     if ( verbose )
         zsys_info ("smtp server started");
