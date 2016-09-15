@@ -518,6 +518,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 if (!config) {
                     zsys_error ("Failed to load config file %s", config_file);
                     zstr_free (&config_file);
+                    zstr_free (&cmd);
                     break;
                 }
 

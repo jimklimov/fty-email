@@ -147,7 +147,7 @@ int main (int argc, char** argv)
 
         zconfig_put (config, "smtp/server", smtpserver ? smtpserver : "");
         zconfig_put (config, "smtp/port", smtpport ? smtpport : "25");
-        zconfig_put (config, "smtp/user", smtpuser);
+        zconfig_put (config, "smtp/user", smtpuser ? smtpuser : "");
         zconfig_put (config, "smtp/password", smtppassword);
         zconfig_put (config, "smtp/from", smtpfrom ? smtpfrom : "");
         zconfig_put (config, "smtp/encryption", smtpencrypt ? smtpencrypt : "none");
@@ -195,7 +195,6 @@ int main (int argc, char** argv)
 
     zloop_destroy (&send_alert_trigger);
     zactor_destroy (&smtp_server);
-    zconfig_destroy (&config);
     if (verbose) {
         zsys_info ("END bios_agent_smtp - Daemon that is responsible for email notification about alerts");
     }
