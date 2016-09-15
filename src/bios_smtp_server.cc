@@ -608,7 +608,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                         {
                             const char* stream = zconfig_name (child);
                             const char* pattern = zconfig_value (child);
-                            zsys_debug ("stream/pattern=%s/%s", stream, pattern);
+                            zsys_debug1 ("stream/pattern=%s/%s", stream, pattern);
 
                             // check if we're already connected to not let replay log to explode :)
                             if (streams.count (std::make_tuple (stream, pattern)) == 1)
@@ -647,38 +647,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
             else
             if (streq (cmd, "CHECK_NOW")) {
                 s_notify_all (alerts, smtp, elements);
-            }
-            else
-            if (streq (cmd, "CONNECT")) {
-                endpoint = zmsg_popstr (msg);
-                name = zmsg_popstr (msg);
-                int rv = mlm_client_connect (client, endpoint, 1000, name);
-                if (rv == -1) {
-                    zsys_error ("%s:\tcan't connect to malamute endpoint '%s'", name, endpoint);
-                }
-                zsock_signal (pipe, 0);
-            }
-            else
-            if (streq (cmd, "PRODUCER")) {
-                char* stream = zmsg_popstr (msg);
-                int rv = mlm_client_set_producer (client, stream);
-                if (rv == -1) {
-                    zsys_error ("%s:\tcan't set producer on stream '%s'",name, stream);
-                }
-                zstr_free (&stream);
-                zsock_signal (pipe, 0);
-            }
-            else
-            if (streq (cmd, "CONSUMER")) {
-                char* stream = zmsg_popstr (msg);
-                char* pattern = zmsg_popstr (msg);
-                int rv = mlm_client_set_consumer (client, stream, pattern);
-                if (rv == -1) {
-                    zsys_error ("%s:\tcan't set consumer on stream '%s', '%s'", name, stream, pattern);
-                }
-                zstr_free (&pattern);
-                zstr_free (&stream);
-                zsock_signal (pipe, 0);
             }
             else
             if (streq (cmd, "_MSMTP_TEST")) {
@@ -790,17 +758,16 @@ static zactor_t* create_smtp_server (
     zconfig_t *config = zconfig_new ("root", NULL);
     zconfig_put (config, "server/alerts", alerts_file);
     zconfig_put (config, "server/assets", assets_file);
+    zconfig_put (config, "malamute/endpoint", endpoint);
+    zconfig_put (config, "malamute/address", agent_name);
+    zconfig_put (config, "malamute/consumers/ASSETS", ".*");
+    zconfig_put (config, "malamute/consumers/ALERTS", ".*");
     zconfig_save (config, "src/smtp.cfg");
     zconfig_destroy (&config);
     if ( verbose )
         zstr_send (smtp_server, "VERBOSE");
     zstr_sendx (smtp_server, "LOAD", "src/smtp.cfg", NULL);
-    zstr_sendx (smtp_server, "CONNECT", endpoint, agent_name, NULL);
-    zsock_wait (smtp_server);
-    zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
-    zsock_wait (smtp_server);
-    zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
-    zsock_wait (smtp_server);
+    zclock_sleep (1500);
     if ( verbose )
         zsys_info ("smtp server started");
     return smtp_server;
