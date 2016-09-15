@@ -491,6 +491,9 @@ bios_smtp_server (zsock_t *pipe, void* args)
     ElementList elements;
     Smtp smtp;
 
+    std::set <std::tuple <std::string, std::string>> streams;
+    bool producer = false;
+
     zsock_signal (pipe, 0);
     while ( !zsys_interrupted ) {
 
@@ -594,6 +597,48 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     }
                     else
                         zsys_warning ("<smtp>: malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
+                }
+
+                if (zconfig_locate (config, "malamute/consumers")) {
+                    if (mlm_client_connected (client)) {
+                        zconfig_t *consumers = zconfig_locate (config, "malamute/consumers");
+                        for (zconfig_t *child = zconfig_child (consumers);
+                                        child != NULL;
+                                        child = zconfig_next (child))
+                        {
+                            const char* stream = zconfig_name (child);
+                            const char* pattern = zconfig_value (child);
+                            zsys_debug ("stream/pattern=%s/%s", stream, pattern);
+
+                            // check if we're already connected to not let replay log to explode :)
+                            if (streams.count (std::make_tuple (stream, pattern)) == 1)
+                                continue;
+
+                            int r = mlm_client_set_consumer (client, stream, pattern);
+                            if (r == -1)
+                                zsys_warning ("<%s>: cannot subscribe on %s/%s", name, stream, pattern);
+                            else
+                                streams.insert (std::make_tuple (stream, pattern));
+                        }
+                    }
+                    else
+                        zsys_warning ("<smtp>: client is not connected to broker, can't subscribe to the stream!");
+                }
+
+                if (zconfig_get (config, "malamute/producer", NULL)) {
+                    if (!mlm_client_connected (client))
+                        zsys_warning ("<smtp>: client is not connected to broker, can't publish on the stream!");
+                    else
+                    if (!producer) {
+                        const char* stream = zconfig_get (config, "malamute/producer", NULL);
+                        int r = mlm_client_set_producer (
+                                client,
+                                stream);
+                        if (r == -1)
+                            zsys_warning ("%s: cannot publish on %s", name, stream);
+                        else
+                            producer = true;
+                    }
                 }
 
                 zconfig_destroy (&config);
@@ -1117,6 +1162,8 @@ bios_smtp_server_test (bool verbose)
     zconfig_put (config, "server/assets", assets_file);
     zconfig_put (config, "malamute/endpoint", endpoint);
     zconfig_put (config, "malamute/address", "agent-smtp");
+    zconfig_put (config, "malamute/consumers/ASSETS", ".*");
+    zconfig_put (config, "malamute/consumers/ALERTS", ".*");
     zconfig_save (config, "src/smtp.cfg");
     zconfig_destroy (&config);
 
@@ -1126,11 +1173,11 @@ bios_smtp_server_test (bool verbose)
     /*
     zstr_sendx (smtp_server, "CONNECT", endpoint, "agent-smtp", NULL);
     zsock_wait (smtp_server);
-    */
     zstr_sendx (smtp_server, "CONSUMER", "ASSETS",".*", NULL);
     zsock_wait (smtp_server);
     zstr_sendx (smtp_server, "CONSUMER", "ALERTS",".*", NULL);
     zsock_wait (smtp_server);
+    */
     zstr_sendx (smtp_server, "_MSMTP_TEST", "btest-reader", NULL);
     if ( verbose )
         zsys_info ("smtp server started");
