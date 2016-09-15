@@ -150,15 +150,17 @@ int main (int argc, char** argv)
         zconfig_put (config, "smtp/user", smtpuser);
         zconfig_put (config, "smtp/password", smtppassword);
         zconfig_put (config, "smtp/from", smtpfrom ? smtpfrom : "");
-        zconfig_put (config, "smtp/encrypt", smtpencrypt ? smtpencrypt : "none");
+        zconfig_put (config, "smtp/encryption", smtpencrypt ? smtpencrypt : "none");
         if (msmtp_path)
             zconfig_put (config, "smtp/msmtppath", msmtp_path);
         zconfig_put (config, "smtp/smsgateway", smsgateway ? smsgateway : "");
 
         zconfig_put (config, "malamute/endpoint", ENDPOINT);
-        zconfig_put (config, "malamute/mailbox", AGENT_NAME);
-        zconfig_put (config, "malamute/consumer/0", BIOS_PROTO_STREAM_ALERTS);
-        zconfig_put (config, "malamute/consumer/1", BIOS_PROTO_STREAM_ASSETS);
+        zconfig_put (config, "malamute/address", AGENT_NAME);
+        zconfig_put (config, "malamute/consumers/ALERTS", ".*");
+        zconfig_put (config, "malamute/consumer/ASSETS", ".*");
+        zconfig_print (config);
+
         int r = zconfig_save (config, CONFIG_PATH);
         if (r == -1) {
             zsys_error ("Error while saving config file %s: %m", CONFIG_PATH);
@@ -185,16 +187,6 @@ int main (int argc, char** argv)
     if (verbose)
         zstr_sendx (smtp_server, "VERBOSE", NULL);
     zstr_sendx (smtp_server, "LOAD", config_file ? config_file : CONFIG_PATH, NULL);
-
-    // Connect to malamute
-    zstr_sendx (smtp_server, "CONNECT", ENDPOINT, AGENT_NAME, NULL);
-    zsock_wait (smtp_server);
-    // Listen for all alerts
-    zstr_sendx (smtp_server, "CONSUMER", "ALERTS", ".*", NULL);
-    zsock_wait (smtp_server);
-    // Listen for all assets
-    zstr_sendx (smtp_server, "CONSUMER", "ASSETS", ".*", NULL);
-    zsock_wait (smtp_server);
 
     zloop_t *send_alert_trigger = zloop_new();
     // as 5 minutes is the smallest possible reaction time

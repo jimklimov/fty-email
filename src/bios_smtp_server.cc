@@ -562,10 +562,15 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     smtp.port (zconfig_get (config, "smtp/port", NULL));
                 }
                 if (zconfig_get (config, "smtp/encryption", NULL)) {
-                    smtp.port (zconfig_get (config, "smtp/encryption", NULL));
-                }
-                if (zconfig_get (config, "smtp/encryption", NULL)) {
-                    smtp.encryption (zconfig_get (config, "smtp/encryption", NULL));
+
+                    const char* encryption = zconfig_get (config, "smtp/encryption", NULL);
+                    if (   strcasecmp (encryption, "none") == 0
+                        || strcasecmp (encryption, "tls") == 0
+                        || strcasecmp (encryption, "starttls") == 0)
+                        smtp.encryption (encryption);
+                    else
+                        zsys_warning ("<smtp>: smtp/encryption has unknown value, got %s, expected (none|tls|starttls)", encryption);
+
                 }
                 if (zconfig_get (config, "smtp/user", NULL)) {
                     smtp.username (zconfig_get (config, "smtp/user", NULL));

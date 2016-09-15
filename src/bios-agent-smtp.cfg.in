@@ -1,7 +1,21 @@
 #   bios-agent-smtp configuration
 
 server
-    timeout = 10000     #   Client connection timeout, msec
-    background = 0      #   Run as background process
-    workdir = .         #   Working directory for daemon
-    verbose = 0         #   Do verbose logging of activity?
+    verbose = 0                                     #   Do verbose logging of activity?
+    alerts = /var/lib/bios/agent-smtp/state-alerts  #   State file path
+    assets = /var/lib/bios/agent-smtp/state         #   State file path
+smtp
+    server = mail.example.com                       #   SMTP server
+    port   = 25                                     #   SMTP server port
+    user   = joe                                    #   SMTP user name
+    password = doe                                  #   SMTP user password
+    from = joe.doe@mail.example.com                 #   From field
+    encryption = none                               #   Encryption, (none|tls|starttls)
+    smsgateway =                                    #   SMS gateway
+malamute
+    verbose = 0                                     #   1 enable verbose malamute client
+    endpoint = ipc://@/malamute                     #   Malamute endpoint
+    address = agent-smtp                            #   Agent mailbox address
+    consumers
+        ALERTS = .*                                 #   Listen to all messages on ALERTS stream, DO not change unless you know what you're doing
+        ASSETS = .*                                 #   Listen to all messages on ASSETS stream, DO not change unless you know what you're doing
