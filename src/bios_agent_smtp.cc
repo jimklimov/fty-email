@@ -145,15 +145,15 @@ int main (int argc, char** argv)
         zconfig_put (config, "server/assets", "/var/lib/bios/agent-smtp/state");
         zconfig_put (config, "server/alerts", "/var/lib/bios/agent-smtp/state-alerts");
 
-        zconfig_put (config, "smtp/server", smtpserver ? smtpserver : "");
-        zconfig_put (config, "smtp/port", smtpport ? smtpport : "25");
-        zconfig_put (config, "smtp/user", smtpuser ? smtpuser : "");
+        zconfig_put (config, "smtp/server", smtpserver);
+        zconfig_put (config, "smtp/port", smtpport);
+        zconfig_put (config, "smtp/user", smtpuser);
         zconfig_put (config, "smtp/password", smtppassword);
-        zconfig_put (config, "smtp/from", smtpfrom ? smtpfrom : "");
+        zconfig_put (config, "smtp/from", smtpfrom);
         zconfig_put (config, "smtp/encryption", smtpencrypt ? smtpencrypt : "none");
         if (msmtp_path)
             zconfig_put (config, "smtp/msmtppath", msmtp_path);
-        zconfig_put (config, "smtp/smsgateway", smsgateway ? smsgateway : "");
+        zconfig_put (config, "smtp/smsgateway", smsgateway);
 
         zconfig_put (config, "malamute/endpoint", ENDPOINT);
         zconfig_put (config, "malamute/address", AGENT_NAME);
