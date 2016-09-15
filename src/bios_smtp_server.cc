@@ -526,7 +526,12 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 if (streq (zconfig_get (config, "server/verbose", "0"), "1")) {
                     verbose = true;
                     agent_smtp_verbose = true;
-                    zsys_debug1 ("VERBOSE received");
+                    zsys_debug1 ("server/verbose true");
+                }
+                else {
+                    verbose = false;
+                    agent_smtp_verbose = false;
+                    zsys_debug1 ("server/verbose false");
                 }
                 // SMS_GATEWAY
                 if (zconfig_get (config, "smtp/smsgateway", NULL)) {
@@ -585,7 +590,9 @@ bios_smtp_server (zsock_t *pipe, void* args)
 
                 // malamute
                 if (zconfig_get (config, "malamute/verbose", NULL)) {
-                    mlm_client_set_verbose (client, true);
+                    const char* foo = zconfig_get (config, "malamute/verbose", "0");
+                    bool mlm_verbose = foo[0] == '1' ? true : false;
+                    mlm_client_set_verbose (client, mlm_verbose);
                 }
                 if (!mlm_client_connected (client)) {
                     if (   zconfig_get (config, "malamute/endpoint", NULL)
