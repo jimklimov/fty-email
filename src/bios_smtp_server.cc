@@ -593,7 +593,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
 
                         endpoint = strdup (zconfig_get (config, "malamute/endpoint", NULL));
                         name = strdup (zconfig_get (config, "malamute/address", NULL));
-                        uint32_t timeout;
+                        uint32_t timeout = 1000;
                         sscanf ("%" SCNu32, zconfig_get (config, "malamute/timeout", "1000"), &timeout);
 
                         zsys_debug1 ("%s: mlm_client_connect (%s, %" PRIu32 ", %s)", name, endpoint, timeout, name);
