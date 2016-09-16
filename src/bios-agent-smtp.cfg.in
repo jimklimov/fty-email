@@ -12,6 +12,7 @@ smtp
     from = joe.doe@mail.example.com                 #   From field
     encryption = none                               #   Encryption, (none|tls|starttls)
     smsgateway =                                    #   SMS gateway
+    verify_ca = 0                                   #   Verify CA, 1 to enable
 malamute
     verbose = 0                                     #   1 enable verbose malamute client
     endpoint = ipc://@/malamute                     #   Malamute endpoint

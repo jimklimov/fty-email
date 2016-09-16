@@ -81,6 +81,7 @@ int main (int argc, char** argv)
     char *smtpencrypt  = getenv("BIOS_SMTP_ENCRYPT");
     char *msmtp_path   = getenv("_MSMTP_PATH_");
     char *smsgateway   = getenv("BIOS_SMTP_SMS_GATEWAY");
+    char *smtpverify   = getenv ("BIOS_SMTP_VERIFY_CA");
 
     char *config_file = NULL;
     zconfig_t *config = NULL;
@@ -158,6 +159,7 @@ int main (int argc, char** argv)
             zconfig_put (config, "smtp/msmtppath", msmtp_path);
         if (smsgateway)
             zconfig_put (config, "smtp/smsgateway", smsgateway);
+        zconfig_put (config, "smtp/verify_ca", smtpverify ? "1" : "0");
 
         zconfig_put (config, "malamute/endpoint", ENDPOINT);
         zconfig_put (config, "malamute/address", AGENT_NAME);
