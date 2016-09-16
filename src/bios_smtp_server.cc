@@ -587,6 +587,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 if (zconfig_get (config, "smtp/from", NULL)) {
                     smtp.from (zconfig_get (config, "smtp/from", NULL));
                 }
+                // turn on verify_ca only if smtp/verify_ca is 1
+                smtp.verify_ca (streq (zconfig_get (config, "smtp/verify_ca", "0"), "1"));
 
                 // malamute
                 if (zconfig_get (config, "malamute/verbose", NULL)) {
