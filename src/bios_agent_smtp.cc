@@ -37,7 +37,7 @@ static const char *AGENT_NAME = "agent-smtp";
 // TODO make endpoint configurable on the start of the agent
 static const char *ENDPOINT = "ipc://@/malamute";
 
-static const char *CONFIG_PATH = "/etc/agent-smtp/bios-agent-smtp.cfg";
+static const char *CONFIG_PATH = "/var/lib/bios/agent-smtp/bios-agent-smtp.cfg";
 
 void usage ()
 {
