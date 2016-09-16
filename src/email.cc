@@ -41,7 +41,8 @@ Smtp::Smtp():
     _username {},
     _password {},
     _msmtp { "/usr/bin/msmtp" },
-    _has_fn {false}
+    _has_fn {false},
+    _verify_ca {false}
 {
 
 }
@@ -53,10 +54,12 @@ std::string Smtp::createConfigFile() const
     std::string line;
 
     line = "defaults\n";
+    const std::string tls_starttls = _verify_ca ? "on" : "off";
+
     switch (_encryption) {
     case Enctryption::NONE:
         line += "tls off\n"
-                "tls_starttls off\n";
+                "tls_starttls " + tls_starttls + "\n";
         break;
     case Enctryption::TLS:
         line += "tls on\n"
@@ -65,7 +68,7 @@ std::string Smtp::createConfigFile() const
     case Enctryption::STARTTLS:
         // TODO: check if this is correct!
         line += "tls off\n"
-                "tls_certcheck off\n"
+                "tls_certcheck " + tls_starttls + "\n"
                 "tls_starttls on\n";
         break;
     }

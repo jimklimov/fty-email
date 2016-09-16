@@ -97,6 +97,9 @@ class Smtp
         void encryption (std::string enc);
         void encryption (Enctryption enc) { _encryption = enc; };
 
+        /** \brief turn on or of the CA verification */
+        void verify_ca (bool verify) { _verify_ca = verify; }
+
         /**
          * \brief set alternative path for msmtp
          *
@@ -178,6 +181,7 @@ class Smtp
         std::string _password;
         std::string _msmtp;
         bool _has_fn;
+        bool _verify_ca;
         std::function <void(const std::string&)> _fn;
 };
 
