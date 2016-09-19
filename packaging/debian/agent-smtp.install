@@ -1,3 +1,4 @@
 usr/bin/bios-agent-smtp
 usr/lib/systemd/system/bios-agent-smtp*.service
 debian/tmp/usr/lib/tmpfiles.d/*conf
+etc/agent-smtp/bios-agent-smtp.cfg
