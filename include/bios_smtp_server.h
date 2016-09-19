@@ -27,6 +27,19 @@ extern "C" {
 #endif
 
 //  @interface
+
+//  Main actor sending emails (and sms2email)
+//  TODO: zconfig configuration
+//  TODO: actor commands
+//
+//  Malamute protocol (mailbox agent-smtp):
+//  REQ: subject=SENDMAIL [$to|$subject|$body]
+//      sends emails via configured environment to address $to, with subject $subject and body $body
+//  REP: subject=SENDMAIL-OK [OK]
+//      if email was sent
+//  REP: subject=SENDMAIL-ERR [error message]
+//      if email wasn't sent
+//      error message comes from msmtp stderr and is NOT normalized!
 AGENT_SMTP_EXPORT void
    bios_smtp_server (zsock_t *pipe, void* args);
 

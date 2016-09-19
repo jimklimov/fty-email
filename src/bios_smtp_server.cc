@@ -696,6 +696,54 @@ bios_smtp_server (zsock_t *pipe, void* args)
         if ( verbose ) {
             zsys_debug1("Got message '%s'", topic.c_str());
         }
+
+        if (streq (mlm_client_command (client), "MAILBOX DELIVER")) {
+
+            if (topic == "SENDMAIL") {
+                char *to = zmsg_popstr (zmessage);
+                char *subject = zmsg_popstr (zmessage);
+                char *body = zmsg_popstr (zmessage);
+                if (!to)
+                    zsys_warning ("SENDMAIL: no To address, can't sent");
+                else
+                if (!subject)
+                    zsys_warning ("SENDMAIL: no Subject address, can't sent");
+                else
+                if (!body)
+                    zsys_warning ("SENDMAIL: no email body, can't sent");
+                else {
+                    bool sent_ok = false;
+                    zmsg_t *reply = zmsg_new ();
+                    try {
+                        smtp.sendmail (to, "Test email", "Test email body");
+                        zmsg_addstr (reply, "OK");
+                        sent_ok = true;
+                    }
+                    catch (const std::runtime_error &re) {
+                        sent_ok = false;
+                        zmsg_addstr (reply, re.what ());
+                    }
+                    int r = mlm_client_sendto (
+                        client,
+                        mlm_client_sender (client),
+                        sent_ok ? "SENDMAIL-OK" : "SENDMAIL-ERR",
+                        NULL,
+                        1000,
+                        &reply);
+                    if (r == -1)
+                        zsys_error ("Can't send a reply for SENDMAIL to %s", mlm_client_sender (client));
+                }
+                zstr_free (&body);
+                zstr_free (&subject);
+                zstr_free (&to);
+            }
+            else
+                zsys_warning ("Unknown subject %s", topic.c_str ());
+
+            zmsg_destroy (&zmessage);
+            continue;
+        }
+
         // There are inputs
         //  - an alert from alert stream
         //  - an asset config message
