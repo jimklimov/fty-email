@@ -59,11 +59,11 @@ std::string Smtp::createConfigFile() const
     switch (_encryption) {
     case Enctryption::NONE:
         line += "tls off\n"
-                "tls_starttls " + verify_ca + "\n";
+                "tls_starttls off\n";
         break;
     case Enctryption::TLS:
         line += "tls on\n"
-                "tls_certcheck off\n";
+                "tls_certcheck " + verify_ca + "\n";
         break;
     case Enctryption::STARTTLS:
         // TODO: check if this is correct!
