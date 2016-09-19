@@ -39,6 +39,10 @@ static const char *ENDPOINT = "ipc://@/malamute";
 
 static const char *CONFIG_PATH = "/var/lib/bios/agent-smtp/bios-agent-smtp.cfg";
 
+// hack to allow reload of config file w/o the need to rewrite server to zloop and reactors
+char *config_file = NULL;
+zconfig_t *config = NULL;
+
 void usage ()
 {
     puts ("bios-agent-smtp [options]\n"
@@ -59,7 +63,16 @@ void usage ()
 static int
 s_timer_event (zloop_t *loop, int timer_id, void *output)
 {
-    zstr_send (output, "CHECK_NOW");
+    static uint64_t last_check = zclock_mono ();
+    uint64_t now = zclock_mono ();
+
+    if ((now - last_check) > 5*60*1000) {
+        zstr_send (output, "CHECK_NOW");
+        last_check = zclock_mono ();
+    }
+
+    if (zconfig_has_changed (config))
+        zstr_sendx (output, "LOAD", config_file, NULL);
     return 0;
 }
 
@@ -82,9 +95,6 @@ int main (int argc, char** argv)
     char *msmtp_path   = getenv("_MSMTP_PATH_");
     char *smsgateway   = getenv("BIOS_SMTP_SMS_GATEWAY");
     char *smtpverify   = getenv ("BIOS_SMTP_VERIFY_CA");
-
-    char *config_file = NULL;
-    zconfig_t *config = NULL;
 
     // get options
     int c;
@@ -167,12 +177,12 @@ int main (int argc, char** argv)
         zconfig_put (config, "malamute/consumer/ASSETS", ".*");
         zconfig_print (config);
 
-        int r = zconfig_save (config, CONFIG_PATH);
+        config_file = (char*) CONFIG_PATH;
+        int r = zconfig_save (config, config_file);
         if (r == -1) {
-            zsys_error ("Error while saving config file %s: %m", CONFIG_PATH);
+            zsys_error ("Error while saving config file %s: %m", config_file);
             exit (EXIT_FAILURE);
         }
-        zconfig_destroy (&config);
     }
     else {
         config = zconfig_load (config_file);
@@ -180,7 +190,6 @@ int main (int argc, char** argv)
             zsys_error ("Failed to load config file %s: %m", config_file);
             exit (EXIT_FAILURE);
         }
-        zconfig_destroy (&config);
     }
 
     puts ("START bios-agent-smtp - Daemon that is responsible for email notification about alerts");
@@ -192,13 +201,14 @@ int main (int argc, char** argv)
 
     if (verbose)
         zstr_sendx (smtp_server, "VERBOSE", NULL);
-    zstr_sendx (smtp_server, "LOAD", config_file ? config_file : CONFIG_PATH, NULL);
+    zstr_sendx (smtp_server, "LOAD", config_file, NULL);
 
     zloop_t *send_alert_trigger = zloop_new();
     // as 5 minutes is the smallest possible reaction time
-    zloop_timer (send_alert_trigger, 5*60*1000, 0, s_timer_event, smtp_server);
+    zloop_timer (send_alert_trigger, 1000, 0, s_timer_event, smtp_server);
     zloop_start (send_alert_trigger);
 
+    zconfig_destroy (&config);
     zloop_destroy (&send_alert_trigger);
     zactor_destroy (&smtp_server);
     if (verbose) {
