@@ -1652,6 +1652,23 @@ bios_smtp_server_test (bool verbose)
     }
     zpoller_destroy (&poller);
 
+    //test SENDMAIL
+    rv = mlm_client_sendtox (alert_producer, "agent-smtp", "SENDMAIL", "foo@bar", "Subject", "body", NULL);
+    assert (rv != -1);
+    msg = mlm_client_recv (alert_producer);
+    assert (streq (mlm_client_subject (alert_producer), "SENDMAIL-OK"));
+    assert (zmsg_size (msg) == 1);
+    char *ok = zmsg_popstr (msg);
+    assert (streq (ok, "OK"));
+    zstr_free (&ok);
+    zmsg_destroy (&msg);
+
+    //  this fixes the reported memcheck error
+    msg = mlm_client_recv (btest_reader);
+    if (verbose)
+        zmsg_print (msg);
+    zmsg_destroy (&msg);
+
     //MVY: this test leaks memory - in general it's a bad idea to publish
     //messages to broker without reading them :)
     //test9 (verbose, "ipc://bios-smtp-server-test9");
