@@ -77,16 +77,16 @@ enum class Enctryption {
 
 enum class SmtpError {
     Succeeded = 0,
-    NoRecipient = -1,
-    ServerUnreachable = -2,
-    DNSFailed = -3,
-    AuthMethodNotSupported = -4,
-    AuthFailed = -5,
-    SSLNotSupported = -6,
-    UnknownCA = -7,
-    SSLRequired = -8,
-    NoSenderAddress = -9,
-    Unknown = -10
+    NoRecipient = 1,
+    ServerUnreachable = 2,
+    DNSFailed = 3,
+    AuthMethodNotSupported = 4,
+    AuthFailed = 5,
+    SSLNotSupported = 6,
+    UnknownCA = 7,
+    SSLRequired = 8,
+    NoSenderAddress = 9,
+    Unknown = 10
 };
 
 /**
