@@ -721,7 +721,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     }
                     catch (const std::runtime_error &re) {
                         sent_ok = false;
-                        uint32_t code = -1 * msmtp_stderr2code (re.what ());
+                        uint32_t code = static_cast <uint32_t> (msmtp_stderr2code (re.what ()));
                         zmsg_addstrf (reply, "%" PRIu32, code);
                         zmsg_addstr (reply, re.what ());
                     }

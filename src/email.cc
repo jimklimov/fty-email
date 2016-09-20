@@ -33,6 +33,8 @@
 #include <ctime>
 #include <stdio.h>
 
+#include <cxxtools/regex.h>
+
 Smtp::Smtp():
     _host {},
     _port { "25" },
@@ -223,14 +225,39 @@ sms_email_address (
     return ret;
 }
 
-int
+SmtpError
     msmtp_stderr2code (
         const std::string &inp)
 {
     if (inp.size () == 0)
-        return static_cast<int> (SmtpError::Succeeded);
+        return SmtpError::Succeeded;
 
-    return static_cast<int> (SmtpError::ServerUnreachable);
+    static cxxtools::Regex ServerUnreachable {"cannot connect to .*, port .*"};
+    static cxxtools::Regex DNSFailed {"(cannot locate host.*: Name or service not known|the server does not support DNS)", REG_EXTENDED};
+    static cxxtools::Regex SSLNotSupported {"(the server does not support TLS via the STARTTLS command|command STARTTLS failed|cannot use a secure authentication method)"};
+    static cxxtools::Regex AuthMethodNotSupported {"(the server does not support authentication|authentication method .* not supported|cannot find a usable authentication method)"};
+    static cxxtools::Regex AuthFailed {"(authentication failed|(AUTH LOGIN|AUTH CRAM-MD5|AUTH EXTERNAL) failed)"};
+    static cxxtools::Regex UnknownCA {"(no certificate was founderror gettint .* fingerprint|the certificate fingerprint does not match|the certificate has been revoked|the certificate hasn't got a known issuer|the certificate is not trusted)"};
+
+    if (ServerUnreachable.match (inp))
+        return SmtpError::ServerUnreachable;
+
+    if (DNSFailed.match (inp))
+        return SmtpError::DNSFailed;
+
+    if (AuthMethodNotSupported.match (inp))
+        return SmtpError::AuthMethodNotSupported;
+
+    if (AuthFailed.match (inp))
+        return SmtpError::AuthFailed;
+
+    if (SSLNotSupported.match (inp))
+        return SmtpError::SSLNotSupported;
+
+    if (UnknownCA.match (inp))
+        return SmtpError::UnknownCA;
+
+    return SmtpError::Unknown;
 }
 
 
@@ -271,6 +298,10 @@ email_test (bool verbose)
     }
     catch (std::logic_error &e) {
     }
+
+    // test of msmtp_stderr2code
+    // test case 3 DNSFailed
+    assert (msmtp_stderr2code ("msmtp: cannot locate host NOTmail.etn.com: Name or service not known\nmsmtp: could not send mail (account default from config)") == SmtpError::DNSFailed);
 
     //  @end
     printf ("OK\n");

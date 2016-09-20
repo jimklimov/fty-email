@@ -59,9 +59,34 @@ enum class Enctryption {
     STARTTLS
 };
 
+/*
+ * \class SmtpError
+ *
+ * Specification of error codes from Genepi project
+1: if no recipient is specified
+2: if the smtp server is unreachable
+3: if the hostname coundn't be resolved
+4: if the Authentication method is not supported
+5: if Authentication failed
+6: if SSL is not supported by smtp server
+7: if the CA of the smtp server certificate isn't known by the card
+8: if SSL is requiered by the smtp server
+9: if sender address is not specified
+10: if the reason is unknown
+*/
+
 enum class SmtpError {
     Succeeded = 0,
-    ServerUnreachable = -2,
+    NoRecipient = 1,
+    ServerUnreachable = 2,
+    DNSFailed = 3,
+    AuthMethodNotSupported = 4,
+    AuthFailed = 5,
+    SSLNotSupported = 6,
+    UnknownCA = 7,
+    SSLRequired = 8,
+    NoSenderAddress = 9,
+    Unknown = 10
 };
 
 /**
@@ -223,7 +248,7 @@ std::string
 /**
  * Convert msmtp stderr to error code
  */
-int
+SmtpError
     msmtp_stderr2code (
         const std::string &inp);
 
