@@ -223,6 +223,16 @@ sms_email_address (
     return ret;
 }
 
+int
+    msmtp_stderr2code (
+        const std::string &inp)
+{
+    if (inp.size () == 0)
+        return static_cast<int> (SmtpError::Succeeded);
+
+    return static_cast<int> (SmtpError::ServerUnreachable);
+}
+
 
 //  --------------------------------------------------------------------------
 //  Self test of this class

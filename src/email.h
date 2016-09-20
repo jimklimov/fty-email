@@ -59,6 +59,11 @@ enum class Enctryption {
     STARTTLS
 };
 
+enum class SmtpError {
+    Succeeded = 0,
+    ServerUnreachable = -2,
+};
+
 /**
  * \class Smtp
  *
@@ -214,6 +219,13 @@ std::string
     sms_email_address (
         const std::string& gw_template,
         const std::string& phone_number);
+
+/**
+ * Convert msmtp stderr to error code
+ */
+int
+    msmtp_stderr2code (
+        const std::string &inp);
 
 void email_test (bool verbose);
 
