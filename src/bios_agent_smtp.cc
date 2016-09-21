@@ -52,6 +52,7 @@ void usage ()
           "  -u|--user             user for smtp authentication\n"
           "  -f|--from             mail from address\n"
           "  -e|--encryption       smtp encryption (none|tls|starttls) [none]\n"
+          "  -c|--config           path to config file\n"
           "  -h|--help             print this information\n"
           "For security reasons, there is not option for password. Use environment variable.\n"
           "Environment variables for all paremeters are BIOS_SMTP_SERVER, BIOS_SMTP_PORT,\n"
@@ -113,7 +114,7 @@ int main (int argc, char** argv)
     while(true) {
 
         int option_index = 0;
-        c = getopt_long (argc, argv, "hvs:p:u:f:e:", long_options, &option_index);
+        c = getopt_long (argc, argv, "hvs:p:u:f:e:c:", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
         case 'v':
