@@ -62,6 +62,13 @@ src_bios_agent_smtp_tmpfiles_DATA = src/bios-agent-smtp.conf
 endif #WITH_SYSTEMD_UNITS
 endif #ENABLE_BIOS_AGENT_SMTP
 
+if ENABLE_BIOS_SENDMAIL
+bin_PROGRAMS += src/bios-sendmail
+src_bios_sendmail_CPPFLAGS = ${AM_CPPFLAGS}
+src_bios_sendmail_LDADD = ${program_libs}
+src_bios_sendmail_SOURCES = src/bios_sendmail.cc
+endif #ENABLE_BIOS_SENDMAIL
+
 if ENABLE_AGENT_SMTP_SELFTEST
 check_PROGRAMS += src/agent_smtp_selftest
 noinst_PROGRAMS += src/agent_smtp_selftest
@@ -73,6 +80,7 @@ endif #ENABLE_AGENT_SMTP_SELFTEST
 # define custom target for all products of /src
 src:
 	src/bios-agent-smtp \
+    src/bios-sendmail \
 	src/agent_smtp_selftest \
 	src/libagent_smtp.la
 

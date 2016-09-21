@@ -33,12 +33,13 @@ extern "C" {
 //  TODO: actor commands
 //
 //  Malamute protocol (mailbox agent-smtp):
-//  REQ: subject=SENDMAIL [$to|$subject|$body]
+//  REQ: subject=SENDMAIL ([$to|$subject|$body] | $body)
 //      sends emails via configured environment to address $to, with subject $subject and body $body
+//      alternativelly the whole email body can be passed
 //  REP: subject=SENDMAIL-OK [OK]
 //      if email was sent
 //  REP: subject=SENDMAIL-ERR [error code|error message]
-//      if email wasn't sent
+//      if email wasn't sent, or there was improper number of arguments
 //      error message comes from msmtp stderr and is NOT normalized!
 AGENT_SMTP_EXPORT void
    bios_smtp_server (zsock_t *pipe, void* args);

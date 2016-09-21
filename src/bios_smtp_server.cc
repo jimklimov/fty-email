@@ -700,44 +700,45 @@ bios_smtp_server (zsock_t *pipe, void* args)
         if (streq (mlm_client_command (client), "MAILBOX DELIVER")) {
 
             if (topic == "SENDMAIL") {
-                char *to = zmsg_popstr (zmessage);
-                char *subject = zmsg_popstr (zmessage);
-                char *body = zmsg_popstr (zmessage);
-                if (!to)
-                    zsys_warning ("SENDMAIL: no To address, can't sent");
-                else
-                if (!subject)
-                    zsys_warning ("SENDMAIL: no Subject address, can't sent");
-                else
-                if (!body)
-                    zsys_warning ("SENDMAIL: no email body, can't sent");
-                else {
-                    bool sent_ok = false;
-                    zmsg_t *reply = zmsg_new ();
-                    try {
+                bool sent_ok = false;
+                zmsg_t *reply = zmsg_new ();
+                try {
+                    if (zmsg_size (zmessage) == 3) {
+                        char *to = zmsg_popstr (zmessage);
+                        char *subject = zmsg_popstr (zmessage);
+                        char *body = zmsg_popstr (zmessage);
                         smtp.sendmail (to, subject, body);
-                        zmsg_addstr (reply, "OK");
-                        sent_ok = true;
+                        zstr_free (&body);
+                        zstr_free (&subject);
+                        zstr_free (&to);
                     }
-                    catch (const std::runtime_error &re) {
-                        sent_ok = false;
-                        uint32_t code = static_cast <uint32_t> (msmtp_stderr2code (re.what ()));
-                        zmsg_addstrf (reply, "%" PRIu32, code);
-                        zmsg_addstr (reply, re.what ());
-                    }
-                    int r = mlm_client_sendto (
+                    else
+                        if (zmsg_size (zmessage) == 1) {
+                            char *body = zmsg_popstr (zmessage);
+                            smtp.sendmail (body);
+                            zstr_free (&body);
+                        }
+                        else
+                            throw std::runtime_error ("Can't parse zmsg_t with size " + zmsg_size (zmessage));
+                    zmsg_addstr (reply, "OK");
+                    sent_ok = true;
+                }
+                catch (const std::runtime_error &re) {
+                    sent_ok = false;
+                    uint32_t code = static_cast <uint32_t> (msmtp_stderr2code (re.what ()));
+                    zmsg_addstrf (reply, "%" PRIu32, code);
+                    zmsg_addstr (reply, re.what ());
+                }
+
+                int r = mlm_client_sendto (
                         client,
                         mlm_client_sender (client),
                         sent_ok ? "SENDMAIL-OK" : "SENDMAIL-ERR",
                         NULL,
                         1000,
                         &reply);
-                    if (r == -1)
-                        zsys_error ("Can't send a reply for SENDMAIL to %s", mlm_client_sender (client));
-                }
-                zstr_free (&body);
-                zstr_free (&subject);
-                zstr_free (&to);
+                if (r == -1)
+                    zsys_error ("Can't send a reply for SENDMAIL to %s", mlm_client_sender (client));
             }
             else
                 zsys_warning ("Unknown subject %s", topic.c_str ());
