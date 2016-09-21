@@ -715,7 +715,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     bool sent_ok = false;
                     zmsg_t *reply = zmsg_new ();
                     try {
-                        smtp.sendmail (to, "Test email", "Test email body");
+                        smtp.sendmail (to, subject, body);
                         zmsg_addstr (reply, "OK");
                         sent_ok = true;
                     }
