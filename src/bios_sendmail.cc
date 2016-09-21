@@ -28,8 +28,6 @@
 #include <getopt.h>
 
 #include "agent_smtp_classes.h"
-static const char *ENDPOINT = "ipc://@/malamute";
-static const char *AGENT_NAME = "agent-smtp";
 
 void usage ()
 {
@@ -78,8 +76,8 @@ int main (int argc, char** argv)
     if (help) { usage(); exit(1); }
     // end of the options
     
-    char *endpoint = strdup (ENDPOINT);
-    char *smtp_address = strdup (AGENT_NAME);
+    char *endpoint = strdup (AGENT_SMTP_ENDPOINT);
+    char *smtp_address = strdup (AGENT_SMTP_ADDRESS);
     if (config_file) {
         zconfig_t *config = zconfig_load (config_file);
         if (!config) {

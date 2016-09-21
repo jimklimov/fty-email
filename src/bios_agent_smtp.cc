@@ -29,16 +29,6 @@
 
 #include "agent_smtp_classes.h"
 
-// agent's name
-// DO NOT CHANGE! as other agents can rely on this name
-static const char *AGENT_NAME = "agent-smtp";
-
-// malamute's endpoint
-// TODO make endpoint configurable on the start of the agent
-static const char *ENDPOINT = "ipc://@/malamute";
-
-static const char *CONFIG_PATH = "/etc/agent-smtp/bios-agent-smtp.cfg";
-
 // hack to allow reload of config file w/o the need to rewrite server to zloop and reactors
 char *config_file = NULL;
 zconfig_t *config = NULL;
@@ -172,13 +162,13 @@ int main (int argc, char** argv)
             zconfig_put (config, "smtp/smsgateway", smsgateway);
         zconfig_put (config, "smtp/verify_ca", smtpverify ? "1" : "0");
 
-        zconfig_put (config, "malamute/endpoint", ENDPOINT);
-        zconfig_put (config, "malamute/address", AGENT_NAME);
+        zconfig_put (config, "malamute/endpoint", AGENT_SMTP_ENDPOINT);
+        zconfig_put (config, "malamute/address", AGENT_SMTP_ADDRESS);
         zconfig_put (config, "malamute/consumers/ALERTS", ".*");
         zconfig_put (config, "malamute/consumer/ASSETS", ".*");
         zconfig_print (config);
 
-        config_file = (char*) CONFIG_PATH;
+        config_file = (char*) AGENT_SMTP_CONFIG_FILE;
         int r = zconfig_save (config, config_file);
         if (r == -1) {
             zsys_error ("Error while saving config file %s: %m", config_file);

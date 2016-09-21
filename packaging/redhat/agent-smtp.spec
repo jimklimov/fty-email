@@ -95,7 +95,7 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %files
 %defattr(-,root,root)
 %{_bindir}/bios-agent-smtp
-%{_bindir}/sendmail
+%{_bindir}/bios-sendmail
 %{_prefix}/lib/systemd/system/bios-agent-smtp*.service
 %{_prefix}/lib/tmpfiles.d/bios-agent-smtp.conf
 
