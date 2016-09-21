@@ -32,5 +32,8 @@
     <main name = "bios-agent-smtp" service = "1" no_config = "1" >
         XXXDaemon evaluating rules and producing alerts
     </main>
+    <main name = "bios-sendmail" >
+        Sendmail-like interface to smtp agent
+    </main>
 
 </project>

@@ -179,8 +179,6 @@ class Smtp
                 const std::string& subject,
                 const std::string& body) const;
 
-    protected:
-
         /**
          * \brief send the email
          *
@@ -193,6 +191,8 @@ class Smtp
          */
         void sendmail(
                 const std::string& data) const;
+
+    protected:
 
         /**
          * \brief create msmtp config file

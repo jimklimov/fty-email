@@ -474,6 +474,16 @@ AC_ARG_ENABLE([bios-agent-smtp],
 AM_CONDITIONAL([ENABLE_BIOS_AGENT_SMTP], [test x$enable_bios_agent_smtp != xno])
 AM_COND_IF([ENABLE_BIOS_AGENT_SMTP], [AC_MSG_NOTICE([ENABLE_BIOS_AGENT_SMTP defined])])
 
+# Check for bios-agent-smtp intent
+AC_ARG_ENABLE([bios-sendmail],
+    AS_HELP_STRING([--enable-bios-sendmail],
+        [Compile and install 'bios-sendmail' [default=yes]]),
+    [enable_bios_sendmail=$enableval],
+    [enable_bios_sendmail=yes])
+
+AM_CONDITIONAL([ENABLE_BIOS_SENDMAIL], [test x$enable_bios_sendmail != xno])
+AM_COND_IF([ENABLE_BIOS_SENDMAIL], [AC_MSG_NOTICE([ENABLE_BIOS_SENDMAIL defined])])
+
 # Check for btest intent
 AC_ARG_ENABLE([btest],
     AS_HELP_STRING([--enable-btest],
