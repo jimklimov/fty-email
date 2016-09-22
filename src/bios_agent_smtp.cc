@@ -21,8 +21,9 @@
 
 /*
 @header
-    bios_smtp_server - Actor sending the emails about alerts
+    bios_agent_server - Actor sending the emails about alerts
 @discuss
+    see bios_smtp_server for configuration file format
 @end
 */
 #include <getopt.h>
