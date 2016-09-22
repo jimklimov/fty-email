@@ -708,6 +708,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
 
             zmsg_t *reply = zmsg_new ();
             zmsg_addstr (reply, uuid);
+            zstr_free (&uuid);
 
             if (topic == "SENDMAIL") {
                 bool sent_ok = false;
