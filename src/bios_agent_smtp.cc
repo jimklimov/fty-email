@@ -63,8 +63,11 @@ s_timer_event (zloop_t *loop, int timer_id, void *output)
         last_check = zclock_mono ();
     }
 
-    if (zconfig_has_changed (config))
+    if (zconfig_has_changed (config)) {
+        zsys_info ("Content of %s have changed, reload it", config_file);
+        zconfig_reload (&config);
         zstr_sendx (output, "LOAD", config_file, NULL);
+    }
     return 0;
 }
 
