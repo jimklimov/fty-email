@@ -699,9 +699,18 @@ bios_smtp_server (zsock_t *pipe, void* args)
 
         if (streq (mlm_client_command (client), "MAILBOX DELIVER")) {
 
+            char *uuid = zmsg_popstr (zmessage);
+            if (!uuid) {
+                zsys_error ("UUID frame is missing from zmessage, ignoring");
+                zmsg_destroy (&zmessage);
+                continue;
+            }
+
+            zmsg_t *reply = zmsg_new ();
+            zmsg_addstr (reply, uuid);
+
             if (topic == "SENDMAIL") {
                 bool sent_ok = false;
-                zmsg_t *reply = zmsg_new ();
                 try {
                     if (zmsg_size (zmessage) == 3) {
                         char *to = zmsg_popstr (zmessage);
@@ -720,6 +729,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                         }
                         else
                             throw std::runtime_error ("Can't parse zmsg_t with size " + zmsg_size (zmessage));
+                    zmsg_addstr (reply, "0");
                     zmsg_addstr (reply, "OK");
                     sent_ok = true;
                 }
@@ -743,6 +753,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
             else
                 zsys_warning ("Unknown subject %s", topic.c_str ());
 
+            zmsg_destroy (&reply);
             zmsg_destroy (&zmessage);
             continue;
         }
@@ -1656,14 +1667,24 @@ bios_smtp_server_test (bool verbose)
     zpoller_destroy (&poller);
 
     //test SENDMAIL
-    rv = mlm_client_sendtox (alert_producer, "agent-smtp", "SENDMAIL", "foo@bar", "Subject", "body", NULL);
+    rv = mlm_client_sendtox (alert_producer, "agent-smtp", "SENDMAIL", "UUID", "foo@bar", "Subject", "body", NULL);
     assert (rv != -1);
     msg = mlm_client_recv (alert_producer);
     assert (streq (mlm_client_subject (alert_producer), "SENDMAIL-OK"));
-    assert (zmsg_size (msg) == 1);
-    char *ok = zmsg_popstr (msg);
-    assert (streq (ok, "OK"));
-    zstr_free (&ok);
+    assert (zmsg_size (msg) == 3);
+
+    char *uuid = zmsg_popstr (msg);
+    assert (streq (uuid, "UUID"));
+    zstr_free (&uuid);
+
+    char *code = zmsg_popstr (msg);
+    assert (streq (code, "0"));
+    zstr_free (&code);
+
+    char *reason = zmsg_popstr (msg);
+    assert (streq (reason, "OK"));
+    zstr_free (&reason);
+
     zmsg_destroy (&msg);
 
     //  this fixes the reported memcheck error
