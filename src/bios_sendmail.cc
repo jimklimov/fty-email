@@ -109,6 +109,19 @@ int main (int argc, char** argv)
     zstr_free (&smtp_address);
     zclock_sleep (256); // wait a bit for mlm_client to pass data
 
+    char* subject;
+    char* uuid;
+    char* code;
+    char* reason;
+    r  = mlm_client_recvx(client, &subject, &uuid, &code, &reason);
+    if  (r != -1) {
+        printf("message recived: \nsubject: %s, \ncode: %s \nreason: %s", subject, code, reason);
+    }
+        
+    zstr_free(&code);
+    zstr_free(&reason);
+    zstr_free(&subject);
+    zstr_free(&uuid);
     mlm_client_destroy (&client);
     return 0;
 }
