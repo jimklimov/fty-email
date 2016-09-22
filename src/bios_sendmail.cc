@@ -105,7 +105,7 @@ int main (int argc, char** argv)
     assert (r != -1);
 
     std::string body = read_all (STDIN_FILENO);
-    mlm_client_sendtox (client, smtp_address, "SENDMAIL", body.c_str (), NULL);
+    mlm_client_sendtox (client, smtp_address, "SENDMAIL", body.c_str (), "uuid", NULL);
     zstr_free (&smtp_address);
     zclock_sleep (256); // wait a bit for mlm_client to pass data
 
