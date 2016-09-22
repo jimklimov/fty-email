@@ -29,10 +29,40 @@ extern "C" {
 //  @interface
 
 //  Main actor sending emails (and sms2email)
-//  TODO: zconfig configuration
-//  TODO: actor commands
+//  Configuration format
+//  ====================
 //
-//  Malamute protocol (mailbox agent-smtp):
+//  server
+//      verbose             1 turns verbose mode on, 0 off
+//      assets              path to state file for assets
+//      alerts              path to state file for alerts
+//  smtp
+//      server              address of smtp server
+//      port                port number
+//      user                name of user for login
+//      password            password of user
+//      from                From: header of email
+//      encryption          encryption, can be (none|tls|starttls)
+//      msmtppath           path to msmtp command
+//      smsgateway          email to sms gateway
+//      verify_ca           1 turns on CA verification, 0 off
+//  malamute
+//      verbose             1 setup verbose mode of mlm_client, 0 turn it off
+//      endpoint            malamute endpoint address
+//      address             mailbox address of agent-smtp
+//      consumers
+//          ALERTS  .*      consume all messages on ALERTS stream
+//          ASSETS  .*      consume all messages on ASSETS stream
+//
+//  Actor commands
+//  ==============
+//
+//  LOAD    path            load and apply configuration from zpl file
+//                          see Configuration format section
+//
+//  Malamute protocol (mailbox agent-smtp)
+//  ======================================
+//
 //  REQ: subject=SENDMAIL [$uuid|$to|$subject|$body] or [$uuid|$body]
 //      sends emails via configured environment to address $to, with subject $subject and body $body
 //      alternativelly the whole email body can be passed

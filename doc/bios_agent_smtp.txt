@@ -1,25 +1,26 @@
-Name(7)
-=======
-
+bios_agent_smtp(1)
+==================
 
 NAME
 ----
-bios_agent_smtp - XXXX
-
+bios_agent_smtp - Actor evaluating rules
 
 SYNOPSIS
 --------
 ----
-#include <agent_smtp.h>
-
-cc ['flags'] 'files' -lagent_smtp ['libraries']
+Please add @interface section in ../src/bios_agent_smtp.cc.
 ----
-
 
 DESCRIPTION
 -----------
 
-Classes
-~~~~~~~
+bios_agent_server - Actor sending the emails about alerts
 
-Something.
+see bios_smtp_server for configuration file format
+
+EXAMPLE
+-------
+.From bios_agent_smtp_test method
+----
+Please add @selftest section in ../src/bios_agent_smtp.cc.
+----

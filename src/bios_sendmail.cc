@@ -1,7 +1,7 @@
 /*  =========================================================================
     bios_alert_generator_server - Actor evaluating rules
 
-    Copyright (C) 2014 - 2015 Eaton
+    Copyright (C) 2016 Eaton
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,8 +21,14 @@
 
 /*
 @header
-    bios_smtp_server - Actor sending the emails about alerts
+    bios-sendmail - Send emails through agent-smtp "SENDMAIL" protocol
 @discuss
+
+    Usage:
+    printf 'From:myself\nSubject:subject\n\nbody' | bios-sendmail joe@example.com\n
+
+    Tools needs agent-smtp configured and running. See man bios_smtp_server and bios_agent_smtp
+
 @end
 */
 #include <getopt.h>
