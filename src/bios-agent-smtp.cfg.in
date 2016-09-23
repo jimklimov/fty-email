@@ -1,7 +1,7 @@
 #   bios-agent-smtp configuration
 
 server
-    verbose = 0                                     #   Do verbose logging of activity?
+    verbose = false                                 #   Do verbose logging of activity?
     alerts = /var/lib/bios/agent-smtp/state-alerts  #   State file path
     assets = /var/lib/bios/agent-smtp/state         #   State file path
 smtp
@@ -12,9 +12,9 @@ smtp
     from = joe.doe@mail.example.com                 #   From field
     encryption = none                               #   Encryption, (none|tls|starttls)
     smsgateway =                                    #   SMS gateway
-    verify_ca = 0                                   #   Verify CA, 1 to enable
+    verify_ca = false                               #   Verify CA
 malamute
-    verbose = 0                                     #   1 enable verbose malamute client
+    verbose = false                                 #   To setup verbose mlm_client
     endpoint = ipc://@/malamute                     #   Malamute endpoint
     address = agent-smtp                            #   Agent mailbox address
     consumers
