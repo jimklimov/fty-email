@@ -25,7 +25,7 @@
 @discuss
 @end
 */
-int agent_smtp_verbose = 0;
+int agent_smtp_verbose = true;
 
 #define zsys_debug1(...) \
     do { if (agent_smtp_verbose) zsys_debug (__VA_ARGS__); } while (0);
@@ -472,6 +472,21 @@ static int
     return 0;
 }
 
+// workaround for a bug in zconfig, when
+// smtp
+//      user = #some comment
+// is returned as "#some comment"
+//
+// so if [0] == '#', return dfl
+static char*
+s_get (zconfig_t *config, const char* key, const char* dfl) {
+    assert (config);
+    char *ret = zconfig_get (config, key, dfl);
+    if (ret && ret[0] == '#')
+        return NULL;
+    return ret;
+}
+
 void
 bios_smtp_server (zsock_t *pipe, void* args)
 {
@@ -498,7 +513,9 @@ bios_smtp_server (zsock_t *pipe, void* args)
     while ( !zsys_interrupted ) {
 
         void *which = zpoller_wait (poller, -1);
+
         if (which == pipe) {
+            zsys_debug1 ("%s:\twhich == pipe", name);
             zmsg_t *msg = zmsg_recv (pipe);
             char *cmd = zmsg_popstr (msg);
             zsys_debug1 ("%s:\tactor command=%s", name, cmd);
@@ -512,7 +529,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
             else
             if (streq (cmd, "LOAD")) {
                 char * config_file = zmsg_popstr (msg);
-                zsys_debug1 ("LOAD: %s", config_file);
+                zsys_debug1 ("(agent-smtp):\tLOAD: %s", config_file);
 
                 zconfig_t *config = zconfig_load (config_file);
                 if (!config) {
@@ -526,31 +543,29 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 if (streq (zconfig_get (config, "server/verbose", "0"), "1")) {
                     verbose = true;
                     agent_smtp_verbose = true;
-                    zsys_debug1 ("server/verbose true");
                 }
                 else {
                     verbose = false;
                     agent_smtp_verbose = false;
-                    zsys_debug1 ("server/verbose false");
                 }
                 // SMS_GATEWAY
-                if (zconfig_get (config, "smtp/smsgateway", NULL)) {
-                    sms_gateway = strdup (zconfig_get (config, "smtp/smsgateway", NULL));
+                if (s_get (config, "smtp/smsgateway", NULL)) {
+                    sms_gateway = strdup (s_get (config, "smtp/smsgateway", NULL));
                 }
                 // MSMTP_PATH
-                if (zconfig_get (config, "smtp/msmtppath", NULL)) {
-                    smtp.msmtp_path (zconfig_get (config, "smtp/msmtppath", NULL));
+                if (s_get (config, "smtp/msmtppath", NULL)) {
+                    smtp.msmtp_path (s_get (config, "smtp/msmtppath", NULL));
                 }
                 //STATE_FILE_PATH_ASSETS
-                if (zconfig_get (config, "server/assets", NULL)) {
-                    char *path = zconfig_get (config, "server/assets", NULL);
+                if (s_get (config, "server/assets", NULL)) {
+                    char *path = s_get (config, "server/assets", NULL);
                     elements.setFile (path);
                     // NOTE1234: this implies, that sms_gateway should be specified before !
                     elements.load(sms_gateway?sms_gateway : "");
                 }
                 //STATE_FILE_PATH_ALERTS
-                if (zconfig_get (config, "server/alerts", NULL)) {
-                    alerts_state_file = strdup (zconfig_get (config, "server/alerts", NULL));
+                if (s_get (config, "server/alerts", NULL)) {
+                    alerts_state_file = strdup (s_get (config, "server/alerts", NULL));
                     int r = load_alerts_state (alerts, alerts_state_file);
                     if ( r == 0 ) {
                         zsys_debug1 ("State(alerts) loaded successfully");
@@ -561,31 +576,29 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 }
 
                 // smtp
-                if (zconfig_get (config, "smtp/server", NULL)) {
-                    smtp.host (zconfig_get (config, "smtp/server", NULL));
+                if (s_get (config, "smtp/server", NULL)) {
+                    smtp.host (s_get (config, "smtp/server", NULL));
                 }
-                if (zconfig_get (config, "smtp/port", NULL)) {
-                    smtp.port (zconfig_get (config, "smtp/port", NULL));
+                if (s_get (config, "smtp/port", NULL)) {
+                    smtp.port (s_get (config, "smtp/port", NULL));
                 }
-                if (zconfig_get (config, "smtp/encryption", NULL)) {
 
-                    const char* encryption = zconfig_get (config, "smtp/encryption", NULL);
-                    if (   strcasecmp (encryption, "none") == 0
-                        || strcasecmp (encryption, "tls") == 0
-                        || strcasecmp (encryption, "starttls") == 0)
-                        smtp.encryption (encryption);
-                    else
-                        zsys_warning ("<smtp>: smtp/encryption has unknown value, got %s, expected (none|tls|starttls)", encryption);
+                const char* encryption = zconfig_get (config, "smtp/encryption", "none");
+                if (   strcasecmp (encryption, "none") == 0
+                    || strcasecmp (encryption, "tls") == 0
+                    || strcasecmp (encryption, "starttls") == 0)
+                    smtp.encryption (encryption);
+                else
+                    zsys_warning ("(agent-smtp): smtp/encryption has unknown value, got %s, expected (none|tls|starttls)", encryption);
 
+                if (s_get (config, "smtp/user", NULL)) {
+                    smtp.username (s_get (config, "smtp/user", NULL));
                 }
-                if (zconfig_get (config, "smtp/user", NULL)) {
-                    smtp.username (zconfig_get (config, "smtp/user", NULL));
+                if (s_get (config, "smtp/password", NULL)) {
+                    smtp.password (s_get (config, "smtp/password", NULL));
                 }
-                if (zconfig_get (config, "smtp/password", NULL)) {
-                    smtp.password (zconfig_get (config, "smtp/password", NULL));
-                }
-                if (zconfig_get (config, "smtp/from", NULL)) {
-                    smtp.from (zconfig_get (config, "smtp/from", NULL));
+                if (s_get (config, "smtp/from", NULL)) {
+                    smtp.from (s_get (config, "smtp/from", NULL));
                 }
                 // turn on verify_ca only if smtp/verify_ca is 1
                 smtp.verify_ca (streq (zconfig_get (config, "smtp/verify_ca", "0"), "1"));
@@ -608,10 +621,10 @@ bios_smtp_server (zsock_t *pipe, void* args)
                         zsys_debug1 ("%s: mlm_client_connect (%s, %" PRIu32 ", %s)", name, endpoint, timeout, name);
                         int r = mlm_client_connect (client, endpoint, timeout, name);
                         if (r == -1)
-                            zsys_debug1 ("%s: mlm_client_connect (%s, %" PRIu32 ", %s) = %d FAILED", name, endpoint, timeout, name, r);
+                            zsys_error ("%s: mlm_client_connect (%s, %" PRIu32 ", %s) = %d FAILED", name, endpoint, timeout, name, r);
                     }
                     else
-                        zsys_warning ("<smtp>: malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
+                        zsys_warning ("(agent-smtp): malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
                 }
 
                 if (zconfig_locate (config, "malamute/consumers")) {
@@ -623,7 +636,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                         {
                             const char* stream = zconfig_name (child);
                             const char* pattern = zconfig_value (child);
-                            zsys_debug1 ("stream/pattern=%s/%s", stream, pattern);
+                            zsys_debug1 ("%s:\tstream/pattern=%s/%s", name, stream, pattern);
 
                             // check if we're already connected to not let replay log to explode :)
                             if (streams.count (std::make_tuple (stream, pattern)) == 1)
@@ -631,18 +644,18 @@ bios_smtp_server (zsock_t *pipe, void* args)
 
                             int r = mlm_client_set_consumer (client, stream, pattern);
                             if (r == -1)
-                                zsys_warning ("<%s>: cannot subscribe on %s/%s", name, stream, pattern);
+                                zsys_warning ("%s:\tcannot subscribe on %s/%s", name, stream, pattern);
                             else
                                 streams.insert (std::make_tuple (stream, pattern));
                         }
                     }
                     else
-                        zsys_warning ("<smtp>: client is not connected to broker, can't subscribe to the stream!");
+                        zsys_warning ("(agent-smtp): client is not connected to broker, can't subscribe to the stream!");
                 }
 
                 if (zconfig_get (config, "malamute/producer", NULL)) {
                     if (!mlm_client_connected (client))
-                        zsys_warning ("<smtp>: client is not connected to broker, can't publish on the stream!");
+                        zsys_warning ("(agent-smtp): client is not connected to broker, can't publish on the stream!");
                     else
                     if (!producer) {
                         const char* stream = zconfig_get (config, "malamute/producer", NULL);
@@ -650,7 +663,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                                 client,
                                 stream);
                         if (r == -1)
-                            zsys_warning ("%s: cannot publish on %s", name, stream);
+                            zsys_warning ("%s:\tcannot publish on %s", name, stream);
                         else
                             producer = true;
                     }
@@ -688,16 +701,18 @@ bios_smtp_server (zsock_t *pipe, void* args)
             continue;
         }
 
+        zsys_debug1 ("%s:\twhich == mlm_client", name);
         zmsg_t *zmessage = mlm_client_recv (client);
         if ( zmessage == NULL ) {
+            zsys_debug1 ("%s:\tzmessage is NULL", name);
             continue;
         }
         std::string topic = mlm_client_subject(client);
-        if ( verbose ) {
-            zsys_debug1("Got message '%s'", topic.c_str());
-        }
+        zsys_debug1("%s:\tsubject='%s'", name, topic.c_str());
 
         if (streq (mlm_client_command (client), "MAILBOX DELIVER")) {
+
+            zsys_debug1 ("%s:\tMAILBOX DELIVER, subject=%s", name, mlm_client_subject (client));
 
             char *uuid = zmsg_popstr (zmessage);
             if (!uuid) {
@@ -717,30 +732,34 @@ bios_smtp_server (zsock_t *pipe, void* args)
                         char *to = zmsg_popstr (zmessage);
                         char *subject = zmsg_popstr (zmessage);
                         char *body = zmsg_popstr (zmessage);
+                        zsys_debug1 ("%s:\tsmtp.sendmail (%s, %s, %s)", name, to, subject, body);
                         smtp.sendmail (to, subject, body);
                         zstr_free (&body);
                         zstr_free (&subject);
                         zstr_free (&to);
                     }
                     else
-                        if (zmsg_size (zmessage) == 1) {
-                            char *body = zmsg_popstr (zmessage);
-                            smtp.sendmail (body);
-                            zstr_free (&body);
-                        }
-                        else
-                            throw std::runtime_error ("Can't parse zmsg_t with size " + zmsg_size (zmessage));
+                    if (zmsg_size (zmessage) == 1) {
+                        char *body = zmsg_popstr (zmessage);
+                        zsys_debug1 ("%s:\tsmtp.sendmail (%s)", name, body);
+                        smtp.sendmail (body);
+                        zstr_free (&body);
+                    }
+                    else
+                        throw std::runtime_error ("Can't parse zmsg_t with size " + std::to_string (zmsg_size (zmessage)));
                     zmsg_addstr (reply, "0");
                     zmsg_addstr (reply, "OK");
                     sent_ok = true;
                 }
                 catch (const std::runtime_error &re) {
+                    zsys_debug1 ("%s:\tgot std::runtime_error, e.what ()=%s", name, re.what ());
                     sent_ok = false;
                     uint32_t code = static_cast <uint32_t> (msmtp_stderr2code (re.what ()));
                     zmsg_addstrf (reply, "%" PRIu32, code);
                     zmsg_addstr (reply, re.what ());
                 }
 
+                zmsg_print (reply);
                 int r = mlm_client_sendto (
                         client,
                         mlm_client_sender (client),
@@ -752,7 +771,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     zsys_error ("Can't send a reply for SENDMAIL to %s", mlm_client_sender (client));
             }
             else
-                zsys_warning ("Unknown subject %s", topic.c_str ());
+                zsys_warning ("%s:\tUnknown subject %s", name, topic.c_str ());
 
             zmsg_destroy (&reply);
             zmsg_destroy (&zmessage);

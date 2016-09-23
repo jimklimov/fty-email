@@ -106,6 +106,8 @@ int main (int argc, char** argv)
     mlm_client_t *client = mlm_client_new ();
     char *address = zsys_sprintf ("bios-sendmail.%d", getpid ());
     int r = mlm_client_connect (client, endpoint, 1000, address);
+    assert (r != -1);
+    zsys_info ("bios-sendmail:\tendpoint=%s, address=%s, smtp_address=%s", endpoint, address, smtp_address);
     zstr_free (&address);
     zstr_free (&endpoint);
     assert (r != -1);
@@ -113,7 +115,6 @@ int main (int argc, char** argv)
     std::string body = read_all (STDIN_FILENO);
     mlm_client_sendtox (client, smtp_address, "SENDMAIL", "uuid", body.c_str (), NULL);
     zstr_free (&smtp_address);
-    zclock_sleep (256); // wait a bit for mlm_client to pass data
 
     char* subject;
     char* uuid;
