@@ -540,7 +540,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 }
 
                 // VERBOSE
-                if (streq (zconfig_get (config, "server/verbose", "0"), "1")) {
+                if (streq (zconfig_get (config, "server/verbose", "false"), "true")) {
                     verbose = true;
                     agent_smtp_verbose = true;
                 }
@@ -583,13 +583,13 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     smtp.port (s_get (config, "smtp/port", NULL));
                 }
 
-                const char* encryption = zconfig_get (config, "smtp/encryption", "none");
+                const char* encryption = zconfig_get (config, "smtp/encryption", "NONE");
                 if (   strcasecmp (encryption, "none") == 0
                     || strcasecmp (encryption, "tls") == 0
                     || strcasecmp (encryption, "starttls") == 0)
                     smtp.encryption (encryption);
                 else
-                    zsys_warning ("(agent-smtp): smtp/encryption has unknown value, got %s, expected (none|tls|starttls)", encryption);
+                    zsys_warning ("(agent-smtp): smtp/encryption has unknown value, got %s, expected (NONE|TLS|STARTTLS)", encryption);
 
                 if (s_get (config, "smtp/user", NULL)) {
                     smtp.username (s_get (config, "smtp/user", NULL));
@@ -601,11 +601,11 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     smtp.from (s_get (config, "smtp/from", NULL));
                 }
                 // turn on verify_ca only if smtp/verify_ca is 1
-                smtp.verify_ca (streq (zconfig_get (config, "smtp/verify_ca", "0"), "1"));
+                smtp.verify_ca (streq (zconfig_get (config, "smtp/verify_ca", "false"), "true"));
 
                 // malamute
                 if (zconfig_get (config, "malamute/verbose", NULL)) {
-                    const char* foo = zconfig_get (config, "malamute/verbose", "0");
+                    const char* foo = zconfig_get (config, "malamute/verbose", "false");
                     bool mlm_verbose = foo[0] == '1' ? true : false;
                     mlm_client_set_verbose (client, mlm_verbose);
                 }
