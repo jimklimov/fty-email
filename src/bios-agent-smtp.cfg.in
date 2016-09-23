@@ -10,7 +10,7 @@ smtp
     user   = joe                                    #   SMTP user name
     password = doe                                  #   SMTP user password
     from = joe.doe@mail.example.com                 #   From field
-    encryption = none                               #   Encryption, (none|tls|starttls)
+    encryption = NONE                               #   Encryption, (NONE|TLS|STARTTLS)
     smsgateway =                                    #   SMS gateway
     verify_ca = false                               #   Verify CA
 malamute
