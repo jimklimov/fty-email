@@ -472,6 +472,21 @@ static int
     return 0;
 }
 
+// workaround for a bug in zconfig, when
+// smtp
+//      user = #some comment
+// is returned as "#some comment"
+//
+// so if [0] == '#', return dfl
+static char*
+s_get (zconfig_t *config, const char* key, const char* dfl) {
+    assert (config);
+    char *ret = zconfig_get (config, key, dfl);
+    if (ret && ret[0] == '#')
+        return NULL;
+    return ret;
+}
+
 void
 bios_smtp_server (zsock_t *pipe, void* args)
 {
@@ -534,23 +549,23 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     agent_smtp_verbose = false;
                 }
                 // SMS_GATEWAY
-                if (zconfig_get (config, "smtp/smsgateway", NULL)) {
-                    sms_gateway = strdup (zconfig_get (config, "smtp/smsgateway", NULL));
+                if (s_get (config, "smtp/smsgateway", NULL)) {
+                    sms_gateway = strdup (s_get (config, "smtp/smsgateway", NULL));
                 }
                 // MSMTP_PATH
-                if (zconfig_get (config, "smtp/msmtppath", NULL)) {
-                    smtp.msmtp_path (zconfig_get (config, "smtp/msmtppath", NULL));
+                if (s_get (config, "smtp/msmtppath", NULL)) {
+                    smtp.msmtp_path (s_get (config, "smtp/msmtppath", NULL));
                 }
                 //STATE_FILE_PATH_ASSETS
-                if (zconfig_get (config, "server/assets", NULL)) {
-                    char *path = zconfig_get (config, "server/assets", NULL);
+                if (s_get (config, "server/assets", NULL)) {
+                    char *path = s_get (config, "server/assets", NULL);
                     elements.setFile (path);
                     // NOTE1234: this implies, that sms_gateway should be specified before !
                     elements.load(sms_gateway?sms_gateway : "");
                 }
                 //STATE_FILE_PATH_ALERTS
-                if (zconfig_get (config, "server/alerts", NULL)) {
-                    alerts_state_file = strdup (zconfig_get (config, "server/alerts", NULL));
+                if (s_get (config, "server/alerts", NULL)) {
+                    alerts_state_file = strdup (s_get (config, "server/alerts", NULL));
                     int r = load_alerts_state (alerts, alerts_state_file);
                     if ( r == 0 ) {
                         zsys_debug1 ("State(alerts) loaded successfully");
@@ -561,31 +576,29 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 }
 
                 // smtp
-                if (zconfig_get (config, "smtp/server", NULL)) {
-                    smtp.host (zconfig_get (config, "smtp/server", NULL));
+                if (s_get (config, "smtp/server", NULL)) {
+                    smtp.host (s_get (config, "smtp/server", NULL));
                 }
-                if (zconfig_get (config, "smtp/port", NULL)) {
-                    smtp.port (zconfig_get (config, "smtp/port", NULL));
+                if (s_get (config, "smtp/port", NULL)) {
+                    smtp.port (s_get (config, "smtp/port", NULL));
                 }
-                if (zconfig_get (config, "smtp/encryption", NULL)) {
 
-                    const char* encryption = zconfig_get (config, "smtp/encryption", NULL);
-                    if (   strcasecmp (encryption, "none") == 0
-                        || strcasecmp (encryption, "tls") == 0
-                        || strcasecmp (encryption, "starttls") == 0)
-                        smtp.encryption (encryption);
-                    else
-                        zsys_warning ("<smtp>: smtp/encryption has unknown value, got %s, expected (none|tls|starttls)", encryption);
+                const char* encryption = zconfig_get (config, "smtp/encryption", "none");
+                if (   strcasecmp (encryption, "none") == 0
+                    || strcasecmp (encryption, "tls") == 0
+                    || strcasecmp (encryption, "starttls") == 0)
+                    smtp.encryption (encryption);
+                else
+                    zsys_warning ("(agent-smtp): smtp/encryption has unknown value, got %s, expected (none|tls|starttls)", encryption);
 
+                if (s_get (config, "smtp/user", NULL)) {
+                    smtp.username (s_get (config, "smtp/user", NULL));
                 }
-                if (zconfig_get (config, "smtp/user", NULL)) {
-                    smtp.username (zconfig_get (config, "smtp/user", NULL));
+                if (s_get (config, "smtp/password", NULL)) {
+                    smtp.password (s_get (config, "smtp/password", NULL));
                 }
-                if (zconfig_get (config, "smtp/password", NULL)) {
-                    smtp.password (zconfig_get (config, "smtp/password", NULL));
-                }
-                if (zconfig_get (config, "smtp/from", NULL)) {
-                    smtp.from (zconfig_get (config, "smtp/from", NULL));
+                if (s_get (config, "smtp/from", NULL)) {
+                    smtp.from (s_get (config, "smtp/from", NULL));
                 }
                 // turn on verify_ca only if smtp/verify_ca is 1
                 smtp.verify_ca (streq (zconfig_get (config, "smtp/verify_ca", "0"), "1"));
@@ -611,7 +624,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                             zsys_error ("%s: mlm_client_connect (%s, %" PRIu32 ", %s) = %d FAILED", name, endpoint, timeout, name, r);
                     }
                     else
-                        zsys_warning ("<smtp>: malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
+                        zsys_warning ("(agent-smtp): malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
                 }
 
                 if (zconfig_locate (config, "malamute/consumers")) {
