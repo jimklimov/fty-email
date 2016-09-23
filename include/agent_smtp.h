@@ -26,7 +26,7 @@
 #include "agent_smtp_library.h"
 
 //  Add your own public definitions here, if you need them
-#define AGENT_SMTP_ADDRESS  "agent-snmp"
+#define AGENT_SMTP_ADDRESS  "agent-smtp"
 #define AGENT_SMTP_ENDPOINT "ipc://@/malamute"
 #define AGENT_SMTP_CONFIG_FILE "/etc/agent-smtp/bios-agent-smtp.cfg"
 

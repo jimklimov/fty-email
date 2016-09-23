@@ -106,6 +106,8 @@ int main (int argc, char** argv)
     mlm_client_t *client = mlm_client_new ();
     char *address = zsys_sprintf ("bios-sendmail.%d", getpid ());
     int r = mlm_client_connect (client, endpoint, 1000, address);
+    assert (r != -1);
+    zsys_debug ("endpoint=%s, address=%s", endpoint, address);
     zstr_free (&address);
     zstr_free (&endpoint);
     assert (r != -1);
