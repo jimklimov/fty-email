@@ -479,7 +479,7 @@ static int
 //
 // will be treated the same way
 static char*
-s_get (zconfig_t *config, const char* key, const char* dfl) {
+s_get (zconfig_t *config, const char* key, char* dfl) {
     assert (config);
 
     char *ret = zconfig_get (config, key, dfl);
