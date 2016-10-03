@@ -472,18 +472,19 @@ static int
     return 0;
 }
 
-// workaround for a bug in zconfig, when
+// return dfl is item is NULL or empty string!!
 // smtp
-//      user = #some comment
-// is returned as "#some comment"
+//  user
+//  password = ""
 //
-// so if [0] == '#', return dfl
+// will be treated the same way
 static char*
 s_get (zconfig_t *config, const char* key, const char* dfl) {
     assert (config);
+
     char *ret = zconfig_get (config, key, dfl);
-    if (ret && ret[0] == '#')
-        return NULL;
+    if (!ret || streq (ret, ""))
+        return dfl;
     return ret;
 }
 
