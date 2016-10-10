@@ -478,8 +478,8 @@ static int
 //  password = ""
 //
 // will be treated the same way
-static char*
-s_get (zconfig_t *config, const char* key, char* dfl) {
+static const char*
+s_get (zconfig_t *config, const char* key, const char* dfl) {
     assert (config);
 
     char *ret = zconfig_get (config, key, dfl);
@@ -559,7 +559,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 }
                 //STATE_FILE_PATH_ASSETS
                 if (s_get (config, "server/assets", NULL)) {
-                    char *path = s_get (config, "server/assets", NULL);
+                    const char *path = s_get (config, "server/assets", NULL);
                     elements.setFile (path);
                     // NOTE1234: this implies, that sms_gateway should be specified before !
                     elements.load(sms_gateway?sms_gateway : "");
@@ -592,16 +592,20 @@ bios_smtp_server (zsock_t *pipe, void* args)
                 else
                     zsys_warning ("(agent-smtp): smtp/encryption has unknown value, got %s, expected (NONE|TLS|STARTTLS)", encryption);
 
-                if (s_get (config, "smtp/user", NULL)) {
-                    smtp.username (s_get (config, "smtp/user", NULL));
+                if (streq (s_get (config, "smtp/use_auth", "false"), "true")) {
+                    if (s_get (config, "smtp/user", NULL)) {
+                        smtp.username (s_get (config, "smtp/user", NULL));
+                    }
+                    if (s_get (config, "smtp/password", NULL)) {
+                        smtp.password (s_get (config, "smtp/password", NULL));
+                    }
                 }
-                if (s_get (config, "smtp/password", NULL)) {
-                    smtp.password (s_get (config, "smtp/password", NULL));
-                }
+
                 if (s_get (config, "smtp/from", NULL)) {
                     smtp.from (s_get (config, "smtp/from", NULL));
                 }
-                // turn on verify_ca only if smtp/verify_ca is 1
+
+                // turn on verify_ca only if smtp/verify_ca is true
                 smtp.verify_ca (streq (zconfig_get (config, "smtp/verify_ca", "false"), "true"));
 
                 // malamute

@@ -13,6 +13,7 @@ smtp
     encryption = NONE                               #   Encryption, (NONE|TLS|STARTTLS)
     smsgateway = ""                                 #   SMS gateway
     verify_ca = false                               #   Verify CA
+    use_auth = false                                #   Pass user/password to msmtp or not
 malamute
     verbose = false                                 #   To setup verbose mlm_client
     endpoint = ipc://@/malamute                     #   Malamute endpoint
