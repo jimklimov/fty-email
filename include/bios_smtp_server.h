@@ -63,9 +63,16 @@ extern "C" {
 //  Malamute protocol (mailbox agent-smtp)
 //  ======================================
 //
-//  REQ: subject=SENDMAIL [$uuid|$to|$subject|$body] or [$uuid|$body]
+//  REQ: subject=SENDMAIL 
+//
+//      [$uuid|$to|$subject|$body|$headers:zhash_t|attachment1|attachment2|...]
+//      sends email to $to, with subject $subject and body $body
+//      $headers state additional headers to be passed to email
+//      $attachment1, $attachment2, ... are names of files to be attached
+//      see bios_smtp_encode to handy way to encode such message
+//
+//      [$uuid|$to|$subject|$body]
 //      sends emails via configured environment to address $to, with subject $subject and body $body
-//      alternativelly the whole email body can be passed
 //  REP: subject=SENDMAIL-OK [$uuid|0|OK]
 //      if email was sent
 //  REP: subject=SENDMAIL-ERR [$uuid|$error code|$error message]
@@ -77,6 +84,24 @@ AGENT_SMTP_EXPORT void
 //  Self test of this class
 AGENT_SMTP_EXPORT void
     bios_smtp_server_test (bool verbose);
+
+// encode email message to zmsg_t
+//  uuid - uuid of the message
+//  to   - email address to
+//  subject - email subject
+//  headers - additional headers to be passed (optional)
+//  body - email body
+//  ... list of files to attach (files with .txt suffix will be added as text files, otherwise binary)
+//  parameter list must be closed by NULL
+AGENT_SMTP_EXPORT zmsg_t *
+bios_smtp_encode (
+        const char *uuid,
+        const char *to,
+        const char *subject,
+        zhash_t *headers,
+        const char *body,
+        ...);
+
 //  @end
 
 #ifdef __cplusplus
