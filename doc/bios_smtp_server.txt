@@ -58,6 +58,24 @@ AGENT_SMTP_EXPORT void
 //  Self test of this class
 AGENT_SMTP_EXPORT void
     bios_smtp_server_test (bool verbose);
+
+// encode email message to zmsg_t
+//  uuid - uuid of the message
+//  to   - email address to
+//  subject - email subject
+//  headers - additional headers to be passed (optional)
+//  body - email body
+//  ... list of files to attach (files with .txt suffix will be added as text files, otherwise binary)
+//  parameter list must be closed by NULL
+AGENT_SMTP_EXPORT zmsg_t *
+bios_smtp_encode (
+        const char *uuid,
+        const char *to,
+        const char *subject,
+        zhash_t *headers,
+        const char *body,
+        ...);
+
 ----
 
 DESCRIPTION
@@ -586,6 +604,64 @@ mlm_client_destroy (&btest_reader);
 mlm_client_destroy (&asset_producer);
 mlm_client_destroy (&alert_producer);
 zactor_destroy (&server);
+
+/*
+zmsg_t *
+bios_smtp_encode (
+    const char *uuid,
+    const char *to,
+    const char *subject,
+    zhash_t *headers,
+    const char *body,
+    ...)
+*/
+
+zhash_t *headers = zhash_new ();
+zhash_update (headers, "Foo", (void*) "bar");
+zmsg_t *email_msg = bios_smtp_encode (
+        "UUID",
+        "TO",
+        "SUBJECT",
+        headers,
+        "BODY",
+        "file1",
+        "file2.txt",
+        NULL);
+assert (email_msg);
+zhash_destroy (&headers);
+
+uuid = zmsg_popstr (email_msg);
+char *to = zmsg_popstr (email_msg);
+char *csubject = zmsg_popstr (email_msg);
+
+assert (streq (uuid, "UUID"));
+assert (streq (to, "TO"));
+assert (streq (csubject, "SUBJECT"));
+
+zstr_free (&uuid);
+zstr_free (&to);
+zstr_free (&csubject);
+
+zframe_t *frame = zmsg_pop (email_msg);
+assert (frame);
+headers = zhash_unpack (frame);
+zframe_destroy (&frame);
+
+body = zmsg_popstr (email_msg);
+char *file1 = zmsg_popstr (email_msg);
+char *file2 = zmsg_popstr (email_msg);
+char *file3 = zmsg_popstr (email_msg);
+
+assert (streq (body, "BODY"));
+assert (streq (file1, "file1"));
+assert (streq (file2, "file2.txt"));
+assert (!file3);
+
+zstr_free (&body);
+zstr_free (&file1);
+zstr_free (&file2);
+
+zmsg_destroy (&email_msg);
 
 printf ("OK\n");
 }
