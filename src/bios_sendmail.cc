@@ -38,7 +38,7 @@
 void usage ()
 {
     puts ("Usage: bios-sendmail [-c|--config] [recipient ...]\n"
-          "  -c|--config           path to config file\n"
+          "  -c|--config           path to bios-agent-smtp config file\n"
           "Send email through bios-agent-smtp to given recipient.\n"
           "Email is read from stdin\n"
           "\n"
