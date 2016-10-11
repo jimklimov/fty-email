@@ -37,12 +37,12 @@
 
 void usage ()
 {
-    puts ("Usage: bios-sendmail [-c|--config] [recipient ...]\n"
-          "  -c|--config           path to config file\n"
-          "Send email through bios-agent-smtp to given recipient.\n"
+    puts ("Usage: bios-sendmail [-c|--config]\n"
+          "  -c|--config           path to bios-agent-smtp config file\n"
+          "Send email through bios-agent-smtp to given recipients in email body.\n"
           "Email is read from stdin\n"
           "\n"
-          "printf 'From:myself\nSubject:subject\n\nbody' | bios-sendmail joe@example.com\n");
+          "printf 'To:joe@example.com\nSubject:subject\n\nbody' | bios-sendmail\n");
 }
 
 
@@ -50,11 +50,13 @@ int main (int argc, char** argv)
 {
 
     int help = 0;
+    int verbose = 0;
     // get options
     int c;
     struct option long_options[] =
     {
         {"help",       no_argument,       &help,    1},
+        {"verbose",    no_argument,       &verbose, 1},
         {"config", required_argument, 0,'c'},
         {0, 0, 0, 0}
     };
@@ -64,7 +66,7 @@ int main (int argc, char** argv)
     while(true) {
 
         int option_index = 0;
-        c = getopt_long (argc, argv, "c:", long_options, &option_index);
+        c = getopt_long (argc, argv, "vc:", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
         case 'c':
@@ -102,12 +104,12 @@ int main (int argc, char** argv)
 
         zconfig_destroy (&config);
     }
-
     mlm_client_t *client = mlm_client_new ();
     char *address = zsys_sprintf ("bios-sendmail.%d", getpid ());
     int r = mlm_client_connect (client, endpoint, 1000, address);
     assert (r != -1);
-    zsys_info ("bios-sendmail:\tendpoint=%s, address=%s, smtp_address=%s", endpoint, address, smtp_address);
+    if (verbose)
+        zsys_debug ("bios-sendmail:\tendpoint=%s, address=%s, smtp_address=%s", endpoint, address, smtp_address);
     zstr_free (&address);
     zstr_free (&endpoint);
     assert (r != -1);
@@ -116,19 +118,23 @@ int main (int argc, char** argv)
     mlm_client_sendtox (client, smtp_address, "SENDMAIL", "uuid", body.c_str (), NULL);
     zstr_free (&smtp_address);
 
-    char* subject;
-    char* uuid;
-    char* code;
-    char* reason;
-    r  = mlm_client_recvx(client, &subject, &uuid, &code, &reason);
-    if  (r != -1) {
-        printf("message recived: \nsubject: %s, \ncode: %s \nreason: %s", subject, code, reason);
-    }
+    zmsg_t *msg = mlm_client_recv (client);
+
+    char* uuid = zmsg_popstr (msg);
+    char* code = zmsg_popstr (msg);
+    char* reason = zmsg_popstr (msg);
+    assert (r != -1);
+    int exit_code = EXIT_SUCCESS;
+    if (code[0] != '0')
+        exit_code = EXIT_FAILURE;
+
+    if (exit_code == EXIT_FAILURE || verbose)
+        zsys_debug ("subject: %s, \ncode: %s \nreason: %s", mlm_client_subject (client), code, reason);
         
     zstr_free(&code);
     zstr_free(&reason);
-    zstr_free(&subject);
     zstr_free(&uuid);
     mlm_client_destroy (&client);
-    return 0;
+
+    exit (exit_code);
 }
