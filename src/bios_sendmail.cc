@@ -37,12 +37,12 @@
 
 void usage ()
 {
-    puts ("Usage: bios-sendmail [-c|--config] [recipient ...]\n"
+    puts ("Usage: bios-sendmail [-c|--config]\n"
           "  -c|--config           path to bios-agent-smtp config file\n"
-          "Send email through bios-agent-smtp to given recipient.\n"
+          "Send email through bios-agent-smtp to given recipients in email body.\n"
           "Email is read from stdin\n"
           "\n"
-          "printf 'From:myself\nSubject:subject\n\nbody' | bios-sendmail joe@example.com\n");
+          "printf 'To:joe@example.com\nSubject:subject\n\nbody' | bios-sendmail\n");
 }
 
 
@@ -116,11 +116,12 @@ int main (int argc, char** argv)
     mlm_client_sendtox (client, smtp_address, "SENDMAIL", "uuid", body.c_str (), NULL);
     zstr_free (&smtp_address);
 
-    char* subject;
-    char* uuid;
-    char* code;
-    char* reason;
-    r  = mlm_client_recvx(client, &subject, &uuid, &code, &reason);
+    zmsg_t *msg = mlm_client_recv (client);
+
+    char* subject = zmsg_popstr (msg);
+    char* uuid = zmsg_popstr (msg);
+    char* code = zmsg_popstr (msg);
+    char* reason = zmsg_popstr (msg);
     if  (r != -1) {
         printf("message recived: \nsubject: %s, \ncode: %s \nreason: %s", subject, code, reason);
     }
