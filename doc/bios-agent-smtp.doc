@@ -1,0 +1,14 @@
+#### bios-agent-smtp - Actor evaluating rules
+
+bios_agent_server - Actor sending the emails about alerts
+
+see bios_smtp_server for configuration file format
+
+This is the class interface:
+
+Please add @interface section in ../src/bios_agent_smtp.cc.
+
+This is the class self test code:
+
+Please add @selftest section in ../src/bios_agent_smtp.cc.
+

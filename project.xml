@@ -21,6 +21,13 @@
         <use project = "malamute"/>
     </use>
 
+    <use project = "magic" libname = "libmagic"
+        repository = "https://github.com/threatstack/libmagic"
+        test = "magic_close"
+        spec_name = "file-devel"
+        >
+    </use>
+
     <use project = "cxxtools" test="cxxtools::Utf8Codec::Utf8Codec"/>
 
     <class name = "alert" private="1">Alert representation</class>

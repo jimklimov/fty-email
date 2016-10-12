@@ -1,0 +1,31 @@
+bios_sendmail(1)
+================
+
+NAME
+----
+bios-sendmail - Actor evaluating rules
+
+SYNOPSIS
+--------
+----
+Please add @interface section in ../src/bios_sendmail.cc.
+----
+
+DESCRIPTION
+-----------
+
+bios-sendmail - Send emails through agent-smtp "SENDMAIL" protocol
+
+
+Usage:
+printf 'From:myself\nSubject:subject\n\nbody' | bios-sendmail joe@example.com\n
+
+Tools needs agent-smtp configured and running. See man bios_smtp_server and bios_agent_smtp
+
+
+EXAMPLE
+-------
+.From bios_sendmail_test method
+----
+Please add @selftest section in ../src/bios_sendmail.cc.
+----
