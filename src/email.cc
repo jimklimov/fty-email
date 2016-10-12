@@ -219,7 +219,7 @@ Smtp::msg2email (zmsg_t **msg_p) const
     zmsg_t *msg = *msg_p;
 
     std::stringstream buff;
-    cxxtools::Mime mime;
+    cxxtools::MimeMultipart mime;
 
     char *uuid = zmsg_popstr (msg);
     char *to = zmsg_popstr (msg);
@@ -228,7 +228,7 @@ Smtp::msg2email (zmsg_t **msg_p) const
 
     mime.setHeader ("To", to);
     mime.setHeader ("Subject", subject);
-    mime.addPart (body);
+    mime.addObject (body);
 
     zstr_free (&uuid);
     zstr_free (&to);
@@ -262,7 +262,7 @@ Smtp::msg2email (zmsg_t **msg_p) const
                 mime_type = "application/octet-stream; charset=binary";
             }
             zsys_debug ("mime_type=%s", mime_type);
-            mime.addBinaryFile (mime_type, path);
+            mime.attachBinaryFile (mime_type, path);
             zstr_free (&path);
         }
     }
