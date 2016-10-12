@@ -37,8 +37,10 @@
 
 void usage ()
 {
-    puts ("Usage: bios-sendmail [-c|--config]\n"
+    puts ("Usage: bios-sendmail [options] addr [addr2 ... ] < message\n"
           "  -c|--config           path to bios-agent-smtp config file\n"
+          "  -s|--subject          mail subject\n"
+          "  -a|--attachment       path to file to be attached to email\n"
           "Send email through bios-agent-smtp to given recipients in email body.\n"
           "Email is read from stdin\n"
           "\n"
@@ -51,13 +53,19 @@ int main (int argc, char** argv)
 
     int help = 0;
     int verbose = 0;
+    std::vector<std::string> attachments;
+    std::vector<std::string> recipients;
+    std::string subj;
+    
     // get options
     int c;
     struct option long_options[] =
     {
         {"help",       no_argument,       &help,    1},
         {"verbose",    no_argument,       &verbose, 1},
-        {"config", required_argument, 0,'c'},
+        {"config",     required_argument, 0,'c'},
+        {"subject",    required_argument, 0,'s'},
+        {"attachment", required_argument, 0,'a'},
         {0, 0, 0, 0}
     };
 
@@ -72,6 +80,12 @@ int main (int argc, char** argv)
         case 'c':
             config_file = optarg;
             break;
+        case 'a':
+            attachments.push_back (optarg);
+            break;
+        case 's':
+            subj = optarg;
+            break;
         case 0:
             // just now walking trough some long opt
             break;
@@ -80,6 +94,10 @@ int main (int argc, char** argv)
             help = 1;
             break;
         }
+    }
+    while (optind < argc) {
+        recipients.push_back (argv[optind]);
+        ++optind;
     }
     if (help) { usage(); exit(1); }
     // end of the options
