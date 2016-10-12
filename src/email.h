@@ -192,6 +192,16 @@ class Smtp
         void sendmail(
                 const std::string& data) const;
 
+        /**
+         * \brief convert zmq message to email string
+         *
+         * Function creates a multipart message, which can be sent
+         * Format of message is in bios_smtp_server
+         *
+         */
+        std::string
+            msg2email (zmsg_t **msg_p) const;
+
     protected:
 
         /**
