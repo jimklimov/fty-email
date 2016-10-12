@@ -108,6 +108,8 @@ class Smtp
          */
         explicit Smtp();
 
+        ~Smtp ();
+
         /** \brief set the SMTP server address */
         void host (const std::string& host) { _host = host; };
 
@@ -223,6 +225,7 @@ class Smtp
         bool _has_fn;
         bool _verify_ca;
         std::function <void(const std::string&)> _fn;
+        magic_t _magic;
 };
 
 /**

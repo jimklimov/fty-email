@@ -48,7 +48,18 @@ Smtp::Smtp():
     _has_fn {false},
     _verify_ca {false}
 {
+    _magic = magic_open (MAGIC_MIME | MAGIC_ERROR | MAGIC_NO_CHECK_COMPRESS | MAGIC_NO_CHECK_TAR);
+    if (!_magic)
+        throw std::runtime_error ("Cannot open magic_cookie");
 
+    int r = magic_load (_magic, NULL);
+    if (r == -1)
+        throw std::runtime_error ("Cannot load magic database");
+}
+
+Smtp::~Smtp ()
+{
+    magic_close (_magic);
 }
 
 std::string Smtp::createConfigFile() const
@@ -207,8 +218,6 @@ Smtp::msg2email (zmsg_t **msg_p) const
     assert (msg_p && *msg_p);
     zmsg_t *msg = *msg_p;
 
-    static const cxxtools::Regex txt_re {".*\\.txt$"};
-
     std::stringstream buff;
     cxxtools::Mime mime;
 
@@ -246,15 +255,17 @@ Smtp::msg2email (zmsg_t **msg_p) const
         {
             char* path = zmsg_popstr (msg);
             zsys_debug ("path=%s", path);
-            // TODO: use libmagic
-            if (txt_re.match (path))
-                mime.addTextFile ("text/plain; charset=utf-8", path);
-            else
-                mime.addBinaryFile ("application/octet-stream; charset=binary", path);
+
+            const char* mime_type = magic_file (_magic, path);
+            if (!mime_type) {
+                zsys_warning ("Can't guess type for %s, using application/octet-stream", path);
+                mime_type = "application/octet-stream; charset=binary";
+            }
+            zsys_debug ("mime_type=%s", mime_type);
+            mime.addBinaryFile (mime_type, path);
             zstr_free (&path);
         }
     }
-    zsys_debug ("BAF4");
     zmsg_destroy (&msg);
 
     buff << mime;
@@ -378,8 +389,8 @@ email_test (bool verbose)
             NULL);
     assert (email_msg);
     zhash_destroy (&headers);
-    std::ofstream ofile1 {"file1"};
-    ofile1 << "file1";
+    std::ofstream ofile1 {"file1", std::ios::binary};
+    ofile1.write ("MZ\0\0\0\0\0\0", 8);
     ofile1.flush ();
     ofile1.close ();
 
