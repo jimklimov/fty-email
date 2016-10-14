@@ -210,7 +210,6 @@ Smtp::msg2email (zmsg_t **msg_p) const
     std::stringstream buff;
     cxxtools::MimeMultipart mime;
 
-    char *uuid = zmsg_popstr (msg);
     char *to = zmsg_popstr (msg);
     char *subject = zmsg_popstr (msg);
     char *body = zmsg_popstr (msg);
@@ -219,7 +218,6 @@ Smtp::msg2email (zmsg_t **msg_p) const
     mime.setHeader ("Subject", subject);
     mime.addObject (body);
 
-    zstr_free (&uuid);
     zstr_free (&to);
     zstr_free (&subject);
     zstr_free (&body);
@@ -261,6 +259,7 @@ Smtp::msg2email (zmsg_t **msg_p) const
         }
     }
     zmsg_destroy (&msg);
+    *msg_p = NULL;
 
     buff << mime;
     return buff.str ();
@@ -394,6 +393,7 @@ email_test (bool verbose)
     ofile2.close ();
 
     Smtp smtp {};
+    char* uuid = zmsg_popstr (email_msg); zstr_free (&uuid);
     std::string email = smtp.msg2email (&email_msg);
     zsys_debug ("E M A I L:=\n%s\n", email.c_str ());
 

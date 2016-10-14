@@ -784,17 +784,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
             if (topic == "SENDMAIL") {
                 bool sent_ok = false;
                 try {
-                    if (zmsg_size (zmessage) == 3) {
-                        char *to = zmsg_popstr (zmessage);
-                        char *subject = zmsg_popstr (zmessage);
-                        char *body = zmsg_popstr (zmessage);
-                        zsys_debug1 ("%s:\tsmtp.sendmail (%s, %s, %s)", name, to, subject, body);
-                        smtp.sendmail (to, subject, body);
-                        zstr_free (&body);
-                        zstr_free (&subject);
-                        zstr_free (&to);
-                    }
-                    else
                     if (zmsg_size (zmessage) == 1) {
                         char *body = zmsg_popstr (zmessage);
                         zsys_debug1 ("%s:\tsmtp.sendmail (%s)", name, body);
@@ -802,7 +791,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
                         zstr_free (&body);
                     }
                     else
-                        throw std::runtime_error ("Can't parse zmsg_t with size " + std::to_string (zmsg_size (zmessage)));
+                        smtp.sendmail (smtp.msg2email (&zmessage));
                     zmsg_addstr (reply, "0");
                     zmsg_addstr (reply, "OK");
                     sent_ok = true;
