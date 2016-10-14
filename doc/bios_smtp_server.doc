@@ -1,0 +1,674 @@
+#### bios_smtp_server - Smtp actor
+
+bios_smtp_server - Smtp actor
+
+Please add @discuss section in ../src/bios_smtp_server.cc.
+
+This is the class interface:
+
+```h
+    
+    //  Main actor sending emails (and sms2email)
+    //  Configuration format
+    //  ====================
+    //
+    //  server
+    //      verbose             1 turns verbose mode on, 0 off
+    //      assets              path to state file for assets
+    //      alerts              path to state file for alerts
+    //  smtp
+    //      server              address of smtp server
+    //      port                port number
+    //      user                name of user for login
+    //      password            password of user
+    //      from                From: header of email
+    //      encryption          encryption, can be (none|tls|starttls)
+    //      msmtppath           path to msmtp command
+    //      smsgateway          email to sms gateway
+    //      verify_ca           1 turns on CA verification, 0 off
+    //  malamute
+    //      verbose             1 setup verbose mode of mlm_client, 0 turn it off
+    //      endpoint            malamute endpoint address
+    //      address             mailbox address of agent-smtp
+    //      consumers
+    //          ALERTS  .*      consume all messages on ALERTS stream
+    //          ASSETS  .*      consume all messages on ASSETS stream
+    //
+    //  Actor commands
+    //  ==============
+    //
+    //  LOAD    path            load and apply configuration from zpl file
+    //                          see Configuration format section
+    //
+    //  Malamute protocol (mailbox agent-smtp)
+    //  ======================================
+    //
+    //  REQ: subject=SENDMAIL 
+    //
+    //      [$uuid|$to|$subject|$body|$headers:zhash_t|attachment1|attachment2|...]
+    //      sends email to $to, with subject $subject and body $body
+    //      $headers state additional headers to be passed to email
+    //      $attachment1, $attachment2, ... are names of files to be attached
+    //      see bios_smtp_encode to handy way to encode such message
+    //
+    //      [$uuid|$to|$subject|$body]
+    //      sends emails via configured environment to address $to, with subject $subject and body $body
+    //  REP: subject=SENDMAIL-OK [$uuid|0|OK]
+    //      if email was sent
+    //  REP: subject=SENDMAIL-ERR [$uuid|$error code|$error message]
+    //      if email wasn't sent, or there was improper number of arguments
+    //      error message comes from msmtp stderr and is NOT normalized!
+    AGENT_SMTP_EXPORT void
+       bios_smtp_server (zsock_t *pipe, void* args);
+    
+    //  Self test of this class
+    AGENT_SMTP_EXPORT void
+        bios_smtp_server_test (bool verbose);
+    
+    // encode email message to zmsg_t
+    //  uuid - uuid of the message
+    //  to   - email address to
+    //  subject - email subject
+    //  headers - additional headers to be passed (optional)
+    //  body - email body
+    //  ... list of files to attach (files with .txt suffix will be added as text files, otherwise binary)
+    //  parameter list must be closed by NULL
+    AGENT_SMTP_EXPORT zmsg_t *
+    bios_smtp_encode (
+            const char *uuid,
+            const char *to,
+            const char *subject,
+            zhash_t *headers,
+            const char *body,
+            ...);
+    
+```
+
+This is the class self test code:
+
+```cc
+    
+    /*
+    zmsg_t *
+    bios_smtp_encode (
+        const char *uuid,
+        const char *to,
+        const char *subject,
+        zhash_t *headers,
+        const char *body,
+        ...)
+    */
+    
+    {
+    zhash_t *headers = zhash_new ();
+    zhash_update (headers, "Foo", (void*) "bar");
+    zmsg_t *email_msg = bios_smtp_encode (
+            "UUID",
+            "TO",
+            "SUBJECT",
+            headers,
+            "BODY",
+            "file1",
+            "file2.txt",
+            NULL);
+    assert (email_msg);
+    assert (zmsg_size (email_msg) == 7);
+    zhash_destroy (&headers);
+    
+    char *uuid = zmsg_popstr (email_msg);
+    char *to = zmsg_popstr (email_msg);
+    char *csubject = zmsg_popstr (email_msg);
+    char *body = zmsg_popstr (email_msg);
+    
+    assert (streq (uuid, "UUID"));
+    assert (streq (to, "TO"));
+    assert (streq (csubject, "SUBJECT"));
+    assert (streq (body, "BODY"));
+    
+    zstr_free (&uuid);
+    zstr_free (&to);
+    zstr_free (&csubject);
+    zstr_free (&body);
+    
+    zframe_t *frame = zmsg_pop (email_msg);
+    assert (frame);
+    headers = zhash_unpack (frame);
+    zframe_destroy (&frame);
+    
+    assert (streq ((char*)zhash_lookup (headers, "Foo"), "bar"));
+    zhash_destroy (&headers);
+    
+    char *file1 = zmsg_popstr (email_msg);
+    char *file2 = zmsg_popstr (email_msg);
+    char *file3 = zmsg_popstr (email_msg);
+    
+    assert (streq (file1, "file1"));
+    assert (streq (file2, "file2.txt"));
+    assert (!file3);
+    
+    zstr_free (&file1);
+    zstr_free (&file2);
+    zmsg_destroy (&email_msg);
+    
+    }
+    
+    static const char* endpoint = "inproc://bios-smtp-server-test";
+    
+    // malamute broker
+    zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
+    assert ( server != NULL );
+    zstr_sendx (server, "BIND", endpoint, NULL);
+    if ( verbose )
+        zsys_info ("malamute started");
+    // smtp server
+    zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
+    assert ( smtp_server != NULL );
+    
+    zconfig_t *config = zconfig_new ("root", NULL);
+    zconfig_put (config, "server/alerts", alerts_file);
+    zconfig_put (config, "server/assets", assets_file);
+    zconfig_put (config, "malamute/endpoint", endpoint);
+    zconfig_put (config, "malamute/address", "agent-smtp");
+    zconfig_put (config, "malamute/consumers/ASSETS", ".*");
+    zconfig_put (config, "malamute/consumers/ALERTS", ".*");
+    zconfig_save (config, "src/smtp.cfg");
+    zconfig_destroy (&config);
+    
+    if (verbose)
+        zstr_send (smtp_server, "VERBOSE");
+    zstr_sendx (smtp_server, "LOAD", "src/smtp.cfg", NULL);
+    zstr_sendx (smtp_server, "_MSMTP_TEST", "btest-reader", NULL);
+    if ( verbose )
+        zsys_info ("smtp server started");
+    
+    mlm_client_t *alert_producer = mlm_client_new ();
+    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
+    assert( rv != -1 );
+    rv = mlm_client_set_producer (alert_producer, "ALERTS");
+    assert( rv != -1 );
+    if ( verbose )
+        zsys_info ("alert producer started");
+    
+    mlm_client_t *asset_producer = mlm_client_new ();
+    rv = mlm_client_connect (asset_producer, endpoint, 1000, "asset_producer");
+    assert( rv != -1 );
+    rv = mlm_client_set_producer (asset_producer, "ASSETS");
+    assert( rv != -1 );
+    if ( verbose )
+        zsys_info ("asset producer started");
+    
+    mlm_client_t *btest_reader = mlm_client_new ();
+    rv = mlm_client_connect (btest_reader, endpoint, 1000, "btest-reader");
+    assert( rv != -1 );
+    
+    
+    // scenario 1: send asset + send an alert on the already known correct asset
+    //      1. send asset info
+    zhash_t *aux = zhash_new ();
+    zhash_insert (aux, "priority", (void *)"1");
+    zhash_t *ext = zhash_new ();
+    zhash_insert (ext, "contact_email", (void *)"scenario1.email@eaton.com");
+    zhash_insert (ext, "contact_name", (void *)"eaton Support team");
+    const char *asset_name = "ASSET1";
+    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, "create", ext);
+    assert (msg);
+    mlm_client_send (asset_producer, "Asset message1", &msg);
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
+    if (verbose)
+        zsys_info ("asset message was send");
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
+    
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    std::string atopic = "NY_RULE/CRITICAL@" + std::string (asset_name);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
+    
+    //      3. read the email generated for alert
+    msg = mlm_client_recv (btest_reader);
+    assert (msg);
+    if ( verbose ) {
+        zsys_debug ("parameters for the email:");
+        zmsg_print (msg);
+    }
+    //      4. compare the email with expected output
+    int fr_number = zmsg_size(msg);
+    char *body = NULL;
+    while ( fr_number > 0 ) {
+        zstr_free(&body);
+        body = zmsg_popstr(msg);
+        fr_number--;
+    }
+    zmsg_destroy (&msg);
+    if ( verbose ) {
+        zsys_debug ("email itself:");
+        zsys_debug ("%s", body);
+    }
+    std::string newBody = std::string (body);
+    zstr_free(&body);
+    std::size_t subject = newBody.find ("Subject:");
+    std::size_t date = newBody.find ("Date:");
+    // in the body there is a line with current date -> remove it
+    newBody.replace (date, subject - date, "");
+    // need to erase white spaces, because newLines in "body" are not "\n"
+    newBody.erase(remove_if(newBody.begin(), newBody.end(), isspace), newBody.end());
+    
+    // expected string withoiut date
+    std::string expectedBody = "From:bios@eaton.com\nTo: scenario1.email@eaton.com\nSubject: CRITICAL alert on ASSET1 from the rule ny_rule is active!\n\n"
+    "In the system an alert was detected.\nSource rule: ny_rule\nAsset: ASSET1\nAlert priority: P1\nAlert severity: CRITICAL\n"
+    "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
+    expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
+    
+    if (verbose) {
+        zsys_debug ("expectedBody =\n%s", expectedBody.c_str ());
+        zsys_debug ("\n");
+        zsys_debug ("newBody =\n%s", newBody.c_str ());
+    }
+    assert ( expectedBody.compare(newBody) == 0 );
+    
+    // scenario 2: send an alert on the unknown asset
+    //      1. DO NOT send asset info
+    const char *asset_name1 = "ASSET2";
+    
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name1, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    std::string atopic1 = "NY_RULE/CRITICAL@" + std::string (asset_name1);
+    mlm_client_send (alert_producer, atopic1.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
+    
+    //      3. No mail should be generated
+    zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    void *which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    
+    // scenario 3: send asset without email + send an alert on the already known asset
+    //      1. send asset info
+    aux = zhash_new ();
+    zhash_insert (aux, "priority", (void *)"1");
+    ext = zhash_new ();
+    zhash_insert (ext, "contact_name", (void *)"eaton Support team");
+    const char *asset_name3 = "ASSET2";
+    msg = bios_proto_encode_asset (aux, asset_name3, "update", ext);
+    assert (msg);
+    mlm_client_send (asset_producer, "Asset message3", &msg);
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
+    if (verbose)
+        zsys_info ("asset message was send");
+    
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    std::string atopic3 = "NY_RULE/CRITICAL@" + std::string (asset_name3);
+    mlm_client_send (alert_producer, atopic3.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
+    
+    //      3. No mail should be generated
+    poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    
+    // scenario 4:
+    //      1. send an alert on the already known asset
+    atopic = "Scenario4/CRITICAL@" + std::string (asset_name);
+    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
+    
+    //      2. read the email generated for alert
+    msg = mlm_client_recv (btest_reader);
+    assert (msg);
+    if ( verbose ) {
+        zsys_debug ("parameters for the email:");
+        zmsg_print (msg);
+    }
+    zmsg_destroy (&msg);
+    
+    //      4. send an alert on the already known asset
+    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
+    
+    //      5. email should not be send (it doesn't satisfy the schedule
+    poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    
+    // scenario 5: alert without action "EMAIL"
+    //      1. send alert message
+    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic3.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
+    
+    //      2. No mail should be generated
+    poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    
+    
+    // scenario 6 ===============================================
+    //
+    //------------------------------------------------------------------------------------------------> t
+    //
+    //  asset is known       alert comes    no email        asset_info        alert comes   email send
+    // (without email)                                   updated with email
+    
+    const char *asset_name6 = "asset_6";
+    const char *rule_name6 = "rule_name_6";
+    std::string alert_topic6 = std::string(rule_name6) + "/CRITICAL@" + std::string (asset_name6);
+    
+    //      1. send asset info without email
+    aux = zhash_new ();
+    assert (aux);
+    zhash_insert (aux, "priority", (void *)"1");
+    ext = zhash_new ();
+    assert (ext);
+    msg = bios_proto_encode_asset (aux, asset_name6, "create", ext);
+    assert (msg);
+    rv = mlm_client_send (asset_producer, "Asset message6", &msg);
+    assert ( rv != -1 );
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
+    
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, rule_name6, asset_name6, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
+    assert ( rv != -1 );
+    
+    //      3. No mail should be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy
+    
+    //      4. send asset info one more time, but with email
+    zhash_insert (ext, "contact_email", (void *)"scenario6.email@eaton.com");
+    msg = bios_proto_encode_asset (aux, asset_name6, "update", ext);
+    assert (msg);
+    rv = mlm_client_send (asset_producer, "Asset message6", &msg);
+    assert ( rv != -1 );
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
+    
+    //      5. send alert message again
+    msg = bios_proto_encode_alert (NULL, rule_name6, asset_name6, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
+    assert ( rv != -1 );
+    
+    //      6. Email SHOULD be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which != NULL );
+    if ( verbose ) {
+        zsys_debug ("Email was sent: SUCCESS");
+    }
+    msg = mlm_client_recv (btest_reader);
+    zpoller_destroy (&poller);
+    assert (msg);
+    
+    //      7. compare the email with expected output
+    fr_number = zmsg_size(msg);
+    body = NULL;
+    while ( fr_number > 0 ) {
+        zstr_free(&body);
+        body = zmsg_popstr(msg);
+        fr_number--;
+    }
+    zmsg_destroy (&msg);
+    if ( verbose ) {
+        zsys_debug ("email itself:");
+        zsys_debug ("%s", body);
+    }
+    newBody = std::string (body);
+    zstr_free(&body);
+    subject = newBody.find ("Subject:");
+    date = newBody.find ("Date:");
+    // in the body there is a line with current date -> remove it
+    newBody.replace (date, subject - date, "");
+    // need to erase white spaces, because newLines in "body" are not "\n"
+    newBody.erase(remove_if(newBody.begin(), newBody.end(), isspace), newBody.end());
+    
+    // expected string withoiut date
+    expectedBody = "From:bios@eaton.com\nTo: scenario6.email@eaton.com\nSubject: CRITICAL alert on asset_6 from the rule rule_name_6 is active!\n\n"
+    "In the system an alert was detected.\nSource rule: rule_name_6\nAsset: asset_6\nAlert priority: P1\nAlert severity: CRITICAL\n"
+    "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
+    expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
+    assert ( expectedBody.compare(newBody) == 0 );
+    
+    // intentionally left formatting intact, so git blame will reffer to original author ;-)
+    if (verbose) {
+    zsys_debug (" scenario 7 ===============================================");
+    // scenario 7:
+    //      1. send an alert on the already known asset
+    atopic = "Scenario7/CRITICAL@" + std::string (asset_name);
+    msg = bios_proto_encode_alert (NULL, "Scenario7", asset_name, \
+        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
+    
+    //      2. read the email generated for alert
+    msg = mlm_client_recv (btest_reader);
+    assert (msg);
+    if ( verbose ) {
+        zsys_debug ("parameters for the email:");
+        zmsg_print (msg);
+    }
+    zmsg_destroy (&msg);
+    
+    //      4. send an alert on the already known asset
+    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+        "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
+    
+    //      5. read the email generated for alert
+    msg = mlm_client_recv (btest_reader);
+    assert (msg);
+    if ( verbose ) {
+        zsys_debug ("parameters for the email:");
+        zmsg_print (msg);
+    }
+    zmsg_destroy (&msg);
+    
+    // wait for 5 minutes
+    zclock_sleep (5*60*1000);
+    
+    //      7. send an alert again
+    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+        "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+    assert (msg);
+    mlm_client_send (alert_producer, atopic.c_str(), &msg);
+    if (verbose)
+        zsys_info ("alert message was send");
+    
+    //      8. email should not be send (it  in the state, where alerts are not being send)
+    poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    zclock_sleep (1500);   //now we want to ensure btest calls mlm_client_destroy
+    }
+    
+    // scenario 8 ===============================================
+    //
+    //-------------------------------------------------------------------------------------------------------------------------------------> t
+    //
+    //  asset is known       alert comes    no email        asset_info        alert comes   email send    alert comes (<5min)   email send
+    // (without email)                                   updated with email
+    
+    const char *asset_name8 = "ROZ.UPS36";
+    const char *rule_name8 = "rule_name_8";
+    std::string alert_topic8 = std::string(rule_name8) + "/CRITICAL@" + std::string (asset_name8);
+    
+    //      1. send asset info without email
+    aux = zhash_new ();
+    assert (aux);
+    zhash_insert (aux, "priority", (void *)"1");
+    ext = zhash_new ();
+    assert (ext);
+    msg = bios_proto_encode_asset (aux, asset_name8, "create", ext);
+    assert (msg);
+    rv = mlm_client_send (asset_producer, "Asset message8", &msg);
+    assert ( rv != -1 );
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
+    
+    //      2. send alert message
+    msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
+    assert ( rv != -1 );
+    
+    //      3. No mail should be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("No email was sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy
+    
+    //      4. send asset info one more time, but with email
+    zhash_insert (ext, "contact_email", (void *)"scenario8.email@eaton.com");
+    msg = bios_proto_encode_asset (aux, asset_name8, "update", ext);
+    assert (msg);
+    rv = mlm_client_send (asset_producer, "Asset message8", &msg);
+    assert ( rv != -1 );
+    zhash_destroy (&aux);
+    zhash_destroy (&ext);
+    // Ensure, that malamute will deliver ASSET message before ALERT message
+    zclock_sleep (1000);
+    
+    //      5. send alert message again second
+    msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
+    assert ( rv != -1 );
+    
+    //      6. Email SHOULD be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which != NULL );
+    if ( verbose ) {
+        zsys_debug ("Email was sent: SUCCESS");
+    }
+    msg = mlm_client_recv (btest_reader);
+    zpoller_destroy (&poller);
+    assert (msg);
+    
+    zmsg_destroy (&msg);
+    
+    //      8. send alert message again third time
+    msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
+        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL");
+    assert (msg);
+    rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
+    assert ( rv != -1 );
+    
+    //      9. Email SHOULD NOT be generated
+    poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
+    which = zpoller_wait (poller, 1000);
+    assert ( which == NULL );
+    if ( verbose ) {
+        zsys_debug ("Email was NOT sent: SUCCESS");
+    }
+    zpoller_destroy (&poller);
+    
+    //test SENDMAIL
+    rv = mlm_client_sendtox (alert_producer, "agent-smtp", "SENDMAIL", "UUID", "foo@bar", "Subject", "body", NULL);
+    assert (rv != -1);
+    msg = mlm_client_recv (alert_producer);
+    assert (streq (mlm_client_subject (alert_producer), "SENDMAIL-OK"));
+    assert (zmsg_size (msg) == 3);
+    
+    char *uuid = zmsg_popstr (msg);
+    assert (streq (uuid, "UUID"));
+    zstr_free (&uuid);
+    
+    char *code = zmsg_popstr (msg);
+    assert (streq (code, "0"));
+    zstr_free (&code);
+    
+    char *reason = zmsg_popstr (msg);
+    assert (streq (reason, "OK"));
+    zstr_free (&reason);
+    
+    zmsg_destroy (&msg);
+    
+    //  this fixes the reported memcheck error
+    msg = mlm_client_recv (btest_reader);
+    if (verbose)
+        zmsg_print (msg);
+    zmsg_destroy (&msg);
+    
+    //MVY: this test leaks memory - in general it's a bad idea to publish
+    //messages to broker without reading them :)
+    //test9 (verbose, "ipc://bios-smtp-server-test9");
+    test10 (verbose, endpoint, server, asset_producer);
+    
+    // clean up after the test
+    zactor_destroy (&smtp_server);
+    mlm_client_destroy (&btest_reader);
+    mlm_client_destroy (&asset_producer);
+    mlm_client_destroy (&alert_producer);
+    zactor_destroy (&server);
+    
+    printf ("OK\n");
+    }
+```
+

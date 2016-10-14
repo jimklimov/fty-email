@@ -12,7 +12,7 @@ AC_INIT([agent-smtp],[0.1.0],[bios@eaton.com])
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR(config)
 AC_CONFIG_HEADERS([src/platform.h])
-AM_INIT_AUTOMAKE([subdir-objects tar-ustar foreign])
+AM_INIT_AUTOMAKE([subdir-objects tar-ustar dist-zip foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 # This defines PACKAGE_VERSION_... in src/platform.h
@@ -254,6 +254,51 @@ if test "x$was_biosproto_check_lib_detected" = "xno"; then
     LIBS="${biosproto_LIBS} ${LIBS}"
 fi
 
+was_magic_check_lib_detected=no
+
+PKG_CHECK_MODULES([magic], [libmagic >= 0.0.0],
+    [
+    ],
+    [
+        AC_ARG_WITH([libmagic],
+            [
+                AS_HELP_STRING([--with-libmagic],
+                [Specify libmagic prefix])
+            ],
+            [search_libmagic="yes"],
+            [])
+
+        magic_synthetic_cflags=""
+        magic_synthetic_libs="-lmagic"
+
+        if test "x$search_libmagic" = "xyes"; then
+            if test -r "${with_libmagic}/include/magic.h"; then
+                magic_synthetic_cflags="-I${with_libmagic}/include"
+                magic_synthetic_libs="-L${with_libmagic}/lib -lmagic"
+            else
+                AC_MSG_ERROR([${with_libmagic}/include/magic.h not found. Please check libmagic prefix])
+            fi
+        fi
+
+
+        AC_CHECK_LIB([magic], [magic_close],
+            [
+                CFLAGS="${magic_synthetic_cflags} ${CFLAGS}"
+                LDFLAGS="${magic_synthetic_libs} ${LDFLAGS}"
+                LIBS="${magic_synthetic_libs} ${LIBS}"
+
+                AC_SUBST([magic_CFLAGS],[${magic_synthetic_cflags}])
+                AC_SUBST([magic_LIBS],[${magic_synthetic_libs}])
+                was_magic_check_lib_detected=yes
+            ],
+            [AC_MSG_ERROR([cannot link with -lmagic, install libmagic])])
+    ])
+
+if test "x$was_magic_check_lib_detected" = "xno"; then
+    CFLAGS="${magic_CFLAGS} ${CFLAGS}"
+    LIBS="${magic_LIBS} ${LIBS}"
+fi
+
 was_cxxtools_check_lib_detected=no
 
 PKG_CHECK_MODULES([cxxtools], [cxxtools >= 0.0.0],
@@ -346,7 +391,7 @@ AC_MSG_CHECKING([whether to install manpages])
 AC_MSG_RESULT([$agent_smtp_install_man])
 
 # Set some default features required by libagent_smtp code.
-CPPFLAGS="-D_REENTRANT -D_THREAD_SAFE $CPPFLAGS"
+CPPFLAGS="-DAGENT_SMTP_INTERNAL_BUILD -D_REENTRANT -D_THREAD_SAFE $CPPFLAGS"
 
 # OS-specific tests
 case "${host_os}" in
@@ -401,6 +446,16 @@ case "${host_os}" in
         AC_DEFINE(AGENT_SMTP_HAVE_HPUX, 1, [Have HPUX OS])
         ;;
     *mingw32*)
+        AC_DEFINE(AGENT_SMTP_HAVE_WINDOWS, 1, [Have Windows OS])
+        AC_DEFINE(AGENT_SMTP_HAVE_MINGW32, 1, [Have MinGW32])
+        AC_CHECK_HEADERS(windows.h)
+        agent_smtp_on_mingw32="yes"
+        agent_smtp_install_man="no"
+        ;;
+    *mingw64*)
+        # Define on MINGW64 to enable all libeary features
+        # Disable format error due to incomplete ANSI C
+        CPPFLAGS="-Wno-error=format -D_XOPEN_SOURCE $CPPFLAGS"
         AC_DEFINE(AGENT_SMTP_HAVE_WINDOWS, 1, [Have Windows OS])
         AC_DEFINE(AGENT_SMTP_HAVE_MINGW32, 1, [Have MinGW32])
         AC_CHECK_HEADERS(windows.h)
@@ -474,7 +529,7 @@ AC_ARG_ENABLE([bios-agent-smtp],
 AM_CONDITIONAL([ENABLE_BIOS_AGENT_SMTP], [test x$enable_bios_agent_smtp != xno])
 AM_COND_IF([ENABLE_BIOS_AGENT_SMTP], [AC_MSG_NOTICE([ENABLE_BIOS_AGENT_SMTP defined])])
 
-# Check for bios-agent-smtp intent
+# Check for bios-sendmail intent
 AC_ARG_ENABLE([bios-sendmail],
     AS_HELP_STRING([--enable-bios-sendmail],
         [Compile and install 'bios-sendmail' [default=yes]]),
@@ -483,16 +538,6 @@ AC_ARG_ENABLE([bios-sendmail],
 
 AM_CONDITIONAL([ENABLE_BIOS_SENDMAIL], [test x$enable_bios_sendmail != xno])
 AM_COND_IF([ENABLE_BIOS_SENDMAIL], [AC_MSG_NOTICE([ENABLE_BIOS_SENDMAIL defined])])
-
-# Check for btest intent
-AC_ARG_ENABLE([btest],
-    AS_HELP_STRING([--enable-btest],
-        [Compile 'btest' in src [default=yes]]),
-    [enable_btest=$enableval],
-    [enable_btest=yes])
-
-AM_CONDITIONAL([ENABLE_BTEST], [test x$enable_btest != xno])
-AM_COND_IF([ENABLE_BTEST], [AC_MSG_NOTICE([ENABLE_BTEST defined])])
 
 # Check for agent_smtp_selftest intent
 AC_ARG_ENABLE([agent_smtp_selftest],
@@ -522,7 +567,22 @@ AC_ARG_WITH([systemd-units],
     [with_systemd_units=$withval],
     [with_systemd_units=no])
 
-AM_CONDITIONAL([WITH_SYSTEMD_UNITS], [test x$with_systemd_units != xno])
+PKG_PROG_PKG_CONFIG
+AC_ARG_WITH([systemdsystemunitdir],
+     [AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files])],,
+     [with_systemdsystemunitdir=auto])
+AS_IF([test "x$with_systemdsystemunitdir" = "xyes" -o "x$with_systemdsystemunitdir" = "xauto"], [
+     def_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)
+
+     AS_IF([test "x$def_systemdsystemunitdir" = "x"],
+   [AS_IF([test "x$with_systemdsystemunitdir" = "xyes"],
+    [AC_MSG_ERROR([systemd support requested but pkg-config unable to query systemd package])])
+    with_systemdsystemunitdir=no],
+   [with_systemdsystemunitdir="$def_systemdsystemunitdir"])])
+AS_IF([test "x$with_systemdsystemunitdir" != "xno"],
+      [AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])])
+
+AM_CONDITIONAL([WITH_SYSTEMD_UNITS], [test "x$with_systemdsystemunitdir" != "xno" -a x$with_systemd_units != xno])
 
 AM_COND_IF([WITH_SYSTEMD_UNITS],
     [AC_DEFINE(WITH_SYSTEMD_UNITS, 1, [systemd units are going to be installed])
@@ -571,6 +631,78 @@ AM_COND_IF([WITH_SYSTEMD_UNITS],
 
 
 AC_OUTPUT
+
+# Print configure summary and list make options
+AC_DEFUN([AX_SUMMARIZE_ENV],
+[
+BUILD_USER=${USER}
+BUILD_ARCH=${host}
+BUILD_HOST=${ac_hostname}
+BUILD_DATE=$(date +'%F %H:%M')
+
+AC_DEFINE_UNQUOTED([BUILD_USER],     "${BUILD_USER}",     [The fine user who built the package])
+AC_DEFINE_UNQUOTED([BUILD_ARCH],     "${BUILD_ARCH}",     [Architecture of the build host])
+AC_DEFINE_UNQUOTED([BUILD_HOST],     "${BUILD_HOST}",     [Build host name])
+AC_DEFINE_UNQUOTED([BUILD_DATE],     "${BUILD_DATE}",     [Build date])
+
+AC_SUBST(BUILD_USER)
+AC_SUBST(BUILD_ARCH)
+AC_SUBST(BUILD_HOST)
+AC_SUBST(BUILD_DATE)
+AC_SUBST(BUILD_VERSION)
+])
+
+AC_DEFUN([AX_SUMMARIZE_CONFIG],
+[
+echo
+echo '##########################################################################'
+echo '#                                SUMMARY                                 #'
+echo '##########################################################################'
+echo
+echo Package version............... : $PACKAGE-$VERSION
+echo
+echo C compiler.................... : $CC
+echo C compiler flags.............. : $CFLAGS
+echo Configure date................ : $BUILD_DATE
+echo Build architecture............ : $BUILD_ARCH
+echo Build docs.................... : $agent_smtp_build_doc
+echo Build host.................... : $BUILD_HOST
+echo Build user.................... : $USER
+echo Draft API..................... : $enable_drafts
+echo Install dir................... : $prefix
+echo Install man pages............. : $agent_smtp_install_man
+
+echo
+echo Help:
+echo Use the Draft API \(default = yes\):
+echo --enable-drafts=\(yes\|no\)
+echo
+echo Build the docs and install the man pages \(default = yes\):
+echo --with-docs=\(yes\|no\)       *requires asciidoc and xmlto
+
+echo
+echo '##########################################################################'
+
+echo
+echo Configure complete! Now procced with:
+echo "    - 'make'               compile the project"
+echo "    - 'make check'         run the project's selftest"
+echo "    - 'make install'       install the project to $prefix"
+echo
+echo Further options are:
+echo "    - 'make callcheck'     run the project's selftest with valgrind to"
+echo "                           check for performance leaks"
+echo "    - 'make check-verbose' run the project's selftest in verbose mode"
+echo "    - 'make code'          generate code from models in src directory"
+echo "                           (requires zproject and zproto)"
+echo "    - 'make debug'         run the project's selftest under gdb"
+echo "    - 'make memcheck'      run the project's selftest with valgrind to"
+echo "                           check for memory leaks"
+echo
+])
+
+AX_SUMMARIZE_ENV
+AX_SUMMARIZE_CONFIG
 ################################################################################
 #  THIS FILE IS 100% GENERATED BY ZPROJECT; DO NOT EDIT EXCEPT EXPERIMENTALLY  #
 #  Read the zproject/README.md for information about making permanent changes. #

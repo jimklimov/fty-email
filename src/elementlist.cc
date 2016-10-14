@@ -17,6 +17,8 @@
     =========================================================================
 */
 
+#include "agent_smtp_classes.h"
+
 #include <utility>
 #include <cstdint>
 #include <stdexcept>

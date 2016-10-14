@@ -108,6 +108,8 @@ class Smtp
          */
         explicit Smtp();
 
+        ~Smtp ();
+
         /** \brief set the SMTP server address */
         void host (const std::string& host) { _host = host; };
 
@@ -192,6 +194,16 @@ class Smtp
         void sendmail(
                 const std::string& data) const;
 
+        /**
+         * \brief convert zmq message to email string
+         *
+         * Function creates a multipart message, which can be sent
+         * Format of message is in bios_smtp_server
+         *
+         */
+        std::string
+            msg2email (zmsg_t **msg_p) const;
+
     protected:
 
         /**
@@ -213,6 +225,7 @@ class Smtp
         bool _has_fn;
         bool _verify_ca;
         std::function <void(const std::string&)> _fn;
+        magic_t _magic;
 };
 
 /**

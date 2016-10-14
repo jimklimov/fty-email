@@ -36,7 +36,6 @@ int agent_smtp_verbose = true;
 #include <cxxtools/jsondeserializer.h>
 #include <cxxtools/jsonserializer.h>
 #include <cxxtools/regex.h>
-#include <cxxtools/mime.h>
 #include <iterator>
 #include <map>
 #include <set>
@@ -539,65 +538,6 @@ bios_smtp_encode (
     return msg;
 }
 
-char *
-bios_smtp_email (zmsg_t **msg_p)
-{
-    assert (msg_p && *msg_p);
-    zmsg_t *msg = *msg_p;
-
-    static const cxxtools::Regex txt_re {".*\\.txt$"};
-    
-    std::stringstream buff;
-    cxxtools::Mime mime;
-
-    char *uuid = zmsg_popstr (msg);
-    char *to = zmsg_popstr (msg);
-    char *subject = zmsg_popstr (msg);
-    char *body = zmsg_popstr (msg);
-
-    mime.setHeader ("To", to);
-    mime.setHeader ("Subject", subject);
-    mime.addPart (body);
-
-    zstr_free (&uuid);
-    zstr_free (&to);
-    zstr_free (&subject);
-    zstr_free (&body);
-
-    // new protocol have more frames
-    if (zmsg_size (msg) != 0) {
-        zframe_t *frame = zmsg_pop (msg);
-        zhash_t *headers = zhash_unpack (frame);
-        zframe_destroy (&frame);
-        zhash_autofree (headers);
-
-        for (char* value = (char*) zhash_first (headers);
-                   value != NULL;
-                   value = (char*) zhash_next (headers))
-        {
-            const char* key = zhash_cursor (headers);
-            mime.setHeader (key, value);   
-        }
-        zhash_destroy (&headers);
-
-        while (zmsg_size (msg) != 0)
-        {
-            char* path = zmsg_popstr (msg);
-            zsys_debug ("path=%s", path);
-            // TODO: use libmagic
-            if (txt_re.match (path))
-                mime.addTextFile ("text/plain; charset=utf-8", path);
-            else
-                mime.addBinaryFile ("application/octet-stream; charset=binary", path);
-            zstr_free (&path);
-        }
-    }
-    zsys_debug ("BAF4");
-    zmsg_destroy (&msg);
-
-    buff << mime;
-    return strdup (buff.str ().c_str ());
-}
 
 void
 bios_smtp_server (zsock_t *pipe, void* args)
@@ -1388,30 +1328,6 @@ bios_smtp_encode (
     zstr_free (&file2);
     zmsg_destroy (&email_msg);
 
-    email_msg = bios_smtp_encode (
-            "uuid",
-            "to",
-            "subject",
-            headers,
-            "body",
-            "file1",
-            "file2.txt",
-            NULL);
-    assert (email_msg);
-    std::ofstream ofile1 {"file1"};
-    ofile1 << "file1";
-    ofile1.flush ();
-    ofile1.close ();
-
-    std::ofstream ofile2 {"file2.txt"};
-    ofile2 << "file2.txt";
-    ofile2.flush ();
-    ofile2.close ();
-
-    zsys_set_logstream (stderr);
-    char* email = bios_smtp_email (&email_msg);
-    zsys_debug ("E M A I L:=\n%s\n", email);
-    zstr_free (&email);
     }
 
     static const char* endpoint = "inproc://bios-smtp-server-test";

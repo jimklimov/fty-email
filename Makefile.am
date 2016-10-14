@@ -3,6 +3,9 @@
 #  Read the zproject/README.md for information about making permanent changes. #
 ################################################################################
 
+DISTCHECK_CONFIGURE_FLAGS = \
+  --with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)
+
 ACLOCAL_AMFLAGS = -I config
 
 AM_CFLAGS = \
@@ -17,11 +20,12 @@ AM_CPPFLAGS = \
     ${czmq_CFLAGS} \
     ${malamute_CFLAGS} \
     ${biosproto_CFLAGS} \
+    ${magic_CFLAGS} \
     ${cxxtools_CFLAGS} \
     -D__STDC_FORMAT_MACROS \
     -I$(srcdir)/include
 
-project_libs = ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${biosproto_LIBS} ${cxxtools_LIBS}
+project_libs = ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${biosproto_LIBS} ${magic_LIBS} ${cxxtools_LIBS}
 
 SUBDIRS = doc
 DIST_SUBDIRS = doc
@@ -33,6 +37,13 @@ noinst_LTLIBRARIES =
 TESTS =
 
 EXTRA_DIST = \
+    CMakeLists.txt \
+    Findlibzmq.cmake \
+    Findczmq.cmake \
+    Findmalamute.cmake \
+    Findbiosproto.cmake \
+    Findmagic.cmake \
+    Findcxxtools.cmake \
     src/alert.h \
     src/emailconfiguration.h \
     src/email.h \

@@ -1,5 +1,8 @@
 usr/bin/bios-agent-smtp
+usr/share/man/man1/bios-agent-smtp.1
 usr/bin/bios-sendmail
-usr/lib/systemd/system/bios-agent-smtp*.service
-debian/tmp/usr/lib/tmpfiles.d/*conf
+usr/share/man/man1/bios-sendmail.1
 etc/agent-smtp/bios-agent-smtp.cfg
+lib/systemd/system/bios-agent-smtp.service
+debian/tmp/usr/lib/tmpfiles.d/*conf
+
