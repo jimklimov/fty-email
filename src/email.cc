@@ -126,35 +126,21 @@ void Smtp::sendmail(
         const std::string& subject,
         const std::string& body) const
 {
-    std::ostringstream sbuf;
 
-    sbuf << "From: ";
-    sbuf << _from;
-    sbuf << "\n";
+    for (const auto& it : to)
+    {
+        zuuid_t *uuid = zuuid_new ();
+        zmsg_t *msg = bios_smtp_encode (
+            zuuid_str_canonical (uuid),
+            it.c_str (),
+            subject.c_str (),
+            NULL,
+            body.c_str ()
+        );
+        zuuid_destroy (&uuid);
 
-    for( auto &it : to ) {
-        sbuf << "To: ";
-        sbuf << it;
-        sbuf << "\n";
+        sendmail (msg2email (&msg));
     }
-
-    //NOTE: setLocale(LC_DATE, "C") should be called in outer scope
-    sbuf << "Date: ";
-    time_t t = ::time(NULL);
-    struct tm* tmp = ::localtime(&t);
-    char buf[256];
-    strftime(buf, sizeof(buf), "%a, %d %b %Y %T %z\n", tmp);
-    sbuf << buf;
-
-    sbuf << "Subject: ";
-    sbuf << subject;
-    sbuf << "\n";
-
-    sbuf << "\n";
-
-    sbuf << body;
-    sbuf << "\n";
-    return sendmail(sbuf.str());
 }
 
 void Smtp::sendmail(
@@ -252,6 +238,14 @@ Smtp::msg2email (zmsg_t **msg_p) const
             mime.setHeader (key, value);
         }
         zhash_destroy (&headers);
+
+
+        //NOTE: setLocale(LC_DATE, "C") should be called in outer scope
+        time_t t = ::time(NULL);
+        struct tm* tmp = ::localtime(&t);
+        char buf[256];
+        strftime(buf, sizeof(buf), "%a, %d %b %Y %T %z\n", tmp);
+        mime.setHeader ("Date", buf);
 
         while (zmsg_size (msg) != 0)
         {
