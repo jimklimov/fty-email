@@ -53,8 +53,10 @@ Smtp::Smtp():
         throw std::runtime_error ("Cannot open magic_cookie");
 
     int r = magic_load (_magic, NULL);
-    if (r == -1)
+    if (r == -1) {
+        magic_close (_magic);
         throw std::runtime_error ("Cannot load magic database");
+    }
 }
 
 Smtp::~Smtp ()
