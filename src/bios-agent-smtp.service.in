@@ -8,6 +8,8 @@ PartOf=bios.target
 [Service]
 Type=simple
 User=bios
+EnvironmentFile=-/usr/share/bios/etc/default/bios
+EnvironmentFile=-/etc/default/bios
 ExecStart=@prefix@/bin/bios-agent-smtp --config /etc/agent-smtp/bios-agent-smtp.cfg
 Restart=always
 
