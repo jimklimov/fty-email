@@ -135,7 +135,8 @@ void Smtp::sendmail(
             it.c_str (),
             subject.c_str (),
             NULL,
-            body.c_str ()
+            body.c_str (),
+            NULL
         );
         zuuid_destroy (&uuid);
 
@@ -250,14 +251,11 @@ Smtp::msg2email (zmsg_t **msg_p) const
         while (zmsg_size (msg) != 0)
         {
             char* path = zmsg_popstr (msg);
-            zsys_debug ("path=%s", path);
-
             const char* mime_type = magic_file (_magic, path);
             if (!mime_type) {
                 zsys_warning ("Can't guess type for %s, using application/octet-stream", path);
                 mime_type = "application/octet-stream; charset=binary";
             }
-            zsys_debug ("mime_type=%s", mime_type);
             mime.attachBinaryFile (mime_type, path);
             zstr_free (&path);
         }
