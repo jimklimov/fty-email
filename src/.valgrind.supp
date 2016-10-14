@@ -101,3 +101,25 @@
    fun:bios_smtp_server
    ...
 }
+{
+   <suppress_memory_leak_in_libmagic_see_BIOS-2893>
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libmagic.so.1.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libmagic.so.1.0.0
+   fun:_ZN4SmtpC1Ev
+   fun:_Z10email_testb
+   fun:main
+}
+{
+   <suppress_an_another_memory_leak_in_libmagic_see_BIOS-2893>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   obj:/usr/lib/x86_64-linux-gnu/libmagic.so.1.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libmagic.so.1.0.0
+   fun:_ZN4SmtpC1Ev
+   fun:_Z10email_testb
+   fun:main
+}
