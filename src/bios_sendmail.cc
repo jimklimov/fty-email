@@ -37,16 +37,15 @@
 
 void usage ()
 {
-    puts ("Usage: bios-sendmail [options] addr [addr2 ... ] < message\n"
+    puts ("Usage: bios-sendmail [options] addr < message\n"
           "  -c|--config           path to bios-agent-smtp config file\n"
           "  -s|--subject          mail subject\n"
           "  -a|--attachment       path to file to be attached to email\n"
           "Send email through bios-agent-smtp to given recipients in email body.\n"
-          "Email is read from stdin\n"
+          "Email body is read from stdin\n"
           "\n"
-          "printf 'To:joe@example.com\nSubject:subject\n\nbody' | bios-sendmail\n");
+          "echo -e \"This is a testing email.\\n\\ndo not replay\" | bios-sendmail -s text -a ./myfile.tgz joe@example.com\n");
 }
-
 
 int main (int argc, char** argv)
 {
@@ -54,7 +53,7 @@ int main (int argc, char** argv)
     int help = 0;
     int verbose = 0;
     std::vector<std::string> attachments;
-    std::vector<std::string> recipients;
+    const char *recipient = NULL;
     std::string subj;
     
     // get options
@@ -74,7 +73,7 @@ int main (int argc, char** argv)
     while(true) {
 
         int option_index = 0;
-        c = getopt_long (argc, argv, "vc:", long_options, &option_index);
+        c = getopt_long (argc, argv, "vc:s:a:", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
         case 'c':
@@ -95,11 +94,11 @@ int main (int argc, char** argv)
             break;
         }
     }
-    while (optind < argc) {
-        recipients.push_back (argv[optind]);
+    if (optind < argc) {
+        recipient = argv[optind];
         ++optind;
     }
-    if (help) { usage(); exit(1); }
+    if (help || recipient == NULL || optind < argc) { usage(); exit(1); }
     // end of the options
     
     char *endpoint = strdup (AGENT_SMTP_ENDPOINT);
@@ -133,9 +132,19 @@ int main (int argc, char** argv)
     assert (r != -1);
 
     std::string body = read_all (STDIN_FILENO);
-    mlm_client_sendtox (client, smtp_address, "SENDMAIL", "uuid", body.c_str (), NULL);
+    zmsg_t *mail = zmsg_new();
+    // mail message suppose to be to/subj/body[/file1[/file2...]]
+    zmsg_addstr (mail, recipient);
+    zmsg_addstr (mail, subj.c_str ());
+    zmsg_addstr (mail, body.c_str());
+    for (const auto file : attachments) {
+        zmsg_addstr (mail, file.c_str());
+    }
+    
+    r = mlm_client_sendto (client, smtp_address, "SENDMAIL", NULL, 2000, &mail);
+    zmsg_destroy (&mail);
     zstr_free (&smtp_address);
-
+    zsys_debug ("sendto r %i", r);
     zmsg_t *msg = mlm_client_recv (client);
 
     char* uuid = zmsg_popstr (msg);
