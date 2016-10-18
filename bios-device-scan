@@ -67,5 +67,5 @@ if [ ! -f "${TMPFILE}" ] ; then
 fi
 
 echo "scanning done"
-echo "" | bios-sendmail -s "SNMP scan of ${IP}" "${MAIL}"
+echo "" | bios-sendmail -s "SNMP scan of ${IP}" -a "${TMPFILE}" "${MAIL}"
 rm "${TMPFILE}"
