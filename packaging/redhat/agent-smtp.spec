@@ -107,6 +107,7 @@ find %{buildroot} -name '*.la' | xargs rm -f
 %files
 %defattr(-,root,root)
 %{_bindir}/bios-agent-smtp
+%{_bindir}/bios-device-scan
 %{_mandir}/man1/bios-agent-smtp*
 %{_bindir}/bios-sendmail
 %{_mandir}/man1/bios-sendmail*

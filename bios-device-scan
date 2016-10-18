@@ -1,0 +1,71 @@
+#!/bin/sh
+
+MAIL="EatonProductFeedback@eaton.com"
+IP=""
+CFG="/etc/default/bios.cfg"
+TMPFILE="/tmp/scan-$$.gz"
+
+getCommunities() {
+    local FILE="${CFG}"
+    if [ ! -f "${FILE}" ]; then
+        FILE="/dev/null"
+    fi
+    awk '
+    BEGIN{ section=""; subsection="" }
+    {
+        if (section == "snmp" && subsection == "community") {
+            i = index ($0, "\"");
+            if (i) {
+                c = substr ($0,i);
+                print substr (c, 2, length(c) - 2);
+            }
+        }
+    }
+    /^[a-zA-Z]/{ section = $1 }
+    /^ {4}[a-zA-Z]/{ subsection = $1 }
+    END{ print "public"; }
+    ' < "${FILE}"
+}
+
+
+usage() {
+    echo "usage: `basename ${0}` IPADDRESS [email]"
+    echo "       default email is ${MAIL}"
+    exit 1;
+}
+
+if [ "${1}" = "" ] ; then
+    usage
+else
+    IP="${1}"
+fi
+
+if [ "${2}" != "" ] ; then
+    MAIL="${2}"
+fi
+
+echo "Scan of the device on address ${IP} will be send to ${MAIL}."
+echo "Scan can contain sensitive information such as IP address or contacts."
+echo ""
+echo "Press <Enter> to continue or <Ctrl-C> to cancel"
+read
+
+getCommunities | while read community; do
+    echo "trying community \"${community}\"..."
+    for version in "1" "2c" ; do
+        if snmpgetnext -v "${version}" -c "${community}" "${IP}" .1 2> /dev/null ; then
+            echo "community ${community}/v${version} works, scanning mib..."
+            snmpwalk -v "${version}" -c "${community}" "${IP}" .1 2>/dev/null | gzip > "${TMPFILE}"
+            break 2
+        fi
+    done
+done
+
+if [ ! -f "${TMPFILE}" ] ; then
+    echo "Failed to scan device. Is SNMP configured?"
+    exit 2
+fi
+
+echo "scanning done"
+echo "" | bios-sendmail -s "SNMP scan of ${IP}" "${MAIL}"
+rm "${TMPFILE}"

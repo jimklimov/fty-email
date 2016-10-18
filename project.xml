@@ -43,4 +43,5 @@
         Sendmail-like interface to smtp agent
     </main>
 
+    <bin name = "bios-device-scan">Device scanning script</bin>
 </project>
