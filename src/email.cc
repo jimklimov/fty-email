@@ -126,35 +126,22 @@ void Smtp::sendmail(
         const std::string& subject,
         const std::string& body) const
 {
-    std::ostringstream sbuf;
 
-    sbuf << "From: ";
-    sbuf << _from;
-    sbuf << "\n";
+    for (const auto& it : to)
+    {
+        zuuid_t *uuid = zuuid_new ();
+        zmsg_t *msg = bios_smtp_encode (
+            zuuid_str_canonical (uuid),
+            it.c_str (),
+            subject.c_str (),
+            NULL,
+            body.c_str (),
+            NULL
+        );
+        zuuid_destroy (&uuid);
 
-    for( auto &it : to ) {
-        sbuf << "To: ";
-        sbuf << it;
-        sbuf << "\n";
+        sendmail (msg2email (&msg));
     }
-
-    //NOTE: setLocale(LC_DATE, "C") should be called in outer scope
-    sbuf << "Date: ";
-    time_t t = ::time(NULL);
-    struct tm* tmp = ::localtime(&t);
-    char buf[256];
-    strftime(buf, sizeof(buf), "%a, %d %b %Y %T %z\n", tmp);
-    sbuf << buf;
-
-    sbuf << "Subject: ";
-    sbuf << subject;
-    sbuf << "\n";
-
-    sbuf << "\n";
-
-    sbuf << body;
-    sbuf << "\n";
-    return sendmail(sbuf.str());
 }
 
 void Smtp::sendmail(
@@ -223,7 +210,6 @@ Smtp::msg2email (zmsg_t **msg_p) const
     std::stringstream buff;
     cxxtools::MimeMultipart mime;
 
-    char *uuid = zmsg_popstr (msg);
     char *to = zmsg_popstr (msg);
     char *subject = zmsg_popstr (msg);
     char *body = zmsg_popstr (msg);
@@ -232,7 +218,6 @@ Smtp::msg2email (zmsg_t **msg_p) const
     mime.setHeader ("Subject", subject);
     mime.addObject (body);
 
-    zstr_free (&uuid);
     zstr_free (&to);
     zstr_free (&subject);
     zstr_free (&body);
@@ -253,22 +238,28 @@ Smtp::msg2email (zmsg_t **msg_p) const
         }
         zhash_destroy (&headers);
 
+
+        //NOTE: setLocale(LC_DATE, "C") should be called in outer scope
+        time_t t = ::time(NULL);
+        struct tm* tmp = ::localtime(&t);
+        char buf[256];
+        strftime(buf, sizeof(buf), "%a, %d %b %Y %T %z\n", tmp);
+        mime.setHeader ("Date", buf);
+
         while (zmsg_size (msg) != 0)
         {
             char* path = zmsg_popstr (msg);
-            zsys_debug ("path=%s", path);
-
             const char* mime_type = magic_file (_magic, path);
             if (!mime_type) {
                 zsys_warning ("Can't guess type for %s, using application/octet-stream", path);
                 mime_type = "application/octet-stream; charset=binary";
             }
-            zsys_debug ("mime_type=%s", mime_type);
             mime.attachBinaryFile (mime_type, path);
             zstr_free (&path);
         }
     }
     zmsg_destroy (&msg);
+    *msg_p = NULL;
 
     buff << mime;
     return buff.str ();
@@ -402,6 +393,7 @@ email_test (bool verbose)
     ofile2.close ();
 
     Smtp smtp {};
+    char* uuid = zmsg_popstr (email_msg); zstr_free (&uuid);
     std::string email = smtp.msg2email (&email_msg);
     zsys_debug ("E M A I L:=\n%s\n", email.c_str ());
 
