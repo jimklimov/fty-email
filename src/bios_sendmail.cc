@@ -44,7 +44,7 @@ void usage ()
           "Send email through bios-agent-smtp to given recipients in email body.\n"
           "Email body is read from stdin\n"
           "\n"
-          "echo -e \"This is a testing email.\\n\\ndo not replay\" | bios-sendmail -s text -a ./myfile.tgz joe@example.com\n");
+          "echo -e \"This is a testing email.\\n\\nyour team\" | bios-sendmail -s text -a ./myfile.tgz joe@example.com\n");
 }
 
 int main (int argc, char** argv)
