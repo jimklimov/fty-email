@@ -142,15 +142,20 @@ int main (int argc, char** argv)
     }
     
     r = mlm_client_sendto (client, smtp_address, "SENDMAIL", NULL, 2000, &mail);
-    zmsg_destroy (&mail);
     zstr_free (&smtp_address);
-    zsys_debug ("sendto r %i", r);
+    if (r == -1) {
+        zsys_error ("Failed to send the email (mlm_client_sendto returned -1).");
+        zmsg_destroy (&mail);
+        mlm_client_destroy (&client);
+        
+        exit (EXIT_FAILURE);
+    }
+
     zmsg_t *msg = mlm_client_recv (client);
 
     char* uuid = zmsg_popstr (msg);
     char* code = zmsg_popstr (msg);
     char* reason = zmsg_popstr (msg);
-    assert (r != -1);
     int exit_code = EXIT_SUCCESS;
     if (code[0] != '0')
         exit_code = EXIT_FAILURE;
