@@ -133,7 +133,8 @@ int main (int argc, char** argv)
 
     std::string body = read_all (STDIN_FILENO);
     zmsg_t *mail = zmsg_new();
-    // mail message suppose to be to/subj/body[/file1[/file2...]]
+    // mail message suppose to be uuid/to/subj/body[/file1[/file2...]]
+    zmsg_addstr (mail, "UUID");
     zmsg_addstr (mail, recipient);
     zmsg_addstr (mail, subj.c_str ());
     zmsg_addstr (mail, body.c_str());
