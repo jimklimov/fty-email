@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2014 - 2015 Eaton
+# Copyright (C) 2016 Eaton
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,15 +15,23 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+#! \file    bios-device-scan
+#  \brief   Helper script to scan an SNMP-capable power device and
+#           report the scan results via e-mail
+#  \author  Tomas Halman <TomasHalman@Eaton.com>
 
 MAIL="EatonProductFeedback@eaton.com"
 IP=""
 CFG="/etc/default/bios.cfg"
-TMPFILE="/tmp/scan-$$.gz"
+TMPFILE="/tmp/scan-`date -u '+%s'`-$$.gz"
 
 getCommunities() {
+    # This routine fetches the user-provided SNMP community strings from
+    # the configuration file $CFG (if any) and appends the default "public"
+    # to the list of strings to try against the separately scanned device.
     local FILE="${CFG}"
-    if [ ! -f "${FILE}" ]; then
+    if [[ ! -s "${FILE}" ]]; then
         FILE="/dev/null"
     fi
     awk '
@@ -50,38 +58,38 @@ usage() {
     exit 1;
 }
 
-if [ "${1}" = "" ] ; then
+if [[ -z "${1-}" ]] ; then
     usage
 else
     IP="${1}"
 fi
 
-if [ "${2}" != "" ] ; then
+if [[ -n "${2-}" ]] ; then
     MAIL="${2}"
 fi
 
-echo "Scan of the device on address ${IP} will be send to ${MAIL}."
-echo "Scan can contain sensitive information such as IP address or contacts."
+echo "Scan of the device at address ${IP} will be sent to ${MAIL}."
+echo "Scan can contain sensitive information such as IP address or admin contacts."
 echo ""
 echo "Press <Enter> to continue or <Ctrl-C> to cancel"
 read
 
 getCommunities | while read community; do
-    echo "trying community \"${community}\"..."
+    echo "Trying community \"${community}\"..."
     for version in "1" "2c" ; do
         if snmpgetnext -v "${version}" -c "${community}" "${IP}" .1 2> /dev/null ; then
-            echo "community ${community}/v${version} works, scanning mib..."
+            echo "Community ${community}/v${version} works, scanning mib..."
             snmpwalk -v "${version}" -c "${community}" "${IP}" .1 2>/dev/null | gzip > "${TMPFILE}"
             break 2
         fi
     done
 done
 
-if [ ! -f "${TMPFILE}" ] ; then
-    echo "Failed to scan device. Is SNMP configured?"
+if [[ ! -s "${TMPFILE}" ]] ; then
+    echo "Failed to scan device. Is SNMP configured on ${IP}?" >&2
     exit 2
 fi
 
-echo "scanning done"
+echo "Scanning done, posting e-mail..."
 echo "" | bios-sendmail -s "SNMP scan of ${IP}" -a "${TMPFILE}" "${MAIL}"
-rm "${TMPFILE}"
+rm -f "${TMPFILE}"
