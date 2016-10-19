@@ -804,7 +804,6 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     zmsg_addstr (reply, re.what ());
                 }
 
-                zmsg_print (reply);
                 int r = mlm_client_sendto (
                         client,
                         mlm_client_sender (client),
