@@ -1,4 +1,5 @@
 usr/bin/bios-agent-smtp
+usr/bin/bios-device-scan
 usr/share/man/man1/bios-agent-smtp.1
 usr/bin/bios-sendmail
 usr/share/man/man1/bios-sendmail.1

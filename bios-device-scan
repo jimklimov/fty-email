@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# Copyright (C) 2014 - 2015 Eaton
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+MAIL="EatonProductFeedback@eaton.com"
+IP=""
+CFG="/etc/default/bios.cfg"
+TMPFILE="/tmp/scan-$$.gz"
+
+getCommunities() {
+    local FILE="${CFG}"
+    if [ ! -f "${FILE}" ]; then
+        FILE="/dev/null"
+    fi
+    awk '
+    BEGIN{ section=""; subsection="" }
+    {
+        if (section == "snmp" && subsection == "community") {
+            i = index ($0, "\"");
+            if (i) {
+                c = substr ($0,i);
+                print substr (c, 2, length(c) - 2);
+            }
+        }
+    }
+    /^[a-zA-Z]/{ section = $1 }
+    /^ {4}[a-zA-Z]/{ subsection = $1 }
+    END{ print "public"; }
+    ' < "${FILE}"
+}
+
+
+usage() {
+    echo "usage: `basename ${0}` IPADDRESS [email]"
+    echo "       default email is ${MAIL}"
+    exit 1;
+}
+
+if [ "${1}" = "" ] ; then
+    usage
+else
+    IP="${1}"
+fi
+
+if [ "${2}" != "" ] ; then
+    MAIL="${2}"
+fi
+
+echo "Scan of the device on address ${IP} will be send to ${MAIL}."
+echo "Scan can contain sensitive information such as IP address or contacts."
+echo ""
+echo "Press <Enter> to continue or <Ctrl-C> to cancel"
+read
+
+getCommunities | while read community; do
+    echo "trying community \"${community}\"..."
+    for version in "1" "2c" ; do
+        if snmpgetnext -v "${version}" -c "${community}" "${IP}" .1 2> /dev/null ; then
+            echo "community ${community}/v${version} works, scanning mib..."
+            snmpwalk -v "${version}" -c "${community}" "${IP}" .1 2>/dev/null | gzip > "${TMPFILE}"
+            break 2
+        fi
+    done
+done
+
+if [ ! -f "${TMPFILE}" ] ; then
+    echo "Failed to scan device. Is SNMP configured?"
+    exit 2
+fi
+
+echo "scanning done"
+echo "" | bios-sendmail -s "SNMP scan of ${IP}" -a "${TMPFILE}" "${MAIL}"
+rm "${TMPFILE}"

@@ -80,6 +80,11 @@ src_agent_smtp_selftest_LDADD = ${program_libs}
 src_agent_smtp_selftest_SOURCES = src/agent_smtp_selftest.cc
 endif #ENABLE_AGENT_SMTP_SELFTEST
 
+# Install data into /usr/local/bin
+agent_smtpdir = @bindir@
+agent_smtp_SCRIPTS = \
+	bios-device-scan
+
 # define custom target for all products of /src
 src:
 	src/bios-agent-smtp \
