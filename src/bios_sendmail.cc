@@ -69,6 +69,7 @@ int main (int argc, char** argv)
     };
 
     char *config_file = NULL;
+    char *p = NULL;
 
     while(true) {
 
@@ -80,7 +81,13 @@ int main (int argc, char** argv)
             config_file = optarg;
             break;
         case 'a':
-            attachments.push_back (optarg);
+            char path [PATH_MAX + 1];
+            p = realpath (optarg, path);
+            if (!p) {
+                zsys_error ("Can't get absolute path for %s: %s", optarg, strerror (errno));
+                exit (EXIT_FAILURE);
+            }
+            attachments.push_back (path);
             break;
         case 's':
             subj = optarg;
