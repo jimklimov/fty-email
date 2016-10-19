@@ -69,6 +69,7 @@ int main (int argc, char** argv)
     };
 
     char *config_file = NULL;
+    char *p = NULL;
 
     while(true) {
 
@@ -80,7 +81,13 @@ int main (int argc, char** argv)
             config_file = optarg;
             break;
         case 'a':
-            attachments.push_back (optarg);
+            char path [PATH_MAX + 1];
+            p = realpath (optarg, path);
+            if (!p) {
+                zsys_error ("Can't get absolute path for %s: %s", optarg, strerror (errno));
+                exit (EXIT_FAILURE);
+            }
+            attachments.push_back (path);
             break;
         case 's':
             subj = optarg;
@@ -133,7 +140,8 @@ int main (int argc, char** argv)
 
     std::string body = read_all (STDIN_FILENO);
     zmsg_t *mail = zmsg_new();
-    // mail message suppose to be to/subj/body[/file1[/file2...]]
+    // mail message suppose to be uuid/to/subj/body[/file1[/file2...]]
+    zmsg_addstr (mail, "UUID");
     zmsg_addstr (mail, recipient);
     zmsg_addstr (mail, subj.c_str ());
     zmsg_addstr (mail, body.c_str());
