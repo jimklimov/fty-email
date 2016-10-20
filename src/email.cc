@@ -159,12 +159,16 @@ void Smtp::sendmail(
         const std::string& data)    const
 {
 
+    // for testing
     if (_has_fn) {
         _fn (data);
         return;
     }
 
     std::string cfg = createConfigFile();
+    if (_host.empty()) {
+        return;
+    }
     Argv argv = { _msmtp, "-t", "-C", cfg };
     SubProcess proc{argv, SubProcess::STDIN_PIPE | SubProcess::STDOUT_PIPE | SubProcess::STDERR_PIPE};
 
