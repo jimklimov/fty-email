@@ -550,6 +550,7 @@ bios_smtp_server (zsock_t *pipe, void* args)
 
     mlm_client_t *test_client = NULL;
     mlm_client_t *client = mlm_client_new ();
+    bool client_connected = false;
 
     zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe (client), NULL);
 
@@ -665,11 +666,13 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     bool mlm_verbose = foo[0] == '1' ? true : false;
                     mlm_client_set_verbose (client, mlm_verbose);
                 }
-                if (!mlm_client_connected (client)) {
+                if (!client_connected) {
                     if (   zconfig_get (config, "malamute/endpoint", NULL)
                         && zconfig_get (config, "malamute/address", NULL)) {
 
+                        zstr_free (&endpoint);
                         endpoint = strdup (zconfig_get (config, "malamute/endpoint", NULL));
+                        zstr_free (&name);
                         name = strdup (zconfig_get (config, "malamute/address", NULL));
                         uint32_t timeout = 1000;
                         sscanf ("%" SCNu32, zconfig_get (config, "malamute/timeout", "1000"), &timeout);
@@ -678,6 +681,8 @@ bios_smtp_server (zsock_t *pipe, void* args)
                         int r = mlm_client_connect (client, endpoint, timeout, name);
                         if (r == -1)
                             zsys_error ("%s: mlm_client_connect (%s, %" PRIu32 ", %s) = %d FAILED", name, endpoint, timeout, name, r);
+                        else
+                            client_connected = true;
                     }
                     else
                         zsys_warning ("(agent-smtp): malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
