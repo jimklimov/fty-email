@@ -77,6 +77,9 @@ int main (int argc, char** argv)
         c = getopt_long (argc, argv, "vc:s:a:", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
+        case 'v':
+            verbose = 1;
+            break;
         case 'c':
             config_file = optarg;
             break;
@@ -139,16 +142,21 @@ int main (int argc, char** argv)
     assert (r != -1);
 
     std::string body = read_all (STDIN_FILENO);
-    zmsg_t *mail = zmsg_new();
-    // mail message suppose to be uuid/to/subj/body[/file1[/file2...]]
-    zmsg_addstr (mail, "UUID");
-    zmsg_addstr (mail, recipient);
-    zmsg_addstr (mail, subj.c_str ());
-    zmsg_addstr (mail, body.c_str());
+    zmsg_t *mail = bios_smtp_encode (
+        "UUID",
+        recipient,
+        subj.c_str (),
+        NULL,
+        body.c_str (),
+        NULL
+        );
+
     for (const auto file : attachments) {
         zmsg_addstr (mail, file.c_str());
     }
     
+    if (verbose)
+        zmsg_print (mail);
     r = mlm_client_sendto (client, smtp_address, "SENDMAIL", NULL, 2000, &mail);
     zstr_free (&smtp_address);
     if (r == -1) {

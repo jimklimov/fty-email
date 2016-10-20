@@ -790,8 +790,14 @@ bios_smtp_server (zsock_t *pipe, void* args)
                         smtp.sendmail (body);
                         zstr_free (&body);
                     }
-                    else
-                        smtp.sendmail (smtp.msg2email (&zmessage));
+                    else {
+                        if (verbose)
+                            zmsg_print (zmessage);
+                        auto mail = smtp.msg2email (&zmessage);
+                        if (verbose)
+                            zsys_debug (mail.c_str ());
+                        smtp.sendmail (mail);
+                    }
                     zmsg_addstr (reply, "0");
                     zmsg_addstr (reply, "OK");
                     sent_ok = true;
