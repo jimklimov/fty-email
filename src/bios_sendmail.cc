@@ -77,6 +77,9 @@ int main (int argc, char** argv)
         c = getopt_long (argc, argv, "vc:s:a:", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
+        case 'v':
+            verbose = 1;
+            break;
         case 'c':
             config_file = optarg;
             break;
@@ -149,6 +152,8 @@ int main (int argc, char** argv)
         zmsg_addstr (mail, file.c_str());
     }
     
+    if (verbose)
+        zmsg_print (mail);
     r = mlm_client_sendto (client, smtp_address, "SENDMAIL", NULL, 2000, &mail);
     zstr_free (&smtp_address);
     if (r == -1) {
