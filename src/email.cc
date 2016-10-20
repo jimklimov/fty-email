@@ -205,6 +205,13 @@ void Smtp::sendmail(
 
 }
 
+static bool
+s_is_text (const char* mime)
+{
+    assert (mime);
+    return !strncmp (mime, "text", 4);
+}
+
 std::string
 Smtp::msg2email (zmsg_t **msg_p) const
 {
@@ -258,7 +265,15 @@ Smtp::msg2email (zmsg_t **msg_p) const
                 zsys_warning ("Can't guess type for %s, using application/octet-stream", path);
                 mime_type = "application/octet-stream; charset=binary";
             }
-            mime.attachBinaryFile (mime_type, path);
+
+            std::ifstream ipath {path};
+
+            if (s_is_text (mime_type))
+                mime.attachTextFile (ipath, path, mime_type);
+            else
+                mime.attachBinaryFile (ipath, path, mime_type);
+
+            ipath.close ();
             zstr_free (&path);
         }
     }
