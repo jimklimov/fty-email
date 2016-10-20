@@ -253,3 +253,47 @@
    fun:start_thread
    fun:clone
 }
+{
+   <01-supress_reachable_leaks_in_JSON_serializer>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:_Znam
+   fun:_ZNSt16__numpunct_cacheIN8cxxtools4CharEE8_M_cacheERKSt6locale
+   fun:operator()
+   fun:_ZNKSt7num_putIN8cxxtools4CharESt19ostreambuf_iteratorIS1_St11char_traitsIS1_EEE13_M_insert_intIyEES5_S5_RSt8ios_baseS1_T_
+   fun:_ZNKSt7num_putIN8cxxtools4CharESt19ostreambuf_iteratorIS1_St11char_traitsIS1_EEE6do_putES5_RSt8ios_baseS1_y
+   fun:put
+   fun:_ZNSt13basic_ostreamIN8cxxtools4CharESt11char_traitsIS1_EE9_M_insertIyEERS4_T_
+   fun:operator<<
+   fun:_ZN8cxxtools13JsonFormatter16addValueUnsignedERKSsS2_y
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:format
+   fun:serialize<std::map<std::pair<std::basic_string<char>, std::basic_string<char> >, Alert> >
+   fun:_ZL17save_alerts_stateRKSt3mapISt4pairISsSsE5AlertSt4lessIS1_ESaIS0_IKS1_S2_EEEPKc
+   fun:bios_smtp_server
+}
+{
+   <02-suppres_reachable_leaks_in_JSON_serializer>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:_Znwm
+   fun:operator()
+   fun:_ZNKSt7num_putIN8cxxtools4CharESt19ostreambuf_iteratorIS1_St11char_traitsIS1_EEE13_M_insert_intIyEES5_S5_RSt8ios_baseS1_T_
+   fun:_ZNKSt7num_putIN8cxxtools4CharESt19ostreambuf_iteratorIS1_St11char_traitsIS1_EEE6do_putES5_RSt8ios_baseS1_y
+   fun:put
+   fun:_ZNSt13basic_ostreamIN8cxxtools4CharESt11char_traitsIS1_EE9_M_insertIyEERS4_T_
+   fun:operator<<
+   fun:_ZN8cxxtools13JsonFormatter16addValueUnsignedERKSsS2_y
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:_ZN8cxxtools11IDecomposer10formatEachERKNS_17SerializationInfoERNS_9FormatterE
+   fun:format
+   fun:serialize<std::map<std::pair<std::basic_string<char>, std::basic_string<char> >, Alert> >
+   fun:_ZL17save_alerts_stateRKSt3mapISt4pairISsSsE5AlertSt4lessIS1_ESaIS0_IKS1_S2_EEEPKc
+   fun:bios_smtp_server
+   obj:/usr/lib64/libczmq.so.3.0.0
+}
