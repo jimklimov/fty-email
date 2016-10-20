@@ -670,7 +670,9 @@ bios_smtp_server (zsock_t *pipe, void* args)
                     if (   zconfig_get (config, "malamute/endpoint", NULL)
                         && zconfig_get (config, "malamute/address", NULL)) {
 
+                        zstr_free (&endpoint);
                         endpoint = strdup (zconfig_get (config, "malamute/endpoint", NULL));
+                        zstr_free (&name);
                         name = strdup (zconfig_get (config, "malamute/address", NULL));
                         uint32_t timeout = 1000;
                         sscanf ("%" SCNu32, zconfig_get (config, "malamute/timeout", "1000"), &timeout);
