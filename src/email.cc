@@ -28,11 +28,14 @@
 
 #include "agent_smtp_classes.h"
 
-//  Structure of our class
 #include <sstream>
 #include <fstream>
 #include <ctime>
 #include <stdio.h>
+
+// to ensure POSIX basename!!!
+// DO NOT REMOVE otherwise GNU basename can be used
+#include <libgen.h>
 
 #include <cxxtools/regex.h>
 #include <cxxtools/mime.h>
@@ -269,9 +272,9 @@ Smtp::msg2email (zmsg_t **msg_p) const
             std::ifstream ipath {path};
 
             if (s_is_text (mime_type))
-                mime.attachTextFile (ipath, path, mime_type);
+                mime.attachTextFile (ipath, basename (path), mime_type);
             else
-                mime.attachBinaryFile (ipath, path, mime_type);
+                mime.attachBinaryFile (ipath, basename (path), mime_type);
 
             ipath.close ();
             zstr_free (&path);
