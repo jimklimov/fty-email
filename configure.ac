@@ -7,7 +7,7 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.61)
 #
-AC_INIT([agent-smtp],[0.1.0],[bios@eaton.com])
+AC_INIT([fty-email],[1.0.0],[eatonipcopensource@eaton.com])
 
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR(config)
@@ -20,11 +20,11 @@ PV_MAJOR=`echo $PACKAGE_VERSION | cut -d . -f 1`
 PV_MINOR=`echo $PACKAGE_VERSION | cut -d . -f 2`
 PV_PATCH=`echo $PACKAGE_VERSION | cut -d . -f 3`
 AC_DEFINE_UNQUOTED([PACKAGE_VERSION_MAJOR],[$PV_MAJOR],
-    [AGENT_SMTP major version])
+    [FTY_EMAIL major version])
 AC_DEFINE_UNQUOTED([PACKAGE_VERSION_MINOR],[$PV_MINOR],
-    [AGENT_SMTP minor version])
+    [FTY_EMAIL minor version])
 AC_DEFINE_UNQUOTED([PACKAGE_VERSION_PATCH],[$PV_PATCH],
-    [AGENT_SMTP patchlevel])
+    [FTY_EMAIL patchlevel])
 # This lets us use PACKAGE_VERSION in Makefiles
 AC_SUBST(PACKAGE_VERSION)
 
@@ -35,12 +35,12 @@ AC_SUBST(PACKAGE_VERSION)
 # know exactly what you're doing and have read and understand
 # http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 #
-# libagent_smtp -version-info
-LTVER="0:1:0"
+# libfty_email -version-info
+LTVER="1:0:0"
 AC_SUBST(LTVER)
 
 # Capture c flags
-AGENT_SMTP_ORIG_CFLAGS="${CFLAGS:-none}"
+FTY_EMAIL_ORIG_CFLAGS="${CFLAGS:-none}"
 
 # Checks for programs
 AC_PROG_CC
@@ -57,18 +57,21 @@ PKG_PROG_PKG_CONFIG
 # Code coverage
 AC_ARG_WITH(gcov, [AS_HELP_STRING([--with-gcov=yes/no],
                   [With GCC Code Coverage reporting])],
-                  [AGENT_SMTP_GCOV="$withval"])
+                  [FTY_EMAIL_GCOV="$withval"])
 
-if test "x${AGENT_SMTP_GCOV}" == "xyes"; then
+if test "x${FTY_EMAIL_GCOV}" == "xyes"; then
     CFLAGS="-O0 -g -fprofile-arcs -ftest-coverage"
 
-    if test "x${AGENT_SMTP_ORIG_CFLAGS}" != "xnone"; then
-        CFLAGS="${CFLAGS} ${AGENT_SMTP_ORIG_CFLAGS}"
+    if test "x${FTY_EMAIL_ORIG_CFLAGS}" != "xnone"; then
+        CFLAGS="${CFLAGS} ${FTY_EMAIL_ORIG_CFLAGS}"
     fi
     AM_CONDITIONAL(WITH_GCOV, true)
 else
     AM_CONDITIONAL(WITH_GCOV, false)
 fi
+
+# Will be used to add flags to pkg-config useful when apps want to statically link
+PKGCFG_LIBS_PRIVATE=""
 
 PREVIOUS_CFLAGS="${CFLAGS}"
 PREVIOUS_LIBS="${LIBS}"
@@ -78,6 +81,7 @@ was_libzmq_check_lib_detected=no
 
 PKG_CHECK_MODULES([libzmq], [libzmq >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $libzmq_LIBS"
     ],
     [
         AC_ARG_WITH([libzmq],
@@ -110,6 +114,7 @@ PKG_CHECK_MODULES([libzmq], [libzmq >= 0.0.0],
                 AC_SUBST([libzmq_CFLAGS],[${libzmq_synthetic_cflags}])
                 AC_SUBST([libzmq_LIBS],[${libzmq_synthetic_libs}])
                 was_libzmq_check_lib_detected=yes
+                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lzmq"
             ],
             [AC_MSG_ERROR([cannot link with -lzmq, install libzmq])])
     ])
@@ -123,6 +128,7 @@ was_czmq_check_lib_detected=no
 
 PKG_CHECK_MODULES([czmq], [libczmq >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $czmq_LIBS"
     ],
     [
         AC_ARG_WITH([libczmq],
@@ -146,7 +152,7 @@ PKG_CHECK_MODULES([czmq], [libczmq >= 0.0.0],
         fi
 
 
-        AC_CHECK_LIB([czmq], [zctx_test],
+        AC_CHECK_LIB([czmq], [zhashx_test],
             [
                 CFLAGS="${czmq_synthetic_cflags} ${CFLAGS}"
                 LDFLAGS="${czmq_synthetic_libs} ${LDFLAGS}"
@@ -155,6 +161,7 @@ PKG_CHECK_MODULES([czmq], [libczmq >= 0.0.0],
                 AC_SUBST([czmq_CFLAGS],[${czmq_synthetic_cflags}])
                 AC_SUBST([czmq_LIBS],[${czmq_synthetic_libs}])
                 was_czmq_check_lib_detected=yes
+                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lczmq"
             ],
             [AC_MSG_ERROR([cannot link with -lczmq, install libczmq])])
     ])
@@ -168,6 +175,7 @@ was_malamute_check_lib_detected=no
 
 PKG_CHECK_MODULES([malamute], [libmlm >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $malamute_LIBS"
     ],
     [
         AC_ARG_WITH([libmlm],
@@ -200,6 +208,7 @@ PKG_CHECK_MODULES([malamute], [libmlm >= 0.0.0],
                 AC_SUBST([malamute_CFLAGS],[${malamute_synthetic_cflags}])
                 AC_SUBST([malamute_LIBS],[${malamute_synthetic_libs}])
                 was_malamute_check_lib_detected=yes
+                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lmlm"
             ],
             [AC_MSG_ERROR([cannot link with -lmlm, install libmlm])])
     ])
@@ -209,55 +218,26 @@ if test "x$was_malamute_check_lib_detected" = "xno"; then
     LIBS="${malamute_LIBS} ${LIBS}"
 fi
 
-was_biosproto_check_lib_detected=no
+was_fty_proto_check_lib_detected=no
 
-PKG_CHECK_MODULES([biosproto], [libbiosproto >= 0.0.0],
+PKG_CHECK_MODULES([fty_proto], [libfty_proto >= 1.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $fty_proto_LIBS"
     ],
     [
-        AC_ARG_WITH([libbiosproto],
-            [
-                AS_HELP_STRING([--with-libbiosproto],
-                [Specify libbiosproto prefix])
-            ],
-            [search_libbiosproto="yes"],
-            [])
-
-        biosproto_synthetic_cflags=""
-        biosproto_synthetic_libs="-lbiosproto"
-
-        if test "x$search_libbiosproto" = "xyes"; then
-            if test -r "${with_libbiosproto}/include/biosproto.h"; then
-                biosproto_synthetic_cflags="-I${with_libbiosproto}/include"
-                biosproto_synthetic_libs="-L${with_libbiosproto}/lib -lbiosproto"
-            else
-                AC_MSG_ERROR([${with_libbiosproto}/include/biosproto.h not found. Please check libbiosproto prefix])
-            fi
-        fi
-
-
-        AC_CHECK_LIB([biosproto], [bios_proto_test],
-            [
-                CFLAGS="${biosproto_synthetic_cflags} ${CFLAGS}"
-                LDFLAGS="${biosproto_synthetic_libs} ${LDFLAGS}"
-                LIBS="${biosproto_synthetic_libs} ${LIBS}"
-
-                AC_SUBST([biosproto_CFLAGS],[${biosproto_synthetic_cflags}])
-                AC_SUBST([biosproto_LIBS],[${biosproto_synthetic_libs}])
-                was_biosproto_check_lib_detected=yes
-            ],
-            [AC_MSG_ERROR([cannot link with -lbiosproto, install libbiosproto])])
+        AC_MSG_ERROR([Cannot find libfty_proto 1.0.0 or higher])
     ])
 
-if test "x$was_biosproto_check_lib_detected" = "xno"; then
-    CFLAGS="${biosproto_CFLAGS} ${CFLAGS}"
-    LIBS="${biosproto_LIBS} ${LIBS}"
+if test "x$was_fty_proto_check_lib_detected" = "xno"; then
+    CFLAGS="${fty_proto_CFLAGS} ${CFLAGS}"
+    LIBS="${fty_proto_LIBS} ${LIBS}"
 fi
 
 was_magic_check_lib_detected=no
 
 PKG_CHECK_MODULES([magic], [libmagic >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $magic_LIBS"
     ],
     [
         AC_ARG_WITH([libmagic],
@@ -290,6 +270,7 @@ PKG_CHECK_MODULES([magic], [libmagic >= 0.0.0],
                 AC_SUBST([magic_CFLAGS],[${magic_synthetic_cflags}])
                 AC_SUBST([magic_LIBS],[${magic_synthetic_libs}])
                 was_magic_check_lib_detected=yes
+                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lmagic"
             ],
             [AC_MSG_ERROR([cannot link with -lmagic, install libmagic])])
     ])
@@ -303,6 +284,7 @@ was_cxxtools_check_lib_detected=no
 
 PKG_CHECK_MODULES([cxxtools], [cxxtools >= 0.0.0],
     [
+        PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE $cxxtools_LIBS"
     ],
     [
         AC_ARG_WITH([cxxtools],
@@ -317,11 +299,11 @@ PKG_CHECK_MODULES([cxxtools], [cxxtools >= 0.0.0],
         cxxtools_synthetic_libs="-lcxxtools"
 
         if test "x$search_cxxtools" = "xyes"; then
-            if test -r "${with_cxxtools}/include/cxxtools.h"; then
+            if test -r "${with_cxxtools}/include/cxxtools/allocator.h"; then
                 cxxtools_synthetic_cflags="-I${with_cxxtools}/include"
                 cxxtools_synthetic_libs="-L${with_cxxtools}/lib -lcxxtools"
             else
-                AC_MSG_ERROR([${with_cxxtools}/include/cxxtools.h not found. Please check cxxtools prefix])
+                AC_MSG_ERROR([${with_cxxtools}/include/cxxtools/allocator.h not found. Please check cxxtools prefix])
             fi
         fi
 
@@ -335,6 +317,7 @@ PKG_CHECK_MODULES([cxxtools], [cxxtools >= 0.0.0],
                 AC_SUBST([cxxtools_CFLAGS],[${cxxtools_synthetic_cflags}])
                 AC_SUBST([cxxtools_LIBS],[${cxxtools_synthetic_libs}])
                 was_cxxtools_check_lib_detected=yes
+                PKGCFG_LIBS_PRIVATE="$PKGCFG_LIBS_PRIVATE -lcxxtools"
             ],
             [AC_MSG_ERROR([cannot link with -lcxxtools, install cxxtools])])
     ])
@@ -347,12 +330,14 @@ fi
 CFLAGS="${PREVIOUS_CFLAGS}"
 LIBS="${PREVIOUS_LIBS}"
 
+AC_SUBST(pkg_config_libs_private, $PKGCFG_LIBS_PRIVATE)
+
 # Platform specific checks
-agent_smtp_on_mingw32="no"
-agent_smtp_on_cygwin="no"
-agent_smtp_on_android="no"
-agent_smtp_on_linux="no"
-agent_smtp_on_gnu="no"
+fty_email_on_mingw32="no"
+fty_email_on_cygwin="no"
+fty_email_on_android="no"
+fty_email_on_linux="no"
+fty_email_on_gnu="no"
 
 # Host specific checks
 AC_CANONICAL_HOST
@@ -365,116 +350,118 @@ AC_ARG_WITH([docs],
     [with_docs=$withval])
 
 if test "x$with_docs" = "xno"; then
-    agent_smtp_build_doc="no"
-    agent_smtp_install_man="no"
+    fty_email_build_doc="no"
+    fty_email_install_man="no"
 else
     # Determine whether or not documentation should be built and installed.
-    agent_smtp_build_doc="yes"
-    agent_smtp_install_man="yes"
+    fty_email_build_doc="yes"
+    fty_email_install_man="yes"
 
     # Check for asciidoc and xmlto and don't build the docs if these are not installed.
-    AC_CHECK_PROG(agent_smtp_have_asciidoc, asciidoc, yes, no)
-    AC_CHECK_PROG(agent_smtp_have_xmlto, xmlto, yes, no)
-    if test "x$agent_smtp_have_asciidoc" = "xno" -o "x$agent_smtp_have_xmlto" = "xno"; then
-        agent_smtp_build_doc="no"
+    AC_CHECK_PROG(fty_email_have_asciidoc, asciidoc, yes, no)
+    AC_CHECK_PROG(fty_email_have_xmlto, xmlto, yes, no)
+    if test "x$fty_email_have_asciidoc" = "xno" -o "x$fty_email_have_xmlto" = "xno"; then
+        fty_email_build_doc="no"
         # Tarballs built with 'make dist' ship with prebuilt documentation.
-        if ! test -f doc/agent_smtp.7; then
-            agent_smtp_install_man="no"
-            AC_MSG_WARN([You are building an unreleased version of AGENT-SMTP and asciidoc or xmlto are not installed.])
+        if ! test -f doc/fty-email.7; then
+            fty_email_install_man="no"
+            AC_MSG_WARN([You are building an unreleased version of FTY-EMAIL and asciidoc or xmlto are not installed.])
             AC_MSG_WARN([Documentation will not be built and manual pages will not be installed.])
         fi
     fi
 fi
 AC_MSG_CHECKING([whether to build documentation])
-AC_MSG_RESULT([$agent_smtp_build_doc])
+AC_MSG_RESULT([$fty_email_build_doc])
 AC_MSG_CHECKING([whether to install manpages])
-AC_MSG_RESULT([$agent_smtp_install_man])
+AC_MSG_RESULT([$fty_email_install_man])
 
-# Set some default features required by libagent_smtp code.
-CPPFLAGS="-DAGENT_SMTP_INTERNAL_BUILD -D_REENTRANT -D_THREAD_SAFE $CPPFLAGS"
+# Set some default features required by libfty_email code.
+CPPFLAGS="-DFTY_EMAIL_INTERNAL_BUILD -D_REENTRANT -D_THREAD_SAFE $CPPFLAGS"
 
 # OS-specific tests
 case "${host_os}" in
     *linux*)
         # Define on Linux to enable all library features
         CPPFLAGS="-D_GNU_SOURCE -DLINUX $CPPFLAGS"
-        AC_DEFINE(AGENT_SMTP_HAVE_LINUX, 1, [Have Linux OS])
-        agent_smtp_on_linux="yes"
+        AC_DEFINE(FTY_EMAIL_HAVE_LINUX, 1, [Have Linux OS])
+        fty_email_on_linux="yes"
 
         case "${host_os}" in
             *android*)
-                AC_DEFINE(AGENT_SMTP_HAVE_ANDROID, 1, [Have Android OS])
-                agent_smtp_on_android="yes"
+                AC_DEFINE(FTY_EMAIL_HAVE_ANDROID, 1, [Have Android OS])
+                fty_email_on_android="yes"
             ;;
         esac
         ;;
     *solaris*)
         # Define on Solaris to enable all library features
         CPPFLAGS="-D_PTHREADS $CPPFLAGS"
-        AC_DEFINE(AGENT_SMTP_HAVE_SOLARIS, 1, [Have Solaris OS])
+        # Allow definitions of common OS-provided functions that are not in old standards
+        CPPFLAGS="-D__EXTENSIONS__ $CPPFLAGS"
+        AC_DEFINE(FTY_EMAIL_HAVE_SOLARIS, 1, [Have Solaris OS])
         CFLAGS="${CFLAGS} -lsocket -lssp"
         ;;
     *freebsd*)
         # Define on FreeBSD to enable all library features
         CPPFLAGS="-D__BSD_VISIBLE $CPPFLAGS"
-        AC_DEFINE(AGENT_SMTP_HAVE_FREEBSD, 1, [Have FreeBSD OS])
+        AC_DEFINE(FTY_EMAIL_HAVE_FREEBSD, 1, [Have FreeBSD OS])
         ;;
     *darwin*)
         # Define on Darwin to enable all library features
         CPPFLAGS="-D_DARWIN_C_SOURCE $CPPFLAGS"
-        AC_DEFINE(AGENT_SMTP_HAVE_OSX, 1, [Have DarwinOSX OS])
+        AC_DEFINE(FTY_EMAIL_HAVE_OSX, 1, [Have DarwinOSX OS])
         ;;
     *netbsd*)
         # Define on NetBSD to enable all library features
         CPPFLAGS="-D_NETBSD_SOURCE $CPPFLAGS"
-        AC_DEFINE(AGENT_SMTP_HAVE_NETBSD, 1, [Have NetBSD OS])
+        AC_DEFINE(FTY_EMAIL_HAVE_NETBSD, 1, [Have NetBSD OS])
         ;;
     *openbsd*)
         # Define on OpenBSD to enable all library features
         CPPFLAGS="-D_BSD_SOURCE $CPPFLAGS"
-        AC_DEFINE(AGENT_SMTP_HAVE_OPENBSD, 1, [Have OpenBSD OS])
+        AC_DEFINE(FTY_EMAIL_HAVE_OPENBSD, 1, [Have OpenBSD OS])
         ;;
     *nto-qnx*)
-        AC_DEFINE(AGENT_SMTP_HAVE_QNXNTO, 1, [Have QNX Neutrino OS])
+        AC_DEFINE(FTY_EMAIL_HAVE_QNXNTO, 1, [Have QNX Neutrino OS])
         ;;
     *aix*)
-        AC_DEFINE(AGENT_SMTP_HAVE_AIX, 1, [Have AIX OS])
+        AC_DEFINE(FTY_EMAIL_HAVE_AIX, 1, [Have AIX OS])
         ;;
     *hpux*)
         # Define on HP-UX to enable all library features
         CPPFLAGS="-D_POSIX_C_SOURCE=200112L"
-        AC_DEFINE(AGENT_SMTP_HAVE_HPUX, 1, [Have HPUX OS])
+        AC_DEFINE(FTY_EMAIL_HAVE_HPUX, 1, [Have HPUX OS])
         ;;
     *mingw32*)
-        AC_DEFINE(AGENT_SMTP_HAVE_WINDOWS, 1, [Have Windows OS])
-        AC_DEFINE(AGENT_SMTP_HAVE_MINGW32, 1, [Have MinGW32])
+        AC_DEFINE(FTY_EMAIL_HAVE_WINDOWS, 1, [Have Windows OS])
+        AC_DEFINE(FTY_EMAIL_HAVE_MINGW32, 1, [Have MinGW32])
         AC_CHECK_HEADERS(windows.h)
-        agent_smtp_on_mingw32="yes"
-        agent_smtp_install_man="no"
+        fty_email_on_mingw32="yes"
+        fty_email_install_man="no"
         ;;
     *mingw64*)
         # Define on MINGW64 to enable all libeary features
         # Disable format error due to incomplete ANSI C
         CPPFLAGS="-Wno-error=format -D_XOPEN_SOURCE $CPPFLAGS"
-        AC_DEFINE(AGENT_SMTP_HAVE_WINDOWS, 1, [Have Windows OS])
-        AC_DEFINE(AGENT_SMTP_HAVE_MINGW32, 1, [Have MinGW32])
+        AC_DEFINE(FTY_EMAIL_HAVE_WINDOWS, 1, [Have Windows OS])
+        AC_DEFINE(FTY_EMAIL_HAVE_MINGW32, 1, [Have MinGW32])
         AC_CHECK_HEADERS(windows.h)
-        agent_smtp_on_mingw32="yes"
-        agent_smtp_install_man="no"
+        fty_email_on_mingw32="yes"
+        fty_email_install_man="no"
         ;;
     *cygwin*)
         # Define on Cygwin to enable all library features
         CPPFLAGS="-D_GNU_SOURCE $CPPFLAGS"
-        AC_DEFINE(AGENT_SMTP_HAVE_CYGWIN, 1, [Have Cygwin])
-        agent_smtp_on_cygwin="yes"
+        AC_DEFINE(FTY_EMAIL_HAVE_CYGWIN, 1, [Have Cygwin])
+        fty_email_on_cygwin="yes"
         ;;
     gnu*)
         # Define on GNU/Hurd to enable all library features
         if test "x$GXX" = "xyes"; then
             CPPFLAGS="-D_GNU_SOURCE $CPPFLAGS"
         fi
-        AC_DEFINE(AGENT_SMTP_HAVE_GNU, 1, [Have GNU/Hurd OS])
-        agent_smtp_on_gnu="yes"
+        AC_DEFINE(FTY_EMAIL_HAVE_GNU, 1, [Have GNU/Hurd OS])
+        fty_email_on_gnu="yes"
         ;;
     *)
         AC_MSG_ERROR([unsupported system: ${host_os}])
@@ -511,43 +498,43 @@ if test "x$GCC" = "xyes"; then
 fi
 
 AM_CONDITIONAL(ENABLE_SHARED, test "x$enable_shared" = "xyes")
-AM_CONDITIONAL(ON_MINGW, test "x$agent_smtp_on_mingw32" = "xyes")
-AM_CONDITIONAL(ON_CYGWIN, test "x$agent_smtp_on_cygwin" = "xyes")
-AM_CONDITIONAL(ON_ANDROID, test "x$agent_smtp_on_android" = "xyes")
-AM_CONDITIONAL(ON_LINUX, test "x$agent_smtp_on_linux" = "xyes")
-AM_CONDITIONAL(ON_GNU, test "x$agent_smtp_on_gnu" = "xyes")
-AM_CONDITIONAL(INSTALL_MAN, test "x$agent_smtp_install_man" = "xyes")
-AM_CONDITIONAL(BUILD_DOC, test "x$agent_smtp_build_doc" = "xyes")
+AM_CONDITIONAL(ON_MINGW, test "x$fty_email_on_mingw32" = "xyes")
+AM_CONDITIONAL(ON_CYGWIN, test "x$fty_email_on_cygwin" = "xyes")
+AM_CONDITIONAL(ON_ANDROID, test "x$fty_email_on_android" = "xyes")
+AM_CONDITIONAL(ON_LINUX, test "x$fty_email_on_linux" = "xyes")
+AM_CONDITIONAL(ON_GNU, test "x$fty_email_on_gnu" = "xyes")
+AM_CONDITIONAL(INSTALL_MAN, test "x$fty_email_install_man" = "xyes")
+AM_CONDITIONAL(BUILD_DOC, test "x$fty_email_build_doc" = "xyes")
 
-# Check for bios-agent-smtp intent
-AC_ARG_ENABLE([bios-agent-smtp],
-    AS_HELP_STRING([--enable-bios-agent-smtp],
-        [Compile and install 'bios-agent-smtp' [default=yes]]),
-    [enable_bios_agent_smtp=$enableval],
-    [enable_bios_agent_smtp=yes])
+# Check for fty-email intent
+AC_ARG_ENABLE([fty-email],
+    AS_HELP_STRING([--enable-fty-email],
+        [Compile and install 'fty-email' [default=yes]]),
+    [enable_fty_email=$enableval],
+    [enable_fty_email=yes])
 
-AM_CONDITIONAL([ENABLE_BIOS_AGENT_SMTP], [test x$enable_bios_agent_smtp != xno])
-AM_COND_IF([ENABLE_BIOS_AGENT_SMTP], [AC_MSG_NOTICE([ENABLE_BIOS_AGENT_SMTP defined])])
+AM_CONDITIONAL([ENABLE_FTY_EMAIL], [test x$enable_fty_email != xno])
+AM_COND_IF([ENABLE_FTY_EMAIL], [AC_MSG_NOTICE([ENABLE_FTY_EMAIL defined])])
 
-# Check for bios-sendmail intent
-AC_ARG_ENABLE([bios-sendmail],
-    AS_HELP_STRING([--enable-bios-sendmail],
-        [Compile and install 'bios-sendmail' [default=yes]]),
-    [enable_bios_sendmail=$enableval],
-    [enable_bios_sendmail=yes])
+# Check for fty-sendmail intent
+AC_ARG_ENABLE([fty-sendmail],
+    AS_HELP_STRING([--enable-fty-sendmail],
+        [Compile and install 'fty-sendmail' [default=yes]]),
+    [enable_fty_sendmail=$enableval],
+    [enable_fty_sendmail=yes])
 
-AM_CONDITIONAL([ENABLE_BIOS_SENDMAIL], [test x$enable_bios_sendmail != xno])
-AM_COND_IF([ENABLE_BIOS_SENDMAIL], [AC_MSG_NOTICE([ENABLE_BIOS_SENDMAIL defined])])
+AM_CONDITIONAL([ENABLE_FTY_SENDMAIL], [test x$enable_fty_sendmail != xno])
+AM_COND_IF([ENABLE_FTY_SENDMAIL], [AC_MSG_NOTICE([ENABLE_FTY_SENDMAIL defined])])
 
-# Check for agent_smtp_selftest intent
-AC_ARG_ENABLE([agent_smtp_selftest],
-    AS_HELP_STRING([--enable-agent_smtp_selftest],
-        [Compile 'agent_smtp_selftest' in src [default=yes]]),
-    [enable_agent_smtp_selftest=$enableval],
-    [enable_agent_smtp_selftest=yes])
+# Check for fty_email_selftest intent
+AC_ARG_ENABLE([fty_email_selftest],
+    AS_HELP_STRING([--enable-fty_email_selftest],
+        [Compile 'fty_email_selftest' in src [default=yes]]),
+    [enable_fty_email_selftest=$enableval],
+    [enable_fty_email_selftest=yes])
 
-AM_CONDITIONAL([ENABLE_AGENT_SMTP_SELFTEST], [test x$enable_agent_smtp_selftest != xno])
-AM_COND_IF([ENABLE_AGENT_SMTP_SELFTEST], [AC_MSG_NOTICE([ENABLE_AGENT_SMTP_SELFTEST defined])])
+AM_CONDITIONAL([ENABLE_FTY_EMAIL_SELFTEST], [test x$enable_fty_email_selftest != xno])
+AM_COND_IF([ENABLE_FTY_EMAIL_SELFTEST], [AC_MSG_NOTICE([ENABLE_FTY_EMAIL_SELFTEST defined])])
 
 # Checks for library functions.
 AC_TYPE_SIGNAL
@@ -608,8 +595,8 @@ AM_CONDITIONAL([ENABLE_DRAFTS], [test x$enable_drafts != xno])
 
 if test "x$enable_drafts" = "xyes"; then
     AC_MSG_NOTICE([Building stable and legacy API + draft API])
-    AC_DEFINE(AGENT_SMTP_BUILD_DRAFT_API, 1, [Provide draft classes and methods])
-    AC_SUBST(pkg_config_defines, "-DAGENT_SMTP_BUILD_DRAFT_API=1")
+    AC_DEFINE(FTY_EMAIL_BUILD_DRAFT_API, 1, [Provide draft classes and methods])
+    AC_SUBST(pkg_config_defines, "-DFTY_EMAIL_BUILD_DRAFT_API=1")
 else
     AC_MSG_NOTICE([Building stable and legacy API (no draft API)])
     AC_SUBST(pkg_config_defines, "")
@@ -618,14 +605,13 @@ fi
 # Specify output files
 AC_CONFIG_FILES([Makefile
                  doc/Makefile
-                 src/libagent_smtp.pc
-                 src/bios-agent-smtp.cfg
+                 src/libfty_email.pc
+                 src/fty-email.cfg
                  ])
 
 AM_COND_IF([WITH_SYSTEMD_UNITS],
     [AC_CONFIG_FILES([
-                 src/bios-agent-smtp.service
-                 src/bios-agent-smtp.conf
+                 src/fty-email.service
     ])],
     [])
 
@@ -665,12 +651,12 @@ echo C compiler.................... : $CC
 echo C compiler flags.............. : $CFLAGS
 echo Configure date................ : $BUILD_DATE
 echo Build architecture............ : $BUILD_ARCH
-echo Build docs.................... : $agent_smtp_build_doc
+echo Build docs.................... : $fty_email_build_doc
 echo Build host.................... : $BUILD_HOST
 echo Build user.................... : $USER
 echo Draft API..................... : $enable_drafts
 echo Install dir................... : $prefix
-echo Install man pages............. : $agent_smtp_install_man
+echo Install man pages............. : $fty_email_install_man
 
 echo
 echo Help:
@@ -698,6 +684,8 @@ echo "                           (requires zproject and zproto)"
 echo "    - 'make debug'         run the project's selftest under gdb"
 echo "    - 'make memcheck'      run the project's selftest with valgrind to"
 echo "                           check for memory leaks"
+echo "    - 'make coverage'      generate project's selftest coverage report"
+echo "                           expects --with-gcov option for configure"
 echo
 ])
 

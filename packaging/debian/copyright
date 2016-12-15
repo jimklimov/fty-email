@@ -1,9 +1,9 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: agent-smtp
+Upstream-Name: fty-email
 
 Files: *
-Copyright: 2015- agent-smtp Developers <bios@eaton.com>
-License: agent-smtp_license
+Copyright: 2015- fty-email Developers <eatonipcopensource@eaton.com>
+License: fty-email_license
  Copyright (C) 2014 - 2015 Eaton                                        
                                                                         
  This program is free software; you can redistribute it and/or modify   

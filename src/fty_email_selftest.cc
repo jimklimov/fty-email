@@ -1,5 +1,5 @@
 /*  =========================================================================
-    agent_smtp_selftest.c - run selftests
+    fty_email_selftest.c - run selftests
 
     Runs all selftests.
 
@@ -27,7 +27,7 @@
     =========================================================================
 */
 
-#include "agent_smtp_classes.h"
+#include "fty_email_classes.h"
 
 typedef struct {
     const char *testname;
@@ -36,12 +36,7 @@ typedef struct {
 
 static test_item_t
 all_tests [] = {
-    { "alert", alert_test },
-    { "emailconfiguration", emailconfiguration_test },
-    { "email", email_test },
-    { "elementlist", elementlist_test },
-    { "subprocess", subprocess_test },
-    { "bios_smtp_server", bios_smtp_server_test },
+    { "fty_email_server", fty_email_server_test },
     {0, 0}          //  Sentinel
 };
 
@@ -69,7 +64,7 @@ static void
 test_runall (bool verbose)
 {
     test_item_t *item;
-    printf ("Running agent-smtp selftests...\n");
+    printf ("Running fty-email selftests...\n");
     for (item = all_tests; item->test; item++)
         item->test (verbose);
 
@@ -85,7 +80,7 @@ main (int argc, char **argv)
     for (argn = 1; argn < argc; argn++) {
         if (streq (argv [argn], "--help")
         ||  streq (argv [argn], "-h")) {
-            puts ("agent_smtp_selftest.c [options] ...");
+            puts ("fty_email_selftest.c [options] ...");
             puts ("  --verbose / -v         verbose test output");
             puts ("  --number / -n          report number of tests");
             puts ("  --list / -l            list all tests");
@@ -111,7 +106,7 @@ main (int argc, char **argv)
             puts ("    email");
             puts ("    elementlist");
             puts ("    subprocess");
-            puts ("    bios_smtp_server");
+            puts ("    fty_email_server");
             return 0;
         }
         else
@@ -142,7 +137,7 @@ main (int argc, char **argv)
         }
     }
     if (test) {
-        printf ("Running agent-smtp test '%s'...\n", test->testname);
+        printf ("Running fty-email test '%s'...\n", test->testname);
         test->test (verbose);
     }
     else

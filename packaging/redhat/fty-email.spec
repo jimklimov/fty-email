@@ -1,5 +1,5 @@
 #
-#    agent-smtp - XXXX
+#    fty-email - Email transport for 42ity (based on msmtp)
 #
 #    Copyright (C) 2014 - 2015 Eaton                                        
 #                                                                           
@@ -18,12 +18,22 @@
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
 #
 
-Name:           agent-smtp
-Version:        0.1.0
+# To build with draft APIs, use "--with drafts" in rpmbuild for local builds or add
+#   Macros:
+#   %_with_drafts 1
+# at the BOTTOM of the OBS prjconf
+%bcond_with drafts
+%if %{with drafts}
+%define DRAFTS yes
+%else
+%define DRAFTS no
+%endif
+Name:           fty-email
+Version:        1.0.0
 Release:        1
-Summary:        xxxx
+Summary:        email transport for 42ity (based on msmtp)
 License:        GPL-2.0+
-URL:            https://eaton.com/
+URL:            https://42ity.org
 Source0:        %{name}-%{version}.tar.gz
 Group:          System/Libraries
 # Note: ghostscript is required by graphviz which is required by
@@ -43,58 +53,56 @@ BuildRequires:  gcc-c++
 BuildRequires:  zeromq-devel
 BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
-BuildRequires:  libbiosproto-devel
+BuildRequires:  fty-proto-devel
 BuildRequires:  magic-devel
 BuildRequires:  cxxtools-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
-agent-smtp xxxx.
+fty-email email transport for 42ity (based on msmtp).
 
-%package -n libagent_smtp0
+%package -n libfty_email1
 Group:          System/Libraries
-Summary:        xxxx
+Summary:        email transport for 42ity (based on msmtp) shared library
 
-%description -n libagent_smtp0
-agent-smtp xxxx.
-This package contains shared library.
+%description -n libfty_email1
+This package contains shared library for fty-email: email transport for 42ity (based on msmtp)
 
-%post -n libagent_smtp0 -p /sbin/ldconfig
-%postun -n libagent_smtp0 -p /sbin/ldconfig
+%post -n libfty_email1 -p /sbin/ldconfig
+%postun -n libfty_email1 -p /sbin/ldconfig
 
-%files -n libagent_smtp0
+%files -n libfty_email1
 %defattr(-,root,root)
-%{_libdir}/libagent_smtp.so.*
+%{_libdir}/libfty_email.so.*
 
 %package devel
-Summary:        xxxx
+Summary:        email transport for 42ity (based on msmtp)
 Group:          System/Libraries
-Requires:       libagent_smtp0 = %{version}
+Requires:       libfty_email1 = %{version}
 Requires:       zeromq-devel
 Requires:       czmq-devel
 Requires:       malamute-devel
-Requires:       libbiosproto-devel
+Requires:       fty-proto-devel
 Requires:       magic-devel
 Requires:       cxxtools-devel
 
 %description devel
-agent-smtp xxxx.
-This package contains development files.
+email transport for 42ity (based on msmtp) development tools
+This package contains development files for fty-email: email transport for 42ity (based on msmtp)
 
 %files devel
 %defattr(-,root,root)
 %{_includedir}/*
-%{_libdir}/libagent_smtp.so
-%{_libdir}/pkgconfig/libagent_smtp.pc
+%{_libdir}/libfty_email.so
+%{_libdir}/pkgconfig/libfty_email.pc
 %{_mandir}/man3/*
-%{_mandir}/man7/*
 
 %prep
 %setup -q
 
 %build
 sh autogen.sh
-%{configure} --with-systemd-units
+%{configure} --enable-drafts=%{DRAFTS} --with-systemd-units
 make %{_smp_mflags}
 
 %install
@@ -106,24 +114,21 @@ find %{buildroot} -name '*.la' | xargs rm -f
 
 %files
 %defattr(-,root,root)
-%{_bindir}/bios-agent-smtp
-%{_bindir}/bios-device-scan
-%{_mandir}/man1/bios-agent-smtp*
-%{_bindir}/bios-sendmail
-%{_mandir}/man1/bios-sendmail*
-%config(noreplace) %{_sysconfdir}/agent-smtp/bios-agent-smtp.cfg
-/usr/lib/systemd/system/bios-agent-smtp.service
-%dir %{_sysconfdir}/agent-smtp
-%{_prefix}/lib/tmpfiles.d/bios-agent-smtp.conf
-
-
+%{_bindir}/fty-email
+%{_mandir}/man1/fty-email*
+%{_bindir}/fty-sendmail
+%{_mandir}/man1/fty-sendmail*
+%{_bindir}/fty-device-scan
+%config(noreplace) %{_sysconfdir}/fty-email/fty-email.cfg
+/usr/lib/systemd/system/fty-email.service
+%dir %{_sysconfdir}/fty-email
 %if 0%{?suse_version} > 1315
 %post
-%systemd_post bios-agent-smtp.service
+%systemd_post fty-email.service
 %preun
-%systemd_preun bios-agent-smtp.service
+%systemd_preun fty-email.service
 %postun
-%systemd_postun_with_restart bios-agent-smtp.service
+%systemd_postun_with_restart fty-email.service
 %endif
 
 %changelog

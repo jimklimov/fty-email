@@ -1,8 +1,8 @@
 Format: 3.0 (quilt)
-Binary: agent-smtp
-Source: agent-smtp
-Version: 0.1.0
-Maintainer: agent-smtp Developers <bios@eaton.com>
+Binary: fty-email
+Source: fty-email
+Version: 1.0.0
+Maintainer: fty-email Developers <eatonipcopensource@eaton.com>
 Architecture: any
 Build-Depends: debhelper (>= 9),
     pkg-config,
@@ -10,7 +10,7 @@ Build-Depends: debhelper (>= 9),
     libzmq3-dev,
     libczmq-dev,
     libmlm-dev,
-    libbiosproto-dev,
+    libfty-proto-dev,
     libmagic-dev,
     libcxxtools-dev,
     systemd,
@@ -19,4 +19,4 @@ Build-Depends-Indep: asciidoc,
                      xmlto
 
 Files:
- 7697688bf65a35bc33ae2db51ebb0e3b 818110 agent-smtp.tar.gz
+ 7697688bf65a35bc33ae2db51ebb0e3b 818110 fty-email.tar.gz

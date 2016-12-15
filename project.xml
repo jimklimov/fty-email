@@ -1,23 +1,26 @@
 <project
-    name = "agent-smtp"
-    description = "XXXX"
+    name = "fty-email"
+    description = "Email transport for 42ity (based on msmtp)"
     script = "zproject.gsl"
-    email = "bios@eaton.com"
-    url = "https://eaton.com/"
+    email = "EatonIPCOpenSource@eaton.com"
+    url = "https://42ity.org"
     license = "GPL-2.0+"
+    repository = "https://github.com/42ity/fty-email"
+    abi = "1:0:0"
     >
 
     <target name = "debian" />
     <target name = "redhat" />
+    <target name = "travis" />
 
     <include filename = "license.xml" />
-    <version major = "0" minor = "1" patch = "0" />
+    <version major = "1" minor = "0" patch = "0" />
     <use project = "malamute" />
 
-    <use project = "biosproto" libname = "libbiosproto" prefix="biosproto"
-        min_major = "0" min_minor = "0" min_patch = "0"
-        repository = "https://stash.mbt.lab.etn.com/BIOS/libbiosproto"
-        test = "bios_proto_test">
+    <use project = "fty-proto" libname = "libfty_proto" header="ftyproto.h"
+        min_major = "1" min_minor = "0" min_patch = "0"
+        repository = "https://github.com/42ity/fty-proto"
+        test = "fty_proto_test">
         <use project = "malamute"/>
     </use>
 
@@ -28,20 +31,20 @@
         >
     </use>
 
-    <use project = "cxxtools" test="cxxtools::Utf8Codec::Utf8Codec"/>
+    <use project = "cxxtools" test="cxxtools::Utf8Codec::Utf8Codec" header="cxxtools/allocator.h"/>
 
     <class name = "alert" private="1">Alert representation</class>
     <class name = "emailconfiguration" private="1">Class that is responsible for email configuration</class>
     <class name = "email" private="1">Smtp</class>
     <class name = "elementlist" private="1">ElementList</class>
     <class name = "subprocess" private="1">Subprocess</class>
-    <class name = "bios-smtp-server" state = "stable" >Smtp actor</class>
-    <main name = "bios-agent-smtp" service = "1" no_config = "1" >
-        XXXDaemon evaluating rules and producing alerts
-    </main>
-    <main name = "bios-sendmail" >
-        Sendmail-like interface to smtp agent
-    </main>
+    <class name = "fty_email_server" state = "stable">Email transport</class>
 
-    <bin name = "bios-device-scan">Device scanning script</bin>
+    <main name = "fty-email" service = "1">
+        Email transport for 42ity (based on msmtp)
+    </main>
+    <main name = "fty-sendmail" >
+        Sendmail-like interface for 42ity
+    </main>
+    <bin name = "fty-device-scan">Device scanning script</bin>
 </project>

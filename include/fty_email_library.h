@@ -1,5 +1,5 @@
 /*  =========================================================================
-    agent-smtp - generated layer of public API
+    fty-email - generated layer of public API
 
     Copyright (C) 2014 - 2015 Eaton                                        
                                                                            
@@ -24,52 +24,59 @@
     =========================================================================
 */
 
-#ifndef AGENT_SMTP_LIBRARY_H_INCLUDED
-#define AGENT_SMTP_LIBRARY_H_INCLUDED
+#ifndef FTY_EMAIL_LIBRARY_H_INCLUDED
+#define FTY_EMAIL_LIBRARY_H_INCLUDED
 
 //  Set up environment for the application
 
 //  External dependencies
 #include <malamute.h>
-#include <biosproto.h>
+#include <ftyproto.h>
 #include <magic.h>
+#include <cxxtools/allocator.h>
 
-//  AGENT_SMTP version macros for compile-time API detection
-#define AGENT_SMTP_VERSION_MAJOR 0
-#define AGENT_SMTP_VERSION_MINOR 1
-#define AGENT_SMTP_VERSION_PATCH 0
+//  FTY_EMAIL version macros for compile-time API detection
+#define FTY_EMAIL_VERSION_MAJOR 1
+#define FTY_EMAIL_VERSION_MINOR 0
+#define FTY_EMAIL_VERSION_PATCH 0
 
-#define AGENT_SMTP_MAKE_VERSION(major, minor, patch) \
+#define FTY_EMAIL_MAKE_VERSION(major, minor, patch) \
     ((major) * 10000 + (minor) * 100 + (patch))
-#define AGENT_SMTP_VERSION \
-    AGENT_SMTP_MAKE_VERSION(AGENT_SMTP_VERSION_MAJOR, AGENT_SMTP_VERSION_MINOR, AGENT_SMTP_VERSION_PATCH)
+#define FTY_EMAIL_VERSION \
+    FTY_EMAIL_MAKE_VERSION(FTY_EMAIL_VERSION_MAJOR, FTY_EMAIL_VERSION_MINOR, FTY_EMAIL_VERSION_PATCH)
 
 #if defined (__WINDOWS__)
-#   if defined AGENT_SMTP_STATIC
-#       define AGENT_SMTP_EXPORT
-#   elif defined AGENT_SMTP_INTERNAL_BUILD
+#   if defined FTY_EMAIL_STATIC
+#       define FTY_EMAIL_EXPORT
+#   elif defined FTY_EMAIL_INTERNAL_BUILD
 #       if defined DLL_EXPORT
-#           define AGENT_SMTP_EXPORT __declspec(dllexport)
+#           define FTY_EMAIL_EXPORT __declspec(dllexport)
 #       else
-#           define AGENT_SMTP_EXPORT
+#           define FTY_EMAIL_EXPORT
 #       endif
-#   elif defined AGENT_SMTP_EXPORTS
-#       define AGENT_SMTP_EXPORT __declspec(dllexport)
+#   elif defined FTY_EMAIL_EXPORTS
+#       define FTY_EMAIL_EXPORT __declspec(dllexport)
 #   else
-#       define AGENT_SMTP_EXPORT __declspec(dllimport)
+#       define FTY_EMAIL_EXPORT __declspec(dllimport)
 #   endif
+#   define FTY_EMAIL_PRIVATE
 #else
-#   define AGENT_SMTP_EXPORT
+#   define FTY_EMAIL_EXPORT
+#   if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER
+#       define FTY_EMAIL_PRIVATE __attribute__ ((visibility ("hidden")))
+#   else
+#       define FTY_EMAIL_PRIVATE
+#   endif
 #endif
 
 //  Opaque class structures to allow forward references
 //  These classes are stable or legacy and built in all releases
-typedef struct _bios_smtp_server_t bios_smtp_server_t;
-#define BIOS_SMTP_SERVER_T_DEFINED
+typedef struct _fty_email_server_t fty_email_server_t;
+#define FTY_EMAIL_SERVER_T_DEFINED
 
 
 //  Public classes, each with its own header file
-#include "bios_smtp_server.h"
+#include "fty_email_server.h"
 
 #endif
 /*

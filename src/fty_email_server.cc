@@ -1,36 +1,37 @@
 /*  =========================================================================
-    bios_smtp_server - Smtp actor
+    fty_email_server - Email actor
 
-    Copyright (C) 2014 - 2015 Eaton
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
+    Copyright (C) 2014 - 2015 Eaton                                        
+                                                                           
+    This program is free software; you can redistribute it and/or modify   
+    it under the terms of the GNU General Public License as published by   
+    the Free Software Foundation; either version 2 of the License, or      
+    (at your option) any later version.                                    
+                                                                           
+    This program is distributed in the hope that it will be useful,        
+    but WITHOUT ANY WARRANTY; without even the implied warranty of         
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
+    GNU General Public License for more details.                           
+                                                                           
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
     =========================================================================
 */
 
 /*
 @header
-    bios_smtp_server - Smtp actor
+    fty_email_server - Email actor
 @discuss
 @end
 */
+
 int agent_smtp_verbose = true;
 
 #define zsys_debug1(...) \
     do { if (agent_smtp_verbose) zsys_debug (__VA_ARGS__); } while (0);
 
-#include "agent_smtp_classes.h"
+#include "fty_email_classes.h"
 
 #include <cxxtools/serializationinfo.h>
 #include <cxxtools/jsondeserializer.h>
@@ -46,7 +47,7 @@ int agent_smtp_verbose = true;
 #include <sstream>
 #include <fstream>
 #include <malamute.h>
-#include <bios_proto.h>
+#include <fty_proto.h>
 #include <math.h>
 #include <functional>
 #include <cxxtools/split.h>
@@ -243,31 +244,31 @@ static void
 
 static void
 s_onAlertReceive (
-    bios_proto_t **p_message,
+    fty_proto_t **p_message,
     alerts_map& alerts,
     ElementList& elements,
     Smtp& smtp)
 {
     if (p_message == NULL) return;
-    bios_proto_t *message = *p_message;
-    if (bios_proto_id (message) != BIOS_PROTO_ALERT) {
-        zsys_error ("bios_proto_id (message) != BIOS_PROTO_ALERT");
-        bios_proto_destroy (p_message);
+    fty_proto_t *message = *p_message;
+    if (fty_proto_id (message) != FTY_PROTO_ALERT) {
+        zsys_error ("fty_proto_id (message) != FTY_PROTO_ALERT");
+        fty_proto_destroy (p_message);
         return;
     }
     // decode alert message
-    const char *rule = bios_proto_rule (message);
+    const char *rule = fty_proto_rule (message);
     std::string rule_name (rule);
     std::transform (rule_name.begin(), rule_name.end(), rule_name.begin(), ::tolower);
-    const char *state = bios_proto_state (message);
-    const char *severity = bios_proto_severity (message);
-    const char *asset = bios_proto_element_src (message);
-    const char *description = bios_proto_description (message);
-    int64_t timestamp = bios_proto_time (message);
+    const char *state = fty_proto_state (message);
+    const char *severity = fty_proto_severity (message);
+    const char *asset = fty_proto_element_src (message);
+    const char *description = fty_proto_description (message);
+    int64_t timestamp = fty_proto_time (message);
     if (timestamp <= 0) {
         timestamp = ::time (NULL);
     }
-    const char *actions = bios_proto_action (message);
+    const char *actions = fty_proto_action (message);
 
     // add alert to the list of alerts
     if (  (strcasestr (actions, "EMAIL") == NULL)
@@ -275,7 +276,7 @@ s_onAlertReceive (
         // this means, that for this alert no "SMS/EMAIL" action
         // -> we are not interested in it;
         zsys_debug1 ("Email action (%s) is not specified -> smtp agent is not interested in this alert", actions);
-        bios_proto_destroy (p_message);
+        fty_proto_destroy (p_message);
         return;
     }
     // so, EMAIL is in action -> add to the list of alerts
@@ -304,36 +305,36 @@ s_onAlertReceive (
     if (!elements.exists (asset)) {
         zsys_error ("The asset '%s' is not known", asset);
         // TODO: find information about the asset REQ-REP
-        bios_proto_destroy (p_message);
+        fty_proto_destroy (p_message);
         return;
     }
     // So, asset is known, try to notify about it
     s_notify (search, smtp, elements);
-    bios_proto_destroy (p_message);
+    fty_proto_destroy (p_message);
 }
 
 void onAssetReceive (
-    bios_proto_t **p_message,
+    fty_proto_t **p_message,
     ElementList& elements,
     const char* sms_gateway,
     bool verbose)
 {
     if (p_message == NULL) return;
-    bios_proto_t *message = *p_message;
-    if (bios_proto_id (message) != BIOS_PROTO_ASSET) {
-        zsys_error ("bios_proto_id (message) != BIOS_PROTO_ASSET");
+    fty_proto_t *message = *p_message;
+    if (fty_proto_id (message) != FTY_PROTO_ASSET) {
+        zsys_error ("fty_proto_id (message) != FTY_PROTO_ASSET");
         return;
     }
 
-    const char *name = bios_proto_name (message); // was asset
+    const char *name = fty_proto_name (message); // was asset
     if (name == NULL) {
-        zsys_error ("bios_proto_name () returned NULL");
+        zsys_error ("fty_proto_name () returned NULL");
         return;
     }
 
     // now, we need to get the contact information
     // TODO insert here a code to handle multiple contacts
-    zhash_t *ext = bios_proto_ext (message);
+    zhash_t *ext = fty_proto_ext (message);
     char *contact_name = NULL;
     char *contact_email = NULL;
     char *contact_phone = NULL;
@@ -345,9 +346,9 @@ void onAssetReceive (
         zsys_debug1 ("ext for asset %s is missing", name);
     }
 
-    const char *operation = bios_proto_operation (message);
+    const char *operation = fty_proto_operation (message);
     if ( isNew (operation) || isUpdate(operation) ) {
-        zhash_t *aux = bios_proto_aux (message);
+        zhash_t *aux = fty_proto_aux (message);
         const char *default_priority = "5";
         const char *priority = default_priority;
         if ( aux != NULL ) {
@@ -407,7 +408,7 @@ void onAssetReceive (
 
     elements.save();
     // destroy the message
-    bios_proto_destroy (p_message);
+    fty_proto_destroy (p_message);
 }
 
 static int
@@ -490,7 +491,7 @@ s_get (zconfig_t *config, const char* key, const char* dfl) {
 }
 
 zmsg_t *
-bios_smtp_encode (
+fty_email_encode (
         const char *uuid,
         const char *to,
         const char *subject,
@@ -540,7 +541,7 @@ bios_smtp_encode (
 
 
 void
-bios_smtp_server (zsock_t *pipe, void* args)
+fty_email_server (zsock_t *pipe, void* args)
 {
     bool verbose = false;
     char* name = NULL;
@@ -837,23 +838,23 @@ bios_smtp_server (zsock_t *pipe, void* args)
         //  - an alert from alert stream
         //  - an asset config message
         //  - an SMTP settings TODO
-        if (is_bios_proto (zmessage)) {
-            bios_proto_t *bmessage = bios_proto_decode (&zmessage);
+        if (is_fty_proto (zmessage)) {
+            fty_proto_t *bmessage = fty_proto_decode (&zmessage);
             if (!bmessage) {
-                zsys_error ("cannot decode bios_proto message, ignore it");
+                zsys_error ("cannot decode fty_proto message, ignore it");
                 continue;
             }
-            if (bios_proto_id (bmessage) == BIOS_PROTO_ALERT)  {
+            if (fty_proto_id (bmessage) == FTY_PROTO_ALERT)  {
                 s_onAlertReceive (&bmessage, alerts, elements, smtp);
                 save_alerts_state (alerts, alerts_state_file);
             }
-            else if (bios_proto_id (bmessage) == BIOS_PROTO_ASSET)  {
+            else if (fty_proto_id (bmessage) == FTY_PROTO_ASSET)  {
                 onAssetReceive (&bmessage, elements, sms_gateway, verbose);
             }
             else {
                 zsys_error ("it is not an alert message, ignore it");
             }
-            bios_proto_destroy (&bmessage);
+            fty_proto_destroy (&bmessage);
         }
         zmsg_destroy (&zmessage);
     }
@@ -905,7 +906,7 @@ static zactor_t* create_smtp_server (
         std::remove (assets_file);
     if ( clear_alerts )
         std::remove (alerts_file);
-    zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
+    zactor_t *smtp_server = zactor_new (fty_email_server, NULL);
     assert ( smtp_server != NULL );
     zconfig_t *config = zconfig_new ("root", NULL);
     zconfig_put (config, "server/alerts", alerts_file);
@@ -959,7 +960,7 @@ static void s_send_asset_message (
         zhash_insert (ext, "contact_name", (void *)contact);
     if ( phone )
         zhash_insert (ext, "contact_phone", (void *)phone);
-    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, operation, ext);
+    zmsg_t *msg = fty_proto_encode_asset (aux, asset_name, operation, ext);
     assert (msg);
     int rv = mlm_client_send (producer, asset_name, &msg);
     assert ( rv == 0 );
@@ -1000,7 +1001,7 @@ test9 (bool verbose, const char *endpoint)
 
     // this alert is supposed to be in the file,
     // as action EMAIL is specified
-    zmsg_t *msg = bios_proto_encode_alert (NULL, "SOME_RULE", "SOME_ASSET", \
+    zmsg_t *msg = fty_proto_encode_alert (NULL, "SOME_RULE", "SOME_ASSET", \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS/EMAIL");
     assert (msg);
     rv = mlm_client_send (alert_producer, "nobody-cares", &msg);
@@ -1010,7 +1011,7 @@ test9 (bool verbose, const char *endpoint)
 
     // this alert is NOT supposed to be in the file,
     // as action EMAIL is NOT specified
-    msg = bios_proto_encode_alert (NULL, "SOME_RULE1", "SOME_ASSET", \
+    msg = fty_proto_encode_alert (NULL, "SOME_RULE1", "SOME_ASSET", \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS");
     assert (msg);
     if ( verbose )
@@ -1242,13 +1243,13 @@ void test10 (
 
 //  Self test of this class
 void
-bios_smtp_server_test (bool verbose)
+fty_email_server_test (bool verbose)
 {
     const char *alerts_file = "kkk_alerts.xtx";
     const char *assets_file = "kkk_assets.xtx";
     std::remove (alerts_file);
     std::remove (assets_file);
-    printf (" * bios_smtp_server: ");
+    printf (" * fty_email_server: ");
     static const char* pidfile = "src/btest.pid";
     if (zfile_exists (pidfile))
     {
@@ -1265,21 +1266,10 @@ bios_smtp_server_test (bool verbose)
 
     //  @selftest
 
-    /*
-zmsg_t *
-bios_smtp_encode (
-        const char *uuid,
-        const char *to,
-        const char *subject,
-        zhash_t *headers,
-        const char *body,
-        ...)
-    */
-
     {
     zhash_t *headers = zhash_new ();
     zhash_update (headers, "Foo", (void*) "bar");
-    zmsg_t *email_msg = bios_smtp_encode (
+    zmsg_t *email_msg = fty_email_encode (
             "UUID",
             "TO",
             "SUBJECT",
@@ -1329,7 +1319,7 @@ bios_smtp_encode (
 
     }
 
-    static const char* endpoint = "inproc://bios-smtp-server-test";
+    static const char* endpoint = "inproc://fty-smtp-server-test";
 
     // malamute broker
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
@@ -1338,7 +1328,7 @@ bios_smtp_encode (
     if ( verbose )
         zsys_info ("malamute started");
     // smtp server
-    zactor_t *smtp_server = zactor_new (bios_smtp_server, NULL);
+    zactor_t *smtp_server = zactor_new (fty_email_server, NULL);
     assert ( smtp_server != NULL );
 
     zconfig_t *config = zconfig_new ("root", NULL);
@@ -1387,7 +1377,7 @@ bios_smtp_encode (
     zhash_insert (ext, "contact_email", (void *)"scenario1.email@eaton.com");
     zhash_insert (ext, "contact_name", (void *)"eaton Support team");
     const char *asset_name = "ASSET1";
-    zmsg_t *msg = bios_proto_encode_asset (aux, asset_name, "create", ext);
+    zmsg_t *msg = fty_proto_encode_asset (aux, asset_name, "create", ext);
     assert (msg);
     mlm_client_send (asset_producer, "Asset message1", &msg);
     zhash_destroy (&aux);
@@ -1398,7 +1388,7 @@ bios_smtp_encode (
     zclock_sleep (1000);
 
     //      2. send alert message
-    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name, \
+    msg = fty_proto_encode_alert (NULL, "NY_RULE", asset_name, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     std::string atopic = "NY_RULE/CRITICAL@" + std::string (asset_name);
@@ -1454,7 +1444,7 @@ bios_smtp_encode (
     const char *asset_name1 = "ASSET2";
 
     //      2. send alert message
-    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name1, \
+    msg = fty_proto_encode_alert (NULL, "NY_RULE", asset_name1, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     std::string atopic1 = "NY_RULE/CRITICAL@" + std::string (asset_name1);
@@ -1478,7 +1468,7 @@ bios_smtp_encode (
     ext = zhash_new ();
     zhash_insert (ext, "contact_name", (void *)"eaton Support team");
     const char *asset_name3 = "ASSET2";
-    msg = bios_proto_encode_asset (aux, asset_name3, "update", ext);
+    msg = fty_proto_encode_asset (aux, asset_name3, "update", ext);
     assert (msg);
     mlm_client_send (asset_producer, "Asset message3", &msg);
     zhash_destroy (&aux);
@@ -1487,7 +1477,7 @@ bios_smtp_encode (
         zsys_info ("asset message was send");
 
     //      2. send alert message
-    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
+    msg = fty_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     std::string atopic3 = "NY_RULE/CRITICAL@" + std::string (asset_name3);
@@ -1507,7 +1497,7 @@ bios_smtp_encode (
     // scenario 4:
     //      1. send an alert on the already known asset
     atopic = "Scenario4/CRITICAL@" + std::string (asset_name);
-    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+    msg = fty_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
@@ -1524,7 +1514,7 @@ bios_smtp_encode (
     zmsg_destroy (&msg);
 
     //      4. send an alert on the already known asset
-    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+    msg = fty_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
@@ -1542,7 +1532,7 @@ bios_smtp_encode (
 
     // scenario 5: alert without action "EMAIL"
     //      1. send alert message
-    msg = bios_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
+    msg = fty_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS");
     assert (msg);
     mlm_client_send (alert_producer, atopic3.c_str(), &msg);
@@ -1576,7 +1566,7 @@ bios_smtp_encode (
     zhash_insert (aux, "priority", (void *)"1");
     ext = zhash_new ();
     assert (ext);
-    msg = bios_proto_encode_asset (aux, asset_name6, "create", ext);
+    msg = fty_proto_encode_asset (aux, asset_name6, "create", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message6", &msg);
     assert ( rv != -1 );
@@ -1584,7 +1574,7 @@ bios_smtp_encode (
     zclock_sleep (1000);
 
     //      2. send alert message
-    msg = bios_proto_encode_alert (NULL, rule_name6, asset_name6, \
+    msg = fty_proto_encode_alert (NULL, rule_name6, asset_name6, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
@@ -1602,7 +1592,7 @@ bios_smtp_encode (
 
     //      4. send asset info one more time, but with email
     zhash_insert (ext, "contact_email", (void *)"scenario6.email@eaton.com");
-    msg = bios_proto_encode_asset (aux, asset_name6, "update", ext);
+    msg = fty_proto_encode_asset (aux, asset_name6, "update", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message6", &msg);
     assert ( rv != -1 );
@@ -1612,7 +1602,7 @@ bios_smtp_encode (
     zclock_sleep (1000);
 
     //      5. send alert message again
-    msg = bios_proto_encode_alert (NULL, rule_name6, asset_name6, \
+    msg = fty_proto_encode_alert (NULL, rule_name6, asset_name6, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
@@ -1665,7 +1655,7 @@ bios_smtp_encode (
     // scenario 7:
     //      1. send an alert on the already known asset
     atopic = "Scenario7/CRITICAL@" + std::string (asset_name);
-    msg = bios_proto_encode_alert (NULL, "Scenario7", asset_name, \
+    msg = fty_proto_encode_alert (NULL, "Scenario7", asset_name, \
         "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
@@ -1682,7 +1672,7 @@ bios_smtp_encode (
     zmsg_destroy (&msg);
 
     //      4. send an alert on the already known asset
-    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+    msg = fty_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
@@ -1702,7 +1692,7 @@ bios_smtp_encode (
     zclock_sleep (5*60*1000);
 
     //      7. send an alert again
-    msg = bios_proto_encode_alert (NULL, "Scenario4", asset_name, \
+    msg = fty_proto_encode_alert (NULL, "Scenario4", asset_name, \
         "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
@@ -1737,7 +1727,7 @@ bios_smtp_encode (
     zhash_insert (aux, "priority", (void *)"1");
     ext = zhash_new ();
     assert (ext);
-    msg = bios_proto_encode_asset (aux, asset_name8, "create", ext);
+    msg = fty_proto_encode_asset (aux, asset_name8, "create", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message8", &msg);
     assert ( rv != -1 );
@@ -1745,7 +1735,7 @@ bios_smtp_encode (
     zclock_sleep (1000);
 
     //      2. send alert message
-    msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
+    msg = fty_proto_encode_alert (NULL, rule_name8, asset_name8, \
         "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
@@ -1763,7 +1753,7 @@ bios_smtp_encode (
 
     //      4. send asset info one more time, but with email
     zhash_insert (ext, "contact_email", (void *)"scenario8.email@eaton.com");
-    msg = bios_proto_encode_asset (aux, asset_name8, "update", ext);
+    msg = fty_proto_encode_asset (aux, asset_name8, "update", ext);
     assert (msg);
     rv = mlm_client_send (asset_producer, "Asset message8", &msg);
     assert ( rv != -1 );
@@ -1773,7 +1763,7 @@ bios_smtp_encode (
     zclock_sleep (1000);
 
     //      5. send alert message again second
-    msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
+    msg = fty_proto_encode_alert (NULL, rule_name8, asset_name8, \
         "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
@@ -1793,7 +1783,7 @@ bios_smtp_encode (
     zmsg_destroy (&msg);
 
     //      8. send alert message again third time
-    msg = bios_proto_encode_alert (NULL, rule_name8, asset_name8, \
+    msg = fty_proto_encode_alert (NULL, rule_name8, asset_name8, \
         "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL");
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);

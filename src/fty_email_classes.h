@@ -1,5 +1,5 @@
 /*  =========================================================================
-    agent_smtp_classes - private header file
+    fty_email_classes - private header file
 
     Copyright (C) 2014 - 2015 Eaton                                        
                                                                            
@@ -23,14 +23,14 @@
     =========================================================================
 */
 
-#ifndef AGENT_SMTP_CLASSES_H_INCLUDED
-#define AGENT_SMTP_CLASSES_H_INCLUDED
+#ifndef FTY_EMAIL_CLASSES_H_INCLUDED
+#define FTY_EMAIL_CLASSES_H_INCLUDED
 
 //  Platform definitions, must come first
 #include "platform.h"
 
 //  External API
-#include "../include/agent_smtp.h"
+#include "../include/fty_email.h"
 
 //  Internal API
 #include "alert.h"
@@ -40,33 +40,33 @@
 #include "subprocess.h"
 
 //  *** To avoid double-definitions, only define if building without draft ***
-#ifndef AGENT_SMTP_BUILD_DRAFT_API
+#ifndef FTY_EMAIL_BUILD_DRAFT_API
 
 //  *** Draft method, defined for internal use only ***
 //  Self test of this class.
-AGENT_SMTP_EXPORT void
+FTY_EMAIL_PRIVATE void
     alert_test (bool verbose);
 
 //  *** Draft method, defined for internal use only ***
 //  Self test of this class.
-AGENT_SMTP_EXPORT void
+FTY_EMAIL_PRIVATE void
     emailconfiguration_test (bool verbose);
 
 //  *** Draft method, defined for internal use only ***
 //  Self test of this class.
-AGENT_SMTP_EXPORT void
+FTY_EMAIL_PRIVATE void
     email_test (bool verbose);
 
 //  *** Draft method, defined for internal use only ***
 //  Self test of this class.
-AGENT_SMTP_EXPORT void
+FTY_EMAIL_PRIVATE void
     elementlist_test (bool verbose);
 
 //  *** Draft method, defined for internal use only ***
 //  Self test of this class.
-AGENT_SMTP_EXPORT void
+FTY_EMAIL_PRIVATE void
     subprocess_test (bool verbose);
 
-#endif // AGENT_SMTP_BUILD_DRAFT_API
+#endif // FTY_EMAIL_BUILD_DRAFT_API
 
 #endif

@@ -24,7 +24,7 @@
 
 
 #include <algorithm>
-#include <bios_proto.h>
+#include <fty_proto.h>
 
 #include <cxxtools/serializationinfo.h>
 
@@ -33,16 +33,16 @@
 class Alert {
  public:
     Alert () : time(0), last_email_notification(0), last_update(0), last_sms_notification(0) {};
-    Alert (bios_proto_t *message) :
-            rule (bios_proto_rule (message)),
-            element (bios_proto_element_src (message)),
-            state (bios_proto_state (message)),
-            severity (bios_proto_severity (message)),
-            description (bios_proto_description (message)),
-            action (bios_proto_action (message)),
-            time (bios_proto_time (message)),
+    Alert (fty_proto_t *message) :
+            rule (fty_proto_rule (message)),
+            element (fty_proto_element_src (message)),
+            state (fty_proto_state (message)),
+            severity (fty_proto_severity (message)),
+            description (fty_proto_description (message)),
+            action (fty_proto_action (message)),
+            time (fty_proto_time (message)),
             last_email_notification (0),
-            last_update (bios_proto_time (message)),
+            last_update (fty_proto_time (message)),
             last_sms_notification (0)
     {
         std::transform (rule.begin(), rule.end(), rule.begin(), ::tolower);
