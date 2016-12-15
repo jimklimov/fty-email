@@ -1,4 +1,4 @@
-#   bios-agent-smtp configuration
+#   fty-email configuration
 
 server
     verbose = false                                 #   Do verbose logging of activity?
@@ -17,7 +17,7 @@ smtp
 malamute
     verbose = false                                 #   To setup verbose mlm_client
     endpoint = ipc://@/malamute                     #   Malamute endpoint
-    address = agent-smtp                            #   Agent mailbox address
+    address = fty-email                             #   Agent mailbox address
     consumers
         ALERTS = .*                                 #   Listen to all messages on ALERTS stream, DO not change unless you know what you're doing
         ASSETS = .*                                 #   Listen to all messages on ASSETS stream, DO not change unless you know what you're doing

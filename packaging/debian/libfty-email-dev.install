@@ -1,0 +1,4 @@
+usr/include/*
+usr/lib/*/libfty_email.so
+usr/lib/*/pkgconfig/libfty_email.pc
+usr/share/man/man3/*

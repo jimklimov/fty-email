@@ -1,8 +1,8 @@
 [Unit]
-Description=bios-agent-smtp service
+Description=fty-email service
 Requires=network.target malamute.service
 After=network.target malamute.service
-Before=bios-agent-asset.service
+Before=fty-asset.service
 PartOf=bios.target
 
 [Service]
@@ -10,7 +10,8 @@ Type=simple
 User=bios
 EnvironmentFile=-/usr/share/bios/etc/default/bios
 EnvironmentFile=-/etc/default/bios
-ExecStart=@prefix@/bin/bios-agent-smtp --config /etc/agent-smtp/bios-agent-smtp.cfg
+Environment="prefix=@prefix@"
+ExecStart=@prefix@/bin/fty-email --config @sysconfdir@/@PACKAGE@/fty-email.cfg
 Restart=always
 
 [Install]

@@ -26,7 +26,7 @@
 @end
 */
 
-#include "agent_smtp_classes.h"
+#include "fty_email_classes.h"
 
 #define BODY_ACTIVE \
 "In the system an alert was detected.\n\

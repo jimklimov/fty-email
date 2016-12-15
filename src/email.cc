@@ -26,7 +26,7 @@
 @end
 */
 
-#include "agent_smtp_classes.h"
+#include "fty_email_classes.h"
 
 #include <sstream>
 #include <fstream>
@@ -43,7 +43,7 @@
 Smtp::Smtp():
     _host {},
     _port { "25" },
-    _from { "bios@eaton.com" },
+    _from { "EatonProductFeedback@eaton.com" },
     _encryption { Enctryption::NONE },
     _username {},
     _password {},
@@ -133,7 +133,7 @@ void Smtp::sendmail(
     for (const auto& it : to)
     {
         zuuid_t *uuid = zuuid_new ();
-        zmsg_t *msg = bios_smtp_encode (
+        zmsg_t *msg = fty_email_encode (
             zuuid_str_canonical (uuid),
             it.c_str (),
             subject.c_str (),
@@ -393,7 +393,7 @@ email_test (bool verbose)
 
     zhash_t *headers = zhash_new ();
     zhash_update (headers, "Foo", (void*) "bar");
-    zmsg_t *email_msg = bios_smtp_encode (
+    zmsg_t *email_msg = fty_email_encode (
             "uuid",
             "to",
             "subject",

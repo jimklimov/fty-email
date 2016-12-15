@@ -19,13 +19,13 @@ AM_CPPFLAGS = \
     ${libzmq_CFLAGS} \
     ${czmq_CFLAGS} \
     ${malamute_CFLAGS} \
-    ${biosproto_CFLAGS} \
+    ${fty_proto_CFLAGS} \
     ${magic_CFLAGS} \
     ${cxxtools_CFLAGS} \
     -D__STDC_FORMAT_MACROS \
     -I$(srcdir)/include
 
-project_libs = ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${biosproto_LIBS} ${magic_LIBS} ${cxxtools_LIBS}
+project_libs = ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${fty_proto_LIBS} ${magic_LIBS} ${cxxtools_LIBS}
 
 SUBDIRS = doc
 DIST_SUBDIRS = doc
@@ -41,7 +41,7 @@ EXTRA_DIST = \
     Findlibzmq.cmake \
     Findczmq.cmake \
     Findmalamute.cmake \
-    Findbiosproto.cmake \
+    Findfty_proto.cmake \
     Findmagic.cmake \
     Findcxxtools.cmake \
     src/alert.h \
@@ -49,7 +49,7 @@ EXTRA_DIST = \
     src/email.h \
     src/elementlist.h \
     src/subprocess.h \
-    src/agent_smtp_classes.h
+    src/fty_email_classes.h
 
 include $(srcdir)/src/Makemodule.am
 

@@ -1,5 +1,5 @@
-agent-smtp (0.1.0) UNRELEASED; urgency=low
+fty-email (1.0.0) UNRELEASED; urgency=low
 
   * Initial packaging.
 
- -- agent-smtp Developers <bios@eaton.com>         Wed, 31 Dec 2014 00:00:00 +0000
+ -- fty-email Developers <eatonipcopensource@eaton.com>  Wed, 31 Dec 2014 00:00:00 +0000

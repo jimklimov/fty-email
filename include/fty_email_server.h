@@ -1,26 +1,26 @@
 /*  =========================================================================
-    bios_smtp_server - Smtp actor
+    fty_email_server - Email actor
 
-    Copyright (C) 2014 - 2015 Eaton
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
+    Copyright (C) 2014 - 2015 Eaton                                        
+                                                                           
+    This program is free software; you can redistribute it and/or modify   
+    it under the terms of the GNU General Public License as published by   
+    the Free Software Foundation; either version 2 of the License, or      
+    (at your option) any later version.                                    
+                                                                           
+    This program is distributed in the hope that it will be useful,        
+    but WITHOUT ANY WARRANTY; without even the implied warranty of         
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
+    GNU General Public License for more details.                           
+                                                                           
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
     =========================================================================
 */
 
-#ifndef BIOS_SMTP_SERVER_H_INCLUDED
-#define BIOS_SMTP_SERVER_H_INCLUDED
+#ifndef FTY_EMAIL_SERVER_H_INCLUDED
+#define FTY_EMAIL_SERVER_H_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,7 +69,7 @@ extern "C" {
 //      sends email to $to, with subject $subject and body $body
 //      $headers state additional headers to be passed to email
 //      $attachment1, $attachment2, ... are names of files to be attached
-//      see bios_smtp_encode to handy way to encode such message
+//      see fty_email_encode to handy way to encode such message
 //
 //      [$uuid|$to|$subject|$body]
 //      sends emails via configured environment to address $to, with subject $subject and body $body
@@ -78,12 +78,12 @@ extern "C" {
 //  REP: subject=SENDMAIL-ERR [$uuid|$error code|$error message]
 //      if email wasn't sent, or there was improper number of arguments
 //      error message comes from msmtp stderr and is NOT normalized!
-AGENT_SMTP_EXPORT void
-   bios_smtp_server (zsock_t *pipe, void* args);
+FTY_EMAIL_EXPORT void
+   fty_email_server (zsock_t *pipe, void* args);
 
 //  Self test of this class
-AGENT_SMTP_EXPORT void
-    bios_smtp_server_test (bool verbose);
+FTY_EMAIL_EXPORT void
+    fty_email_server_test (bool verbose);
 
 // encode email message to zmsg_t
 //  uuid - uuid of the message
@@ -93,8 +93,8 @@ AGENT_SMTP_EXPORT void
 //  body - email body
 //  ... list of files to attach (files with .txt suffix will be added as text files, otherwise binary)
 //  parameter list must be closed by NULL
-AGENT_SMTP_EXPORT zmsg_t *
-bios_smtp_encode (
+FTY_EMAIL_EXPORT zmsg_t *
+    fty_email_encode (
         const char *uuid,
         const char *to,
         const char *subject,

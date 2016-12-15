@@ -1,50 +1,51 @@
 /*  =========================================================================
-    bios_alert_generator_server - Actor evaluating rules
+    fty_sendmail - Sendmail-like interface for 42ity
 
-    Copyright (C) 2016 Eaton
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
+    Copyright (C) 2014 - 2015 Eaton                                        
+                                                                           
+    This program is free software; you can redistribute it and/or modify   
+    it under the terms of the GNU General Public License as published by   
+    the Free Software Foundation; either version 2 of the License, or      
+    (at your option) any later version.                                    
+                                                                           
+    This program is distributed in the hope that it will be useful,        
+    but WITHOUT ANY WARRANTY; without even the implied warranty of         
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
+    GNU General Public License for more details.                           
+                                                                           
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
     =========================================================================
 */
 
 /*
 @header
-    bios-sendmail - Send emails through agent-smtp "SENDMAIL" protocol
+    fty_sendmail - Sendmail-like interface for 42ity
 @discuss
 
     Usage:
-    printf 'From:myself\nSubject:subject\n\nbody' | bios-sendmail joe@example.com\n
+    printf 'From:myself\nSubject:subject\n\nbody' | fty-sendmail joe@example.com\n
 
-    Tools needs agent-smtp configured and running. See man bios_smtp_server and bios_agent_smtp
+    Tools needs fty-email configured and running. See man fty_email_server and fty-email
 
 @end
 */
-#include <getopt.h>
 
-#include "agent_smtp_classes.h"
+#include "fty_email_classes.h"
+
+#include <getopt.h>
 
 void usage ()
 {
-    puts ("Usage: bios-sendmail [options] addr < message\n"
-          "  -c|--config           path to bios-agent-smtp config file\n"
+    puts ("Usage: fty-sendmail [options] addr < message\n"
+          "  -c|--config           path to fty-email config file\n"
           "  -s|--subject          mail subject\n"
           "  -a|--attachment       path to file to be attached to email\n"
-          "Send email through bios-agent-smtp to given recipients in email body.\n"
+          "Send email through fty-email to given recipients in email body.\n"
           "Email body is read from stdin\n"
           "\n"
-          "echo -e \"This is a testing email.\\n\\nyour team\" | bios-sendmail -s text -a ./myfile.tgz joe@example.com\n");
+          "echo -e \"This is a testing email.\\n\\nyour team\" | fty-sendmail -s text -a ./myfile.tgz joe@example.com\n");
 }
 
 int main (int argc, char** argv)
@@ -111,8 +112,8 @@ int main (int argc, char** argv)
     if (help || recipient == NULL || optind < argc) { usage(); exit(1); }
     // end of the options
     
-    char *endpoint = strdup (AGENT_SMTP_ENDPOINT);
-    char *smtp_address = strdup (AGENT_SMTP_ADDRESS);
+    char *endpoint = strdup (FTY_EMAIL_ENDPOINT);
+    char *smtp_address = strdup (FTY_EMAIL_ADDRESS);
     if (config_file) {
         zconfig_t *config = zconfig_load (config_file);
         if (!config) {
@@ -132,17 +133,17 @@ int main (int argc, char** argv)
         zconfig_destroy (&config);
     }
     mlm_client_t *client = mlm_client_new ();
-    char *address = zsys_sprintf ("bios-sendmail.%d", getpid ());
+    char *address = zsys_sprintf ("fty-sendmail.%d", getpid ());
     int r = mlm_client_connect (client, endpoint, 1000, address);
     assert (r != -1);
     if (verbose)
-        zsys_debug ("bios-sendmail:\tendpoint=%s, address=%s, smtp_address=%s", endpoint, address, smtp_address);
+        zsys_debug ("fty-sendmail:\tendpoint=%s, address=%s, smtp_address=%s", endpoint, address, smtp_address);
     zstr_free (&address);
     zstr_free (&endpoint);
     assert (r != -1);
 
     std::string body = read_all (STDIN_FILENO);
-    zmsg_t *mail = bios_smtp_encode (
+    zmsg_t *mail = fty_email_encode (
         "UUID",
         recipient,
         subj.c_str (),

@@ -26,7 +26,7 @@
 @end
 */
 
-#include "agent_smtp_classes.h"
+#include "fty_email_classes.h"
 
 /*
  * \brief Serialzation of Alert

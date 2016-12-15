@@ -16,11 +16,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#include "agent_smtp_classes.h"
+#include "fty_email_classes.h"
 
 #define BUF_SIZE 4096
 // forward declaration of helper functions
-// TODO: move somewhere else
 char * const * _mk_argv(const Argv& vec);
 void _free_argv(char * const * argv);
 std::size_t _argv_hash(Argv args);
