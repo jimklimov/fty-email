@@ -26,7 +26,7 @@
     </use>
 
     <use project = "magic" libname = "libmagic"
-        repository = "https://github.com/threatstack/libmagic"
+        repository = "https://github.com/42ity/libmagic"
         test = "magic_close"
         spec_name = "file-devel"
         >

@@ -116,7 +116,7 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] ; the
     make -j4
     make install
     cd ..
-    git clone --quiet --depth 1 https://github.com/threatstack/libmagic magic.git
+    git clone --quiet --depth 1 https://github.com/42ity/libmagic magic.git
     cd magic.git
     git --no-pager log --oneline -n1
     if [ -e autogen.sh ]; then
