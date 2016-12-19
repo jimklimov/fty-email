@@ -77,10 +77,9 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] ; the
     make -j4
     make install
     cd ..
-    wget https://github.com/zeromq/czmq/archive/v3.0.2.tar.gz
-    tar -xf v3.0.2.tar.gz
-    cd czmq-3.0.2/
-    #git --no-pager log --oneline -n1
+    git clone --quiet --depth 1 -b v3.0.2 https://github.com/zeromq/czmq.git czmq.git
+    cd czmq.git
+    git --no-pager log --oneline -n1
     if [ -e autogen.sh ]; then
         ./autogen.sh 2> /dev/null
     fi
@@ -117,8 +116,21 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] ; the
     make -j4
     make install
     cd ..
-    git clone --quiet --depth 1 https://github.com/threatstack/libmagic magic.git
+    git clone --quiet --depth 1 https://github.com/42ity/libmagic magic.git
     cd magic.git
+    git --no-pager log --oneline -n1
+    if [ -e autogen.sh ]; then
+        ./autogen.sh 2> /dev/null
+    fi
+    if [ -e buildconf ]; then
+        ./buildconf 2> /dev/null
+    fi
+    ./configure "${CONFIG_OPTS[@]}"
+    make -j4
+    make install
+    cd ..
+    git clone --quiet --depth 1 -b 42ity https://github.com/42ity/cxxtools cxxtools.git
+    cd cxxtools.git
     git --no-pager log --oneline -n1
     if [ -e autogen.sh ]; then
         ./autogen.sh 2> /dev/null
@@ -140,31 +152,15 @@ if [ "$BUILD_TYPE" == "default" ] || [ "$BUILD_TYPE" == "default-Werror" ] ; the
     git status -s || true
     echo "==="
 
-    if [ "$BUILD_TYPE" == "default-Werror" ] ; then
-        echo "NOTE: Skipping distcheck for BUILD_TYPE='$BUILD_TYPE'" >&2
-    else
-        export DISTCHECK_CONFIGURE_FLAGS="--enable-drafts=yes ${CONFIG_OPTS[@]}"
-        make VERBOSE=1 DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS" distcheck
+    make check
 
-        echo "=== Are GitIgnores good after 'make distcheck' with drafts? (should have no output below)"
-        git status -s || true
-        echo "==="
-    fi
-
-    # Build and check this project without DRAFT APIs
-    make distclean
     git clean -f
     git reset --hard HEAD
     (
         ./autogen.sh 2> /dev/null
         ./configure --enable-drafts=no "${CONFIG_OPTS[@]}" --with-docs=yes
         make VERBOSE=1 all || exit $?
-        if [ "$BUILD_TYPE" == "default-Werror" ] ; then
-            echo "NOTE: Skipping distcheck for BUILD_TYPE='$BUILD_TYPE'" >&2
-        else
-            export DISTCHECK_CONFIGURE_FLAGS="--enable-drafts=no ${CONFIG_OPTS[@]} --with-docs=yes" && \
-            make VERBOSE=1 DISTCHECK_CONFIGURE_FLAGS="$DISTCHECK_CONFIGURE_FLAGS" distcheck || exit $?
-        fi
+        make check
     ) || exit 1
 
     echo "=== Are GitIgnores good after 'make distcheck' without drafts? (should have no output below)"
