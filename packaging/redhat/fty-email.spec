@@ -61,24 +61,24 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 %description
 fty-email email transport for 42ity (based on msmtp).
 
-%package -n libfty_email1
+%package -n libfty_email0
 Group:          System/Libraries
 Summary:        email transport for 42ity (based on msmtp) shared library
 
-%description -n libfty_email1
+%description -n libfty_email0
 This package contains shared library for fty-email: email transport for 42ity (based on msmtp)
 
-%post -n libfty_email1 -p /sbin/ldconfig
-%postun -n libfty_email1 -p /sbin/ldconfig
+%post -n libfty_email0 -p /sbin/ldconfig
+%postun -n libfty_email0 -p /sbin/ldconfig
 
-%files -n libfty_email1
+%files -n libfty_email0
 %defattr(-,root,root)
 %{_libdir}/libfty_email.so.*
 
 %package devel
 Summary:        email transport for 42ity (based on msmtp)
 Group:          System/Libraries
-Requires:       libfty_email1 = %{version}
+Requires:       libfty_email0 = %{version}
 Requires:       zeromq-devel
 Requires:       czmq-devel
 Requires:       malamute-devel
