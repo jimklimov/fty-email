@@ -2,8 +2,8 @@
 
 server
     verbose = false                                 #   Do verbose logging of activity?
-    alerts = /var/lib/bios/agent-smtp/state-alerts  #   State file path
-    assets = /var/lib/bios/agent-smtp/state         #   State file path
+    alerts = /var/lib/fty/fty-email/state-alerts  #   State file path
+    assets = /var/lib/fty/fty-email/state         #   State file path
 smtp
     server = mail.example.com                       #   SMTP server
     port   = 25                                     #   SMTP server port
