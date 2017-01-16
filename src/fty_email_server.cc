@@ -270,17 +270,21 @@ s_onAlertReceive (
     }
     const char *actions = fty_proto_action (message);
 
-    // add alert to the list of alerts
-    if (  (strcasestr (actions, "EMAIL") == NULL)
-       && (strcasestr (actions, "SMS") == NULL )) {
-        // this means, that for this alert no "SMS/EMAIL" action
-        // -> we are not interested in it;
-        zsys_debug1 ("Email action (%s) is not specified -> smtp agent is not interested in this alert", actions);
-        fty_proto_destroy (p_message);
-        return;
-    }
-    // so, EMAIL is in action -> add to the list of alerts
+    // do we know this alert from past?
     alerts_map_iterator search = alerts.find (std::make_pair (rule_name, asset));
+    if (search == alerts.end ()) {
+        // this is new alert
+        if ( (strcasestr (actions, "EMAIL") == NULL)
+              && (strcasestr (actions, "SMS") == NULL )) {
+            // this means, that for this alert no "SMS/EMAIL" action
+            // -> we are not interested in it;
+            zsys_debug1 ("Email action (%s) is not specified -> smtp agent is not interested in this alert", actions);
+            fty_proto_destroy (p_message);
+            return;
+        }
+    }
+    // add alert to the list of alerts
+    // so, EMAIL is (or was) in action -> add to the list of alerts
     if ( search == alerts.end () ) {
         // such alert is not known -> insert
         bool inserted = false;
