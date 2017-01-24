@@ -1,3 +1,5 @@
+# This is a skeleton created by zproject.
+# You can add hand-written code here.
 save.xml
 # Object files
 *.o
@@ -19,12 +21,19 @@ save.xml
 *.lo
 
 # Executables
-src/agent-smtp_selftest
-src/bios-agent-smtp
+src/fty-email_selftest
+src/fty-email
+src/fty-sendmail
+src/fty_email_selftest
 *.exe
 *.out
 *.app
 core
+
+ # Distcheck workspace and archives
+fty-email-1.0.0/
+fty-email-1.0.0.tar.gz
+fty-email-1.0.0.zip
 
 # Man pages
 doc/*.1
@@ -53,16 +62,40 @@ src/stamp-h1
 src/test-suite.log
 src/.dirstamp
 
+# All cmake files, we don't use cmake
+*.cmake
+CMakeLists.txt
+
 # CMake cache
 CMakeCache.txt
 CMakeFiles/
 CTestTestfile.cmake
 cmake_install.cmake
+compile_commands.json
+DartConfiguration.tcl
 install_manifest.txt
 Testing/
-# All cmake files, we don't use cmake
-*.cmake
-CMakeLists.txt
+
+# Repositories downloaded by CI integration scripts
+libzmq/
+czmq/
+malamute/
+fty-proto/
+magic/
+cxxtools/
+
+# Travis build area
+tmp/
+
+# Valgrind files
+callgrind*
+vgcore*
+
+# Vagrant files
+.vagrant
+
+# CLion / PyCharm
+.idea
 
 # GYP files
 project.Makefile
@@ -81,6 +114,24 @@ src/app/local.properties
 # Android -dependencies
 src/app/jni/output
 
+# Python build directory
+build/
+
+# MSVC build directories
+obj/
+bin/
+*.tlog
+
+# Qt
+*pro.user
+moc_*
+build-*
+bindings/qt/selftest/selftest
+
 # Temporary files
 *.swp
+*.bak
+.test*
+
+# editor backups
 *~

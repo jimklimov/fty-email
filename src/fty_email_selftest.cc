@@ -4,7 +4,7 @@
     Runs all selftests.
 
     -------------------------------------------------------------------------
-    Copyright (C) 2014 - 2015 Eaton                                        
+    Copyright (C) 2014 - 2017 Eaton                                        
                                                                            
     This program is free software; you can redistribute it and/or modify   
     it under the terms of the GNU General Public License as published by   
@@ -36,7 +36,11 @@ typedef struct {
 
 static test_item_t
 all_tests [] = {
+// Tests for stable public classes:
     { "fty_email_server", fty_email_server_test },
+#ifdef FTY_EMAIL_BUILD_DRAFT_API
+    { "private_classes", fty_email_private_selftest },
+#endif // FTY_EMAIL_BUILD_DRAFT_API
     {0, 0}          //  Sentinel
 };
 
@@ -101,12 +105,8 @@ main (int argc, char **argv)
         if (streq (argv [argn], "--list")
         ||  streq (argv [argn], "-l")) {
             puts ("Available tests:");
-            puts ("    alert");
-            puts ("    emailconfiguration");
-            puts ("    email");
-            puts ("    elementlist");
-            puts ("    subprocess");
-            puts ("    fty_email_server");
+            puts ("    fty_email_server\t\t- stable");
+            puts ("    private_classes\t- draft");
             return 0;
         }
         else
@@ -136,6 +136,12 @@ main (int argc, char **argv)
             return 1;
         }
     }
+
+    #ifdef NDEBUG
+        printf(" !!! 'assert' macro is disabled, remove NDEBUG from your compilation definitions.\n");
+        printf(" tests will be meaningless.\n");
+    #endif //
+
     if (test) {
         printf ("Running fty-email test '%s'...\n", test->testname);
         test->test (verbose);
