@@ -1,7 +1,7 @@
 #
 #    fty-email - Email transport for 42ity (based on msmtp)
 #
-#    Copyright (C) 2014 - 2015 Eaton                                        
+#    Copyright (C) 2014 - 2017 Eaton                                        
 #                                                                           
 #    This program is free software; you can redistribute it and/or modify   
 #    it under the terms of the GNU General Public License as published by   
@@ -61,24 +61,24 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 %description
 fty-email email transport for 42ity (based on msmtp).
 
-%package -n libfty_email0
+%package -n libfty_email1
 Group:          System/Libraries
 Summary:        email transport for 42ity (based on msmtp) shared library
 
-%description -n libfty_email0
+%description -n libfty_email1
 This package contains shared library for fty-email: email transport for 42ity (based on msmtp)
 
-%post -n libfty_email0 -p /sbin/ldconfig
-%postun -n libfty_email0 -p /sbin/ldconfig
+%post -n libfty_email1 -p /sbin/ldconfig
+%postun -n libfty_email1 -p /sbin/ldconfig
 
-%files -n libfty_email0
+%files -n libfty_email1
 %defattr(-,root,root)
 %{_libdir}/libfty_email.so.*
 
 %package devel
 Summary:        email transport for 42ity (based on msmtp)
 Group:          System/Libraries
-Requires:       libfty_email0 = %{version}
+Requires:       libfty_email1 = %{version}
 Requires:       zeromq-devel
 Requires:       czmq-devel
 Requires:       malamute-devel
@@ -96,6 +96,7 @@ This package contains development files for fty-email: email transport for 42ity
 %{_libdir}/libfty_email.so
 %{_libdir}/pkgconfig/libfty_email.pc
 %{_mandir}/man3/*
+%{_mandir}/man7/*
 
 %prep
 %setup -q

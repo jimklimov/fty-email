@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2016 Eaton
+# Copyright (C) 2016 - 2017 Eaton
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
-#! \file    bios-device-scan
+#! \file    fty-device-scan
 #  \brief   Helper script to scan an SNMP-capable power device and
 #           report the scan results via e-mail
 #  \author  Tomas Halman <TomasHalman@Eaton.com>
@@ -91,5 +91,5 @@ if [[ ! -s "${TMPFILE}" ]] ; then
 fi
 
 echo "Scanning done, posting e-mail..."
-echo "" | bios-sendmail -s "SNMP scan of ${IP}" -a "${TMPFILE}" "${MAIL}"
+echo "" | fty-sendmail -s "SNMP scan of ${IP}" -a "${TMPFILE}" "${MAIL}"
 rm -f "${TMPFILE}"

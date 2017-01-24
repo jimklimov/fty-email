@@ -26,6 +26,11 @@ src_libfty_email_la_SOURCES = \
     src/fty_email_server.cc \
     src/platform.h
 
+if ENABLE_DRAFTS
+src_libfty_email_la_SOURCES += \
+    src/fty_email_private_selftest.cc
+endif
+
 src_libfty_email_la_CPPFLAGS = ${AM_CPPFLAGS}
 src_libfty_email_la_CXXFLAGS = ${AM_CXXFLAGS}
 

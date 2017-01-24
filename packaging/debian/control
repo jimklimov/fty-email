@@ -1,7 +1,7 @@
 #
 #    fty-email - Email transport for 42ity (based on msmtp)
 #
-#    Copyright (C) 2014 - 2015 Eaton                                        
+#    Copyright (C) 2014 - 2017 Eaton                                        
 #                                                                           
 #    This program is free software; you can redistribute it and/or modify   
 #    it under the terms of the GNU General Public License as published by   
@@ -24,7 +24,6 @@ Maintainer:     fty-email Developers <eatonipcopensource@eaton.com>
 Standards-Version: 3.9.7
 Build-Depends: debhelper (>= 9),
     pkg-config,
-    dh-autoreconf,
     libzmq3-dev,
     libczmq-dev,
     libmlm-dev,
@@ -33,8 +32,8 @@ Build-Depends: debhelper (>= 9),
     libcxxtools-dev,
     systemd,
     dh-systemd,
-Build-Depends-Indep: asciidoc,
-                     xmlto
+    asciidoc-base | asciidoc, xmlto,
+    dh-autoreconf
 
 Package: libfty-email1
 Architecture: any
