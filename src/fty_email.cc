@@ -188,15 +188,20 @@ int main (int argc, char** argv)
 
     if (verbose)
         puts ("START fty-email - Daemon that is responsible for email notification about alerts");
+
     zactor_t *smtp_server = zactor_new (fty_email_server, (void *) NULL);
     if ( !smtp_server ) {
         zsys_error ("cannot start the daemon");
         return -1;
     }
 
+    // create new actor with "sendmail-only" argument here
+
     if (verbose)
         zstr_sendx (smtp_server, "VERBOSE", NULL);
     zstr_sendx (smtp_server, "LOAD", config_file, NULL);
+
+    // configure it here
 
     zloop_t *send_alert_trigger = zloop_new();
     // as 5 minutes is the smallest possible reaction time
