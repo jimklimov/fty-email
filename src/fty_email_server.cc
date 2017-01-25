@@ -547,7 +547,7 @@ fty_email_encode (
 void
 fty_email_server (zsock_t *pipe, void* args)
 {
-    // bool sendmail_only = (args && streq (args, "sendmail-only"));
+    bool sendmail_only = (args && streq ((char*) args, "sendmail-only"));
     bool verbose = false;
     char* name = NULL;
     char *endpoint = NULL;
@@ -680,8 +680,9 @@ fty_email_server (zsock_t *pipe, void* args)
                         endpoint = strdup (zconfig_get (config, "malamute/endpoint", NULL));
                         zstr_free (&name);
                         name = strdup (zconfig_get (config, "malamute/address", NULL));
-                        // if (sendmail_only)
-                        //      add -sendmail to address
+                        if (sendmail_only)
+                            name = strcat(name, "-sendmail-only");
+                                                   
                         uint32_t timeout = 1000;
                         sscanf ("%" SCNu32, zconfig_get (config, "malamute/timeout", "1000"), &timeout);
 
@@ -696,33 +697,38 @@ fty_email_server (zsock_t *pipe, void* args)
                         zsys_warning ("(agent-smtp): malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
                 }
 
-                // skip if sendmail_only is true
-                if (zconfig_locate (config, "malamute/consumers")) {
-                    if (mlm_client_connected (client)) {
-                        zconfig_t *consumers = zconfig_locate (config, "malamute/consumers");
-                        for (zconfig_t *child = zconfig_child (consumers);
-                                        child != NULL;
-                                        child = zconfig_next (child))
+                // skip if sendmail_only 
+                if (!sendmail_only)
+                {
+                    if (zconfig_locate (config, "malamute/consumers"))
+                    {
+                        if (mlm_client_connected (client))
                         {
-                            const char* stream = zconfig_name (child);
-                            const char* pattern = zconfig_value (child);
-                            zsys_debug1 ("%s:\tstream/pattern=%s/%s", name, stream, pattern);
+                            zconfig_t *consumers = zconfig_locate (config, "malamute/consumers");
+                            for (zconfig_t *child = zconfig_child (consumers);
+                                 child != NULL;
+                                 child = zconfig_next (child))
+                            {
+                                const char* stream = zconfig_name (child);
+                                const char* pattern = zconfig_value (child);
+                                zsys_debug1 ("%s:\tstream/pattern=%s/%s", name, stream, pattern);
 
-                            // check if we're already connected to not let replay log to explode :)
-                            if (streams.count (std::make_tuple (stream, pattern)) == 1)
-                                continue;
+                                // check if we're already connected to not let replay log to explode :)
+                                if (streams.count (std::make_tuple (stream, pattern)) == 1)
+                                    continue;
 
-                            int r = mlm_client_set_consumer (client, stream, pattern);
-                            if (r == -1)
-                                zsys_warning ("%s:\tcannot subscribe on %s/%s", name, stream, pattern);
-                            else
-                                streams.insert (std::make_tuple (stream, pattern));
-                        }
-                    }
-                    else
-                        zsys_warning ("(agent-smtp): client is not connected to broker, can't subscribe to the stream!");
+                                int r = mlm_client_set_consumer (client, stream, pattern);
+                                if (r == -1)
+                                    zsys_warning ("%s:\tcannot subscribe on %s/%s", name, stream, pattern);
+                                else
+                                    streams.insert (std::make_tuple (stream, pattern));
+                            }
+                        }                    
+                        else
+                            zsys_warning ("(agent-smtp): client is not connected to broker, can't subscribe to the stream!");
+                    }                    
                 }
-
+                
                 if (zconfig_get (config, "malamute/producer", NULL)) {
                     if (!mlm_client_connected (client))
                         zsys_warning ("(agent-smtp): client is not connected to broker, can't publish on the stream!");
@@ -970,7 +976,7 @@ static void s_send_asset_message (
         zhash_insert (ext, "contact_phone", (void *)phone);
     zmsg_t *msg = fty_proto_encode_asset (aux, asset_name, operation, ext);
     assert (msg);
-    int rv = mlm_client_send (producer, asset_name, &msg);
+    int rv = mlm_client_send(producer, asset_name, &msg);
     assert ( rv == 0 );
     if ( verbose )
         zsys_info ("asset message was send");
@@ -1335,6 +1341,7 @@ fty_email_server_test (bool verbose)
     zstr_sendx (server, "BIND", endpoint, NULL);
     if ( verbose )
         zsys_info ("malamute started");
+    
     // smtp server
     zactor_t *smtp_server = zactor_new (fty_email_server, NULL);
     assert ( smtp_server != NULL );
@@ -1844,6 +1851,15 @@ fty_email_server_test (bool verbose)
     mlm_client_destroy (&asset_producer);
     mlm_client_destroy (&alert_producer);
     zactor_destroy (&server);
+
+
+    // smtp server send mail only
+    zactor_t *send_mail_only_server = zactor_new (fty_email_server, (void*) "sendmail-only");
+    assert ( send_mail_only_server != NULL );
+    if (verbose)
+        zstr_send (send_mail_only_server, "VERBOSE");
+    
+    zactor_destroy(&send_mail_only_server);
 
     printf ("OK\n");
 }

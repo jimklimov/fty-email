@@ -191,17 +191,24 @@ int main (int argc, char** argv)
 
     zactor_t *smtp_server = zactor_new (fty_email_server, (void *) NULL);
     if ( !smtp_server ) {
-        zsys_error ("cannot start the daemon");
+        zsys_error ("smpt_server: cannot start the daemon");
         return -1;
     }
 
-    // create new actor with "sendmail-only" argument here
+    // new actor with "sendmail-only" 
+    zactor_t *send_mail_only_server = zactor_new (fty_email_server, (void *) "sendmail-only");
+    if ( !send_mail_only_server ) {
+        zsys_error ("send_mail_only_server: cannot start the daemon");
+        return -1;
+    }
 
     if (verbose)
         zstr_sendx (smtp_server, "VERBOSE", NULL);
     zstr_sendx (smtp_server, "LOAD", config_file, NULL);
 
-    // configure it here
+    if (verbose)
+        zstr_sendx (send_mail_only_server, "VERBOSE", NULL);
+    zstr_sendx (send_mail_only_server, "LOAD", config_file, NULL);
 
     zloop_t *send_alert_trigger = zloop_new();
     // as 5 minutes is the smallest possible reaction time
