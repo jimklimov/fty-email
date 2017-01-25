@@ -1846,20 +1846,25 @@ fty_email_server_test (bool verbose)
     test10 (verbose, endpoint, server, asset_producer);
 
     // clean up after the test
+
+
+    // smtp server send mail only
+    zactor_t *send_mail_only_server = zactor_new (fty_email_server, (void*) "sendmail-only");
+    assert ( send_mail_only_server != NULL );
+
+    if (verbose)
+    {
+        zsys_info ("smtp-sedmail-only server started");
+        zstr_send (send_mail_only_server, "VERBOSE");
+    }
+      
+    zactor_destroy(&send_mail_only_server);
     zactor_destroy (&smtp_server);
     mlm_client_destroy (&btest_reader);
     mlm_client_destroy (&asset_producer);
     mlm_client_destroy (&alert_producer);
     zactor_destroy (&server);
 
-
-    // smtp server send mail only
-    zactor_t *send_mail_only_server = zactor_new (fty_email_server, (void*) "sendmail-only");
-    assert ( send_mail_only_server != NULL );
-    if (verbose)
-        zstr_send (send_mail_only_server, "VERBOSE");
     
-    zactor_destroy(&send_mail_only_server);
-
     printf ("OK\n");
 }

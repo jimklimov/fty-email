@@ -218,5 +218,6 @@ int main (int argc, char** argv)
     zconfig_destroy (&config);
     zloop_destroy (&send_alert_trigger);
     zactor_destroy (&smtp_server);
+    zactor_destroy (&send_mail_only_server);
     return 0;
 }
