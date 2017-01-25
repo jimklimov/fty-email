@@ -78,6 +78,9 @@ extern "C" {
 //  REP: subject=SENDMAIL-ERR [$uuid|$error code|$error message]
 //      if email wasn't sent, or there was improper number of arguments
 //      error message comes from msmtp stderr and is NOT normalized!
+//
+//  args:
+//      "sendmail-only"      : ignore consumer/ part, connect as $(malamute/address)-sendmail
 FTY_EMAIL_EXPORT void
    fty_email_server (zsock_t *pipe, void* args);
 

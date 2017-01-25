@@ -543,6 +543,7 @@ fty_email_encode (
 void
 fty_email_server (zsock_t *pipe, void* args)
 {
+    // bool sendmail_only = (args && streq (args, "sendmail-only"));
     bool verbose = false;
     char* name = NULL;
     char *endpoint = NULL;
@@ -675,6 +676,8 @@ fty_email_server (zsock_t *pipe, void* args)
                         endpoint = strdup (zconfig_get (config, "malamute/endpoint", NULL));
                         zstr_free (&name);
                         name = strdup (zconfig_get (config, "malamute/address", NULL));
+                        // if (sendmail_only)
+                        //      add -sendmail to address
                         uint32_t timeout = 1000;
                         sscanf ("%" SCNu32, zconfig_get (config, "malamute/timeout", "1000"), &timeout);
 
@@ -689,6 +692,7 @@ fty_email_server (zsock_t *pipe, void* args)
                         zsys_warning ("(agent-smtp): malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
                 }
 
+                // skip if sendmail_only is true
                 if (zconfig_locate (config, "malamute/consumers")) {
                     if (mlm_client_connected (client)) {
                         zconfig_t *consumers = zconfig_locate (config, "malamute/consumers");
