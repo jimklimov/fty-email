@@ -1855,10 +1855,8 @@ fty_email_server_test (bool verbose)
     if (verbose)
     {
         zsys_info ("smtp-sedmail-only server started");
-        zstr_send (smtp_server, "VERBOSE");
+        zstr_send (send_mail_only_server, "VERBOSE");
     }
-    zstr_sendx (send_mail_only_server, "LOAD", "src/smtp.cfg", NULL);
-    zstr_sendx (send_mail_only_server, "_MSMTP_TEST", "btest-reader", NULL);
       
     zactor_destroy(&send_mail_only_server);
     zactor_destroy (&smtp_server);
