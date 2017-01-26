@@ -30,7 +30,7 @@
 
 #include "elementlist.h"
 
-const std::string ElementList::DEFAULT_PATH_TO_FILE = "/var/bios/agent-smtp/state";
+const std::string ElementList::DEFAULT_PATH_TO_FILE = "/var/lib/bios/agent-smtp/state";
 
 void operator<<= (cxxtools::SerializationInfo& si, const Element& element)
 {
