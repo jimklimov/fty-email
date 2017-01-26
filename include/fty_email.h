@@ -27,6 +27,7 @@
 
 //  Add your own public definitions here, if you need them
 #define FTY_EMAIL_ADDRESS  "fty-email"
+#define FTY_EMAIL_ADDRESS_SENDMAIL_ONLY  "fty-email-sendmail-only"
 #define FTY_EMAIL_ENDPOINT "ipc://@/malamute"
 #define FTY_EMAIL_CONFIG_FILE "/etc/fty-email/fty-email.cfg"
 
