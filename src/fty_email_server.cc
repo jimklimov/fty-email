@@ -586,6 +586,12 @@ fty_email_server (zsock_t *pipe, void* args)
                 break;
             }
             else
+            if (streq (cmd, "VERBOSE")) {
+                verbose = true;
+                agent_smtp_verbose = true;
+                zstr_free (&cmd);
+            }        
+            else
             if (streq (cmd, "LOAD")) {
                 char * config_file = zmsg_popstr (msg);
                 zsys_debug1 ("(agent-smtp):\tLOAD: %s", config_file);
@@ -614,13 +620,15 @@ fty_email_server (zsock_t *pipe, void* args)
                 // MSMTP_PATH
                 if (s_get (config, "smtp/msmtppath", NULL)) {
                     smtp.msmtp_path (s_get (config, "smtp/msmtppath", NULL));
-                }
+                }                
                 //STATE_FILE_PATH_ASSETS
-                if (s_get (config, "server/assets", NULL)) {
-                    const char *path = s_get (config, "server/assets", NULL);
-                    elements.setFile (path);
-                    // NOTE1234: this implies, that sms_gateway should be specified before !
-                    elements.load(sms_gateway?sms_gateway : "");
+                if (!sendmail_only) { 
+                    if (s_get (config, "server/assets", NULL)) {
+                        const char *path = s_get (config, "server/assets", NULL);
+                        elements.setFile (path);
+                        // NOTE1234: this implies, that sms_gateway should be specified before !
+                        elements.load(sms_gateway?sms_gateway : "");
+                    }
                 }
                 //STATE_FILE_PATH_ALERTS
                 if (s_get (config, "server/alerts", NULL)) {
@@ -874,7 +882,8 @@ fty_email_server (zsock_t *pipe, void* args)
     }
 
     // save info to persistence before I die
-    elements.save();
+    if (!sendmail_only)
+        elements.save();
     save_alerts_state (alerts, alerts_state_file);
     zstr_free (&name);
     zstr_free (&endpoint);
@@ -1857,6 +1866,7 @@ fty_email_server_test (bool verbose)
         zsys_info ("smtp-sedmail-only server started");
         zstr_send (send_mail_only_server, "VERBOSE");
     }
+
       
     zactor_destroy(&send_mail_only_server);
     zactor_destroy (&smtp_server);
