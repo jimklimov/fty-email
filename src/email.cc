@@ -143,6 +143,11 @@ void Smtp::sendmail(
         );
         zuuid_destroy (&uuid);
 
+        // MVY: this is weird, horrible, ugly and hard to use.
+        //      Need to rething API for smtp_encode
+        //      BUT .. NEVER pass message with first uuid frame to msg2email
+        //      or BAD things will happen
+        char* cuuid = zmsg_popstr (msg); zstr_free (&cuuid);
         sendmail (msg2email (&msg));
     }
 }
