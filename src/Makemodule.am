@@ -61,7 +61,8 @@ bin_PROGRAMS += src/fty-email
 src_fty_email_CPPFLAGS = ${AM_CPPFLAGS}
 src_fty_email_LDADD = ${program_libs}
 src_fty_email_SOURCES = src/fty_email.cc
-src_fty_email_config_DATA = src/fty-email.cfg
+src_fty_email_config_DATA =
+src_fty_email_config_DATA += src/fty-email.cfg
 src_fty_email_configdir = $(sysconfdir)/fty-email
 if WITH_SYSTEMD_UNITS
 systemdsystemunit_DATA += src/fty-email.service
