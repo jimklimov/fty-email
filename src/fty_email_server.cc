@@ -687,10 +687,12 @@ fty_email_server (zsock_t *pipe, void* args)
                         zstr_free (&endpoint);
                         endpoint = strdup (zconfig_get (config, "malamute/endpoint", NULL));
                         zstr_free (&name);
-                        name = strdup (zconfig_get (config, "malamute/address", NULL));
-                        if (sendmail_only)
-                            name = strcat(name, "-sendmail-only");
-                                                   
+                        name = strdup (zconfig_get (config, "malamute/address", "fty-email"));
+                        if (sendmail_only) {
+                            char *oldname = name;
+                            name = zsys_sprintf ("%s-sendmail-only", oldname);
+                            zstr_free (&oldname);
+                        }
                         uint32_t timeout = 1000;
                         sscanf ("%" SCNu32, zconfig_get (config, "malamute/timeout", "1000"), &timeout);
 
