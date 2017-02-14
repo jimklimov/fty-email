@@ -262,7 +262,7 @@ s_onAlertReceive (
     std::transform (rule_name.begin(), rule_name.end(), rule_name.begin(), ::tolower);
     const char *state = fty_proto_state (message);
     const char *severity = fty_proto_severity (message);
-    const char *asset = fty_proto_element_src (message);
+    const char *asset = fty_proto_name (message);
     const char *description = fty_proto_description (message);
     int64_t timestamp = fty_proto_time (message);
     if (timestamp <= 0) {
@@ -1027,7 +1027,7 @@ test9 (bool verbose, const char *endpoint)
     // this alert is supposed to be in the file,
     // as action EMAIL is specified
     zmsg_t *msg = fty_proto_encode_alert (NULL, "SOME_RULE", "SOME_ASSET", \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS/EMAIL");
+                                          "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS/EMAIL", 600);
     assert (msg);
     rv = mlm_client_send (alert_producer, "nobody-cares", &msg);
     assert ( rv != -1 );
@@ -1037,7 +1037,7 @@ test9 (bool verbose, const char *endpoint)
     // this alert is NOT supposed to be in the file,
     // as action EMAIL is NOT specified
     msg = fty_proto_encode_alert (NULL, "SOME_RULE1", "SOME_ASSET", \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS", 600);
     assert (msg);
     if ( verbose )
         zsys_info ("alert message was send");
@@ -1415,7 +1415,7 @@ fty_email_server_test (bool verbose)
 
     //      2. send alert message
     msg = fty_proto_encode_alert (NULL, "NY_RULE", asset_name, \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     std::string atopic = "NY_RULE/CRITICAL@" + std::string (asset_name);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
@@ -1471,7 +1471,7 @@ fty_email_server_test (bool verbose)
 
     //      2. send alert message
     msg = fty_proto_encode_alert (NULL, "NY_RULE", asset_name1, \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     std::string atopic1 = "NY_RULE/CRITICAL@" + std::string (asset_name1);
     mlm_client_send (alert_producer, atopic1.c_str(), &msg);
@@ -1504,7 +1504,7 @@ fty_email_server_test (bool verbose)
 
     //      2. send alert message
     msg = fty_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     std::string atopic3 = "NY_RULE/CRITICAL@" + std::string (asset_name3);
     mlm_client_send (alert_producer, atopic3.c_str(), &msg);
@@ -1524,7 +1524,7 @@ fty_email_server_test (bool verbose)
     //      1. send an alert on the already known asset
     atopic = "Scenario4/CRITICAL@" + std::string (asset_name);
     msg = fty_proto_encode_alert (NULL, "Scenario4", asset_name, \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
@@ -1541,7 +1541,7 @@ fty_email_server_test (bool verbose)
 
     //      4. send an alert on the already known asset
     msg = fty_proto_encode_alert (NULL, "Scenario4", asset_name, \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
@@ -1559,7 +1559,7 @@ fty_email_server_test (bool verbose)
     // scenario 5: alert without action "EMAIL"
     //      1. send alert message
     msg = fty_proto_encode_alert (NULL, "NY_RULE", asset_name3, \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "SMS", 600);
     assert (msg);
     mlm_client_send (alert_producer, atopic3.c_str(), &msg);
     if (verbose)
@@ -1601,7 +1601,7 @@ fty_email_server_test (bool verbose)
 
     //      2. send alert message
     msg = fty_proto_encode_alert (NULL, rule_name6, asset_name6, \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
     assert ( rv != -1 );
@@ -1629,7 +1629,7 @@ fty_email_server_test (bool verbose)
 
     //      5. send alert message again
     msg = fty_proto_encode_alert (NULL, rule_name6, asset_name6, \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
     assert ( rv != -1 );
@@ -1682,7 +1682,7 @@ fty_email_server_test (bool verbose)
     //      1. send an alert on the already known asset
     atopic = "Scenario7/CRITICAL@" + std::string (asset_name);
     msg = fty_proto_encode_alert (NULL, "Scenario7", asset_name, \
-        "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACTIVE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
@@ -1699,7 +1699,7 @@ fty_email_server_test (bool verbose)
 
     //      4. send an alert on the already known asset
     msg = fty_proto_encode_alert (NULL, "Scenario4", asset_name, \
-        "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
@@ -1719,7 +1719,7 @@ fty_email_server_test (bool verbose)
 
     //      7. send an alert again
     msg = fty_proto_encode_alert (NULL, "Scenario4", asset_name, \
-        "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL");
+                                  "ACK-SILENCE","CRITICAL","ASDFKLHJH", 123456, "EMAIL", 600);
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
@@ -1762,7 +1762,7 @@ fty_email_server_test (bool verbose)
 
     //      2. send alert message
     msg = fty_proto_encode_alert (NULL, rule_name8, asset_name8, \
-        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
+                                  "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS", 600);
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic6.c_str(), &msg);
     assert ( rv != -1 );
@@ -1790,7 +1790,7 @@ fty_email_server_test (bool verbose)
 
     //      5. send alert message again second
     msg = fty_proto_encode_alert (NULL, rule_name8, asset_name8, \
-        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS");
+                                  "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL/SMS", 600);
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
     assert ( rv != -1 );
@@ -1810,7 +1810,7 @@ fty_email_server_test (bool verbose)
 
     //      8. send alert message again third time
     msg = fty_proto_encode_alert (NULL, rule_name8, asset_name8, \
-        "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL");
+                                  "ACTIVE","WARNING","Default load in ups ROZ.UPS36 is high", ::time (NULL), "EMAIL", 600);
     assert (msg);
     rv = mlm_client_send (alert_producer, alert_topic8.c_str(), &msg);
     assert ( rv != -1 );
