@@ -35,7 +35,7 @@ class Alert {
     Alert () : time(0), last_email_notification(0), last_update(0), last_sms_notification(0) {};
     Alert (fty_proto_t *message) :
             rule (fty_proto_rule (message)),
-            element (fty_proto_element_src (message)),
+            element (fty_proto_name (message)),
             state (fty_proto_state (message)),
             severity (fty_proto_severity (message)),
             description (fty_proto_description (message)),
