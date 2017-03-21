@@ -92,6 +92,11 @@ int main (int argc, char** argv)
 
     // get options
     int c;
+// Some systems define struct option with non-"const" "char *"
+#if defined(__GNUC__) || defined(__GNUG__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#endif
     struct option long_options[] =
     {
         {"help",       no_argument,       &help,    1},
@@ -102,8 +107,12 @@ int main (int argc, char** argv)
         {"from",       required_argument, 0,'f'},
         {"encryption", required_argument, 0,'e'},
         {"config", required_argument, 0,'c'},
-        {0, 0, 0, 0}
+        {NULL, 0, 0, 0}
     };
+#if defined(__GNUC__) || defined(__GNUG__)
+#pragma GCC diagnostic pop
+#endif
+
     while(true) {
 
         int option_index = 0;

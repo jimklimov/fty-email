@@ -56,9 +56,14 @@ int main (int argc, char** argv)
     std::vector<std::string> attachments;
     const char *recipient = NULL;
     std::string subj;
-    
+
     // get options
     int c;
+// Some systems define struct option with non-"const" "char *"
+#if defined(__GNUC__) || defined(__GNUG__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#endif
     struct option long_options[] =
     {
         {"help",       no_argument,       &help,    1},
@@ -66,8 +71,11 @@ int main (int argc, char** argv)
         {"config",     required_argument, 0,'c'},
         {"subject",    required_argument, 0,'s'},
         {"attachment", required_argument, 0,'a'},
-        {0, 0, 0, 0}
+        {NULL, 0, 0, 0}
     };
+#if defined(__GNUC__) || defined(__GNUG__)
+#pragma GCC diagnostic pop
+#endif
 
     char *config_file = NULL;
     char *p = NULL;
