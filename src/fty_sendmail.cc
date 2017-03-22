@@ -56,18 +56,27 @@ int main (int argc, char** argv)
     std::vector<std::string> attachments;
     const char *recipient = NULL;
     std::string subj;
-    
+
     // get options
     int c;
-    struct option long_options[] =
+// Some systems define struct option with non-"const" "char *"
+#if defined(__GNUC__) || defined(__GNUG__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#endif
+    static const char *short_options = "vc:s:a:";
+    static struct option long_options[] =
     {
         {"help",       no_argument,       &help,    1},
         {"verbose",    no_argument,       &verbose, 1},
         {"config",     required_argument, 0,'c'},
         {"subject",    required_argument, 0,'s'},
         {"attachment", required_argument, 0,'a'},
-        {0, 0, 0, 0}
+        {NULL, 0, 0, 0}
     };
+#if defined(__GNUC__) || defined(__GNUG__)
+#pragma GCC diagnostic pop
+#endif
 
     char *config_file = NULL;
     char *p = NULL;
@@ -75,7 +84,7 @@ int main (int argc, char** argv)
     while(true) {
 
         int option_index = 0;
-        c = getopt_long (argc, argv, "vc:s:a:", long_options, &option_index);
+        c = getopt_long (argc, argv, short_options, long_options, &option_index);
         if (c == -1) break;
         switch (c) {
         case 'v':
