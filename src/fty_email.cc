@@ -157,8 +157,8 @@ int main (int argc, char** argv)
         zsys_info ("No config file specified, falling back to enviromental variables.\nNote this is deprecated and will be removed!");
         config = zconfig_new ("root", NULL);
         zconfig_put (config, "server/verbose", verbose? "1" : "0");
-        zconfig_put (config, "server/assets", "/var/lib/bios/agent-smtp/state");
-        zconfig_put (config, "server/alerts", "/var/lib/bios/agent-smtp/state-alerts");
+        zconfig_put (config, "server/assets", "/var/lib/fty/fty-email/state");
+        zconfig_put (config, "server/alerts", "/var/lib/fty/fty-email/state-alerts");
 
         zconfig_put (config, "smtp/server", smtpserver);
         zconfig_put (config, "smtp/port", smtpport ? smtpport : "25");
