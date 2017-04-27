@@ -54,7 +54,7 @@ BuildRequires:  zeromq-devel
 BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
 BuildRequires:  fty-proto-devel
-BuildRequires:  magic-devel
+BuildRequires:  file-devel
 BuildRequires:  cxxtools-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
@@ -83,7 +83,7 @@ Requires:       zeromq-devel
 Requires:       czmq-devel
 Requires:       malamute-devel
 Requires:       fty-proto-devel
-Requires:       magic-devel
+Requires:       file-devel
 Requires:       cxxtools-devel
 
 %description devel
