@@ -1675,7 +1675,7 @@ fty_email_server_test (bool verbose)
     //FIXME: use cxxtools::MimeMultipart, rewrite
     //assert ( expectedBody.compare(newBody) == 0 );
 
-    // intentionally left formatting intact, so git blame will reffer to original author ;-)
+    // intentionally left formatting intact, so git blame will refer to original author ;-)
     if (verbose) {
     zsys_debug (" scenario 7 ===============================================");
     // scenario 7:
