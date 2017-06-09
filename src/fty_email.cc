@@ -152,7 +152,7 @@ int main (int argc, char** argv)
     }
     if (help) { usage(); exit(1); }
     // end of the options
-    
+
     if (!config_file) {
         zsys_info ("No config file specified, falling back to enviromental variables.\nNote this is deprecated and will be removed!");
         config = zconfig_new ("root", NULL);
@@ -205,7 +205,7 @@ int main (int argc, char** argv)
         return -1;
     }
 
-    // new actor with "sendmail-only" 
+    // new actor with "sendmail-only"
     zactor_t *send_mail_only_server = zactor_new (fty_email_server, (void *) "sendmail-only");
     if ( !send_mail_only_server ) {
         zsys_error ("send_mail_only_server: cannot start the daemon");

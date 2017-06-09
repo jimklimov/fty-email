@@ -528,7 +528,7 @@ fty_email_encode (
         zframe_t *frame = zhash_pack(headers);
         zmsg_append (msg, &frame);
     }
-    
+
     va_list args;
     va_start (args, body);
     const char* path = va_arg (args, const char*);
@@ -539,7 +539,7 @@ fty_email_encode (
     }
 
     va_end (args);
-    
+
     return msg;
 }
 
@@ -590,7 +590,7 @@ fty_email_server (zsock_t *pipe, void* args)
                 verbose = true;
                 agent_smtp_verbose = true;
                 zstr_free (&cmd);
-            }        
+            }
             else
             if (streq (cmd, "LOAD")) {
                 char * config_file = zmsg_popstr (msg);
@@ -620,9 +620,9 @@ fty_email_server (zsock_t *pipe, void* args)
                 // MSMTP_PATH
                 if (s_get (config, "smtp/msmtppath", NULL)) {
                     smtp.msmtp_path (s_get (config, "smtp/msmtppath", NULL));
-                }                
+                }
                 //STATE_FILE_PATH_ASSETS
-                if (!sendmail_only) { 
+                if (!sendmail_only) {
                     if (s_get (config, "server/assets", NULL)) {
                         const char *path = s_get (config, "server/assets", NULL);
                         elements.setFile (path);
@@ -707,7 +707,7 @@ fty_email_server (zsock_t *pipe, void* args)
                         zsys_warning ("(agent-smtp): malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
                 }
 
-                // skip if sendmail_only 
+                // skip if sendmail_only
                 if (!sendmail_only)
                 {
                     if (zconfig_locate (config, "malamute/consumers"))
@@ -733,12 +733,12 @@ fty_email_server (zsock_t *pipe, void* args)
                                 else
                                     streams.insert (std::make_tuple (stream, pattern));
                             }
-                        }                    
+                        }
                         else
                             zsys_warning ("(agent-smtp): client is not connected to broker, can't subscribe to the stream!");
-                    }                    
+                    }
                 }
-                
+
                 if (zconfig_get (config, "malamute/producer", NULL)) {
                     if (!mlm_client_connected (client))
                         zsys_warning ("(agent-smtp): client is not connected to broker, can't publish on the stream!");
@@ -1329,7 +1329,7 @@ fty_email_server_test (bool verbose)
 
     assert (streq ((char*)zhash_lookup (headers, "Foo"), "bar"));
     zhash_destroy (&headers);
-    
+
     char *file1 = zmsg_popstr (email_msg);
     char *file2 = zmsg_popstr (email_msg);
     char *file3 = zmsg_popstr (email_msg);
@@ -1352,7 +1352,7 @@ fty_email_server_test (bool verbose)
     zstr_sendx (server, "BIND", endpoint, NULL);
     if ( verbose )
         zsys_info ("malamute started");
-    
+
     // smtp server
     zactor_t *smtp_server = zactor_new (fty_email_server, NULL);
     assert ( smtp_server != NULL );
@@ -1869,7 +1869,6 @@ fty_email_server_test (bool verbose)
         zstr_send (send_mail_only_server, "VERBOSE");
     }
 
-      
     zactor_destroy(&send_mail_only_server);
     zactor_destroy (&smtp_server);
     mlm_client_destroy (&btest_reader);
@@ -1877,6 +1876,5 @@ fty_email_server_test (bool verbose)
     mlm_client_destroy (&alert_producer);
     zactor_destroy (&server);
 
-    
     printf ("OK\n");
 }
