@@ -364,6 +364,21 @@ email_test (bool verbose)
 
     //  @selftest
 
+    // Note: If your selftest reads SCMed fixture data, please keep it in
+    // src/selftest-ro; if your test creates filesystem objects, please
+    // do so under src/selftest-rw. They are defined below along with a
+    // usecase for the variables (assert) to make compilers happy.
+    const char *SELFTEST_DIR_RO = "src/selftest-ro";
+    const char *SELFTEST_DIR_RW = "src/selftest-rw";
+    assert (SELFTEST_DIR_RO);
+    assert (SELFTEST_DIR_RW);
+    // Uncomment these to use C++ strings in C++ selftest code:
+    std::string str_SELFTEST_DIR_RO = std::string(SELFTEST_DIR_RO);
+    std::string str_SELFTEST_DIR_RW = std::string(SELFTEST_DIR_RW);
+    assert ( (str_SELFTEST_DIR_RO != "") );
+    assert ( (str_SELFTEST_DIR_RW != "") );
+    // NOTE that for "char*" context you need (str_SELFTEST_DIR_RO + "/myfilename").c_str()
+
     // test case 01 - normal operation
     std::string to = sms_email_address ("0#####@hyper.mobile", "+79 (0) 123456");
     assert (to == "023456@hyper.mobile");
@@ -404,18 +419,18 @@ email_test (bool verbose)
             "subject",
             headers,
             "body",
-            "file1",
-            "file2.txt",
+            (str_SELFTEST_DIR_RW + "/file1").c_str(),
+            (str_SELFTEST_DIR_RW + "/file2.txt").c_str(),
             NULL);
     assert (email_msg);
     zhash_destroy (&headers);
-    std::ofstream ofile1 {"file1", std::ios::binary};
+    std::ofstream ofile1 {str_SELFTEST_DIR_RW + "/file1", std::ios::binary};
     ofile1.write ("MZ\0\0\0\0\0\0", 8);
     ofile1.flush ();
     ofile1.close ();
 
-    std::ofstream ofile2 {"file2.txt"};
-    ofile2 << "file2.txt";
+    std::ofstream ofile2 {str_SELFTEST_DIR_RW + "/file2.txt"};
+    ofile2 << ( str_SELFTEST_DIR_RW + "/file2.txt" );
     ofile2.flush ();
     ofile2.close ();
 

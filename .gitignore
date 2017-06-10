@@ -135,11 +135,3 @@ bindings/qt/selftest/selftest
 
 # editor backups
 *~
-
-# test files
-file1
-file2.txt
-kkk_alerts.xtx
-kkk_assets.xtx
-test10_alerts.txt
-test10_assets_file.txt

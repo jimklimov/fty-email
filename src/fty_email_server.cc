@@ -1002,6 +1002,22 @@ test9 (bool verbose, const char *endpoint)
     // test, that alert state file works correctly
     if ( verbose )
         zsys_info ("Scenario %s", __func__);
+
+    // Note: If your selftest reads SCMed fixture data, please keep it in
+    // src/selftest-ro; if your test creates filesystem objects, please
+    // do so under src/selftest-rw. They are defined below along with a
+    // usecase for the variables (assert) to make compilers happy.
+    const char *SELFTEST_DIR_RO = "src/selftest-ro";
+    const char *SELFTEST_DIR_RW = "src/selftest-rw";
+    assert (SELFTEST_DIR_RO);
+    assert (SELFTEST_DIR_RW);
+    // Uncomment these to use C++ strings in C++ selftest code:
+    // std::string str_SELFTEST_DIR_RO = std::string(SELFTEST_DIR_RO);
+    // std::string str_SELFTEST_DIR_RW = std::string(SELFTEST_DIR_RW);
+    // assert ( (str_SELFTEST_DIR_RO != "") );
+    // assert ( (str_SELFTEST_DIR_RW != "") );
+    // NOTE that for "char*" context you need (str_SELFTEST_DIR_RO + "/myfilename").c_str()
+
     // malamute broker
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute_test9");
     assert ( server != NULL );
@@ -1010,8 +1026,10 @@ test9 (bool verbose, const char *endpoint)
         zsys_info ("malamute started");
 
     // smtp server
-    const char *alerts_file = "test9_alerts.xtx";
-    const char *assets_file = "test9_assets.xtx";
+    char *alerts_file = zsys_sprintf ("%s/test9_alerts.xtx", SELFTEST_DIR_RW);
+    assert (alerts_file!=NULL);
+    char *assets_file = zsys_sprintf ("%s/test9_assets.xtx", SELFTEST_DIR_RW);
+    assert (assets_file!=NULL);
     zactor_t *smtp_server = create_smtp_server (
         verbose, endpoint, assets_file, alerts_file, "agent-smtp-test9", true, true);
 
@@ -1066,6 +1084,8 @@ test9 (bool verbose, const char *endpoint)
     zactor_destroy (&server);
     std::remove (alerts_file);
     std::remove (assets_file);
+    zstr_free (&alerts_file);
+    zstr_free (&assets_file);
 }
 
 
@@ -1079,13 +1099,33 @@ void test10 (
     // test, that ASSET messages are processed correctly
     if ( verbose )
         zsys_info ("Scenario %s", __func__);
+
+    // Note: If your selftest reads SCMed fixture data, please keep it in
+    // src/selftest-ro; if your test creates filesystem objects, please
+    // do so under src/selftest-rw. They are defined below along with a
+    // usecase for the variables (assert) to make compilers happy.
+    const char *SELFTEST_DIR_RO = "src/selftest-ro";
+    const char *SELFTEST_DIR_RW = "src/selftest-rw";
+    assert (SELFTEST_DIR_RO);
+    assert (SELFTEST_DIR_RW);
+    // Uncomment these to use C++ strings in C++ selftest code:
+    // std::string str_SELFTEST_DIR_RO = std::string(SELFTEST_DIR_RO);
+    // std::string str_SELFTEST_DIR_RW = std::string(SELFTEST_DIR_RW);
+    // assert ( (str_SELFTEST_DIR_RO != "") );
+    // assert ( (str_SELFTEST_DIR_RW != "") );
+    // NOTE that for "char*" context you need (str_SELFTEST_DIR_RO + "/myfilename").c_str()
+
     // we want new smtp server with empty states
-    static const char *assets_file = "test10_assets_file.txt";
+    char *alerts_file = zsys_sprintf ("%s/test10_alerts.xtx", SELFTEST_DIR_RW);
+    assert (alerts_file!=NULL);
+    char *assets_file = zsys_sprintf ("%s/test10_assets.xtx", SELFTEST_DIR_RW);
+    assert (assets_file!=NULL);
+
     ElementList elements; // element list to load
     Element element; // one particular element to check
 
     zactor_t *smtp_server = create_smtp_server
-        (verbose, endpoint, assets_file, "test10_alerts.txt", "smtp-10", true, true);
+        (verbose, endpoint, assets_file, alerts_file, "smtp-10", true, true);
 
     // test10-1 (create NOT known asset)
     s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com",
@@ -1264,18 +1304,43 @@ void test10 (
         zsys_info ("________________________All tests passed____________________________");
 
     zactor_destroy (&smtp_server);
+    zstr_free (&alerts_file);
+    zstr_free (&assets_file);
 }
 
 //  Self test of this class
 void
 fty_email_server_test (bool verbose)
 {
-    const char *alerts_file = "kkk_alerts.xtx";
-    const char *assets_file = "kkk_assets.xtx";
+    // Note: If your selftest reads SCMed fixture data, please keep it in
+    // src/selftest-ro; if your test creates filesystem objects, please
+    // do so under src/selftest-rw. They are defined below along with a
+    // usecase for the variables (assert) to make compilers happy.
+    const char *SELFTEST_DIR_RO = "src/selftest-ro";
+    const char *SELFTEST_DIR_RW = "src/selftest-rw";
+    assert (SELFTEST_DIR_RO);
+    assert (SELFTEST_DIR_RW);
+    // Uncomment these to use C++ strings in C++ selftest code:
+    // std::string str_SELFTEST_DIR_RO = std::string(SELFTEST_DIR_RO);
+    // std::string str_SELFTEST_DIR_RW = std::string(SELFTEST_DIR_RW);
+    // assert ( (str_SELFTEST_DIR_RO != "") );
+    // assert ( (str_SELFTEST_DIR_RW != "") );
+    // NOTE that for "char*" context you need (str_SELFTEST_DIR_RO + "/myfilename").c_str()
+
+    char *alerts_file = zsys_sprintf ("%s/kkk_alerts.xtx", SELFTEST_DIR_RW);
+    assert (alerts_file!=NULL);
+    char *assets_file = zsys_sprintf ("%s/kkk_assets.xtx", SELFTEST_DIR_RW);
+    assert (assets_file!=NULL);
     std::remove (alerts_file);
     std::remove (assets_file);
+
+    char *pidfile = zsys_sprintf ("%s/btest.pid", SELFTEST_DIR_RW);
+    assert (pidfile!=NULL);
+
+    char *smtpcfg_file = zsys_sprintf ("%s/smtp.cfg", SELFTEST_DIR_RW);
+    assert (smtpcfg_file!=NULL);
+
     printf (" * fty_email_server: ");
-    static const char* pidfile = "src/btest.pid";
     if (zfile_exists (pidfile))
     {
         FILE *fp = fopen (pidfile, "r");
@@ -1294,14 +1359,18 @@ fty_email_server_test (bool verbose)
     {
     zhash_t *headers = zhash_new ();
     zhash_update (headers, "Foo", (void*) "bar");
+    char *file1_name = zsys_sprintf ("%s/file1", SELFTEST_DIR_RW);
+    assert (file1_name!=NULL);
+    char *file2_name = zsys_sprintf ("%s/file2.txt", SELFTEST_DIR_RW);
+    assert (file2_name!=NULL);
     zmsg_t *email_msg = fty_email_encode (
             "UUID",
             "TO",
             "SUBJECT",
             headers,
             "BODY",
-            "file1",
-            "file2.txt",
+            file1_name,
+            file2_name,
             NULL);
     assert (email_msg);
     assert (zmsg_size (email_msg) == 7);
@@ -1334,12 +1403,17 @@ fty_email_server_test (bool verbose)
     char *file2 = zmsg_popstr (email_msg);
     char *file3 = zmsg_popstr (email_msg);
 
-    assert (streq (file1, "file1"));
-    assert (streq (file2, "file2.txt"));
+    zsys_debug("Got file1='%s'\nExpected ='%s'", file1, file1_name );
+    zsys_debug("Got file2='%s'\nExpected ='%s'", file2, file2_name );
+
+    assert (streq (file1, file1_name ));
+    assert (streq (file2, file2_name ));
     assert (!file3);
 
     zstr_free (&file1);
     zstr_free (&file2);
+    zstr_free (&file1_name);
+    zstr_free (&file2_name);
     zmsg_destroy (&email_msg);
 
     }
@@ -1364,12 +1438,12 @@ fty_email_server_test (bool verbose)
     zconfig_put (config, "malamute/address", "agent-smtp");
     zconfig_put (config, "malamute/consumers/ASSETS", ".*");
     zconfig_put (config, "malamute/consumers/ALERTS", ".*");
-    zconfig_save (config, "src/smtp.cfg");
+    zconfig_save (config, smtpcfg_file);
     zconfig_destroy (&config);
 
     if (verbose)
         zstr_send (smtp_server, "VERBOSE");
-    zstr_sendx (smtp_server, "LOAD", "src/smtp.cfg", NULL);
+    zstr_sendx (smtp_server, "LOAD", smtpcfg_file, NULL);
     zstr_sendx (smtp_server, "_MSMTP_TEST", "btest-reader", NULL);
     if ( verbose )
         zsys_info ("smtp server started");
@@ -1875,6 +1949,10 @@ fty_email_server_test (bool verbose)
     mlm_client_destroy (&asset_producer);
     mlm_client_destroy (&alert_producer);
     zactor_destroy (&server);
+    zstr_free (&alerts_file);
+    zstr_free (&assets_file);
+    zstr_free (&pidfile);
+    zstr_free (&smtpcfg_file);
 
     printf ("OK\n");
 }
