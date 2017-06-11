@@ -903,7 +903,7 @@ fty_email_server (zsock_t *pipe, void* args)
 //
 
 /*
- * \brief helper function, that creates an smpt server as it would be created
+ * \brief helper function, that creates an smtp server as it would be created
  *      in the real environment
  *
  *  \param[in] verbose - if function should produce debug information or not
@@ -912,9 +912,9 @@ fty_email_server (zsock_t *pipe, void* args)
  *  \param[in] alerts_file - an absolute path to the "alert" state file
  *  \param[in] agent_name - what agent name should be registred in malamute
  *  \param[in] clear_assets - do we want to clear "asset" state file before
- *                      smpt agent will start
+ *                      smtp agent will start
  *  \param[in] clear_alerts - do we want to clear "alert" state file before
- *                      smpt agent will start
+ *                      smtp agent will start
  *  \return smtp gent actor
  */
 static zactor_t* create_smtp_server (

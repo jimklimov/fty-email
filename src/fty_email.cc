@@ -201,7 +201,7 @@ int main (int argc, char** argv)
 
     zactor_t *smtp_server = zactor_new (fty_email_server, (void *) NULL);
     if ( !smtp_server ) {
-        zsys_error ("smpt_server: cannot start the daemon");
+        zsys_error ("smtp_server: cannot start the daemon");
         return -1;
     }
 
