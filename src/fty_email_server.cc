@@ -89,7 +89,7 @@ static bool isDelete(const char* operation) {
 }
 
 // TODO: make it configurable without recompiling
-// If time is less 5 minutes, then email in some cases would be send aproximatly every 5 minutes,
+// If time is less 5 minutes, then email in some cases would be sent aproximatly every 5 minutes,
 // as some metrics are generated only once per 5 minute -> alert in 5 minuts -> email in 5 minuts
 static uint64_t
 s_getNotificationInterval(
@@ -136,7 +136,7 @@ s_need_to_notify (alerts_map_iterator it,
 {
     zsys_debug1 ("last_update = '%ld'\tlast_notification = '%ld'", it->second.last_update, last_notification);
     if (it->second.last_update > last_notification) {
-        // Last notification was send BEFORE last
+        // Last notification was sent BEFORE last
         // important change take place -> need to notify
         zsys_debug1 ("important change -> notify");
         return true;
@@ -528,7 +528,7 @@ fty_email_encode (
         zframe_t *frame = zhash_pack(headers);
         zmsg_append (msg, &frame);
     }
-    
+
     va_list args;
     va_start (args, body);
     const char* path = va_arg (args, const char*);
@@ -539,7 +539,7 @@ fty_email_encode (
     }
 
     va_end (args);
-    
+
     return msg;
 }
 
@@ -590,7 +590,7 @@ fty_email_server (zsock_t *pipe, void* args)
                 verbose = true;
                 agent_smtp_verbose = true;
                 zstr_free (&cmd);
-            }        
+            }
             else
             if (streq (cmd, "LOAD")) {
                 char * config_file = zmsg_popstr (msg);
@@ -620,9 +620,9 @@ fty_email_server (zsock_t *pipe, void* args)
                 // MSMTP_PATH
                 if (s_get (config, "smtp/msmtppath", NULL)) {
                     smtp.msmtp_path (s_get (config, "smtp/msmtppath", NULL));
-                }                
+                }
                 //STATE_FILE_PATH_ASSETS
-                if (!sendmail_only) { 
+                if (!sendmail_only) {
                     if (s_get (config, "server/assets", NULL)) {
                         const char *path = s_get (config, "server/assets", NULL);
                         elements.setFile (path);
@@ -707,7 +707,7 @@ fty_email_server (zsock_t *pipe, void* args)
                         zsys_warning ("(agent-smtp): malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
                 }
 
-                // skip if sendmail_only 
+                // skip if sendmail_only
                 if (!sendmail_only)
                 {
                     if (zconfig_locate (config, "malamute/consumers"))
@@ -733,12 +733,12 @@ fty_email_server (zsock_t *pipe, void* args)
                                 else
                                     streams.insert (std::make_tuple (stream, pattern));
                             }
-                        }                    
+                        }
                         else
                             zsys_warning ("(agent-smtp): client is not connected to broker, can't subscribe to the stream!");
-                    }                    
+                    }
                 }
-                
+
                 if (zconfig_get (config, "malamute/producer", NULL)) {
                     if (!mlm_client_connected (client))
                         zsys_warning ("(agent-smtp): client is not connected to broker, can't publish on the stream!");
@@ -990,7 +990,7 @@ static void s_send_asset_message (
     int rv = mlm_client_send(producer, asset_name, &msg);
     assert ( rv == 0 );
     if ( verbose )
-        zsys_info ("asset message was send");
+        zsys_info ("asset message was sent");
     zhash_destroy (&aux);
     zhash_destroy (&ext);
 }
@@ -1032,7 +1032,7 @@ test9 (bool verbose, const char *endpoint)
     rv = mlm_client_send (alert_producer, "nobody-cares", &msg);
     assert ( rv != -1 );
     if ( verbose )
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
     // this alert is NOT supposed to be in the file,
     // as action EMAIL is NOT specified
@@ -1040,7 +1040,7 @@ test9 (bool verbose, const char *endpoint)
                                   "ACTIVE","CRITICAL","ASDFKLHJH", "SMS");
     assert (msg);
     if ( verbose )
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
     rv = mlm_client_send (alert_producer, "nobody-cares", &msg);
     assert ( rv != -1 );
 
@@ -1329,7 +1329,7 @@ fty_email_server_test (bool verbose)
 
     assert (streq ((char*)zhash_lookup (headers, "Foo"), "bar"));
     zhash_destroy (&headers);
-    
+
     char *file1 = zmsg_popstr (email_msg);
     char *file2 = zmsg_popstr (email_msg);
     char *file3 = zmsg_popstr (email_msg);
@@ -1352,7 +1352,7 @@ fty_email_server_test (bool verbose)
     zstr_sendx (server, "BIND", endpoint, NULL);
     if ( verbose )
         zsys_info ("malamute started");
-    
+
     // smtp server
     zactor_t *smtp_server = zactor_new (fty_email_server, NULL);
     assert ( smtp_server != NULL );
@@ -1409,7 +1409,7 @@ fty_email_server_test (bool verbose)
     zhash_destroy (&aux);
     zhash_destroy (&ext);
     if (verbose)
-        zsys_info ("asset message was send");
+        zsys_info ("asset message was sent");
     // Ensure, that malamute will deliver ASSET message before ALERT message
     zclock_sleep (1000);
 
@@ -1420,7 +1420,7 @@ fty_email_server_test (bool verbose)
     std::string atopic = "NY_RULE/CRITICAL@" + std::string (asset_name);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
     //      3. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1476,7 +1476,7 @@ fty_email_server_test (bool verbose)
     std::string atopic1 = "NY_RULE/CRITICAL@" + std::string (asset_name1);
     mlm_client_send (alert_producer, atopic1.c_str(), &msg);
     if (verbose)
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
     //      3. No mail should be generated
     zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1500,7 +1500,7 @@ fty_email_server_test (bool verbose)
     zhash_destroy (&aux);
     zhash_destroy (&ext);
     if (verbose)
-        zsys_info ("asset message was send");
+        zsys_info ("asset message was sent");
 
     //      2. send alert message
     msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name3, \
@@ -1509,7 +1509,7 @@ fty_email_server_test (bool verbose)
     std::string atopic3 = "NY_RULE/CRITICAL@" + std::string (asset_name3);
     mlm_client_send (alert_producer, atopic3.c_str(), &msg);
     if (verbose)
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
     //      3. No mail should be generated
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1528,7 +1528,7 @@ fty_email_server_test (bool verbose)
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
     //      2. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1545,9 +1545,9 @@ fty_email_server_test (bool verbose)
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
-    //      5. email should not be send (it doesn't satisfy the schedule
+    //      5. email should not be sent (it doesn't satisfy the schedule
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
     which = zpoller_wait (poller, 1000);
     assert ( which == NULL );
@@ -1563,7 +1563,7 @@ fty_email_server_test (bool verbose)
     assert (msg);
     mlm_client_send (alert_producer, atopic3.c_str(), &msg);
     if (verbose)
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
     //      2. No mail should be generated
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -1675,7 +1675,7 @@ fty_email_server_test (bool verbose)
     //FIXME: use cxxtools::MimeMultipart, rewrite
     //assert ( expectedBody.compare(newBody) == 0 );
 
-    // intentionally left formatting intact, so git blame will reffer to original author ;-)
+    // intentionally left formatting intact, so git blame will refer to original author ;-)
     if (verbose) {
     zsys_debug (" scenario 7 ===============================================");
     // scenario 7:
@@ -1686,7 +1686,7 @@ fty_email_server_test (bool verbose)
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
     //      2. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1703,7 +1703,7 @@ fty_email_server_test (bool verbose)
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
     //      5. read the email generated for alert
     msg = mlm_client_recv (btest_reader);
@@ -1723,9 +1723,9 @@ fty_email_server_test (bool verbose)
     assert (msg);
     mlm_client_send (alert_producer, atopic.c_str(), &msg);
     if (verbose)
-        zsys_info ("alert message was send");
+        zsys_info ("alert message was sent");
 
-    //      8. email should not be send (it  in the state, where alerts are not being send)
+    //      8. email should not be sent (it is in the state, where alerts are not being sent)
     poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
     which = zpoller_wait (poller, 1000);
     assert ( which == NULL );
@@ -1869,7 +1869,6 @@ fty_email_server_test (bool verbose)
         zstr_send (send_mail_only_server, "VERBOSE");
     }
 
-      
     zactor_destroy(&send_mail_only_server);
     zactor_destroy (&smtp_server);
     mlm_client_destroy (&btest_reader);
@@ -1877,6 +1876,5 @@ fty_email_server_test (bool verbose)
     mlm_client_destroy (&alert_producer);
     zactor_destroy (&server);
 
-    
     printf ("OK\n");
 }

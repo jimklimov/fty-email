@@ -81,7 +81,7 @@ void
 alert_test (bool verbose)
 {
     printf (" * alert: ");
-    
+
     Alert a;
     assert ( a.action_sms() == false );
     assert ( a.action_email() == false );

@@ -120,7 +120,7 @@ int main (int argc, char** argv)
     }
     if (help || recipient == NULL || optind < argc) { usage(); exit(1); }
     // end of the options
-    
+
     char *endpoint = strdup (FTY_EMAIL_ENDPOINT);
     char *smtp_address = strdup (FTY_EMAIL_ADDRESS);
     if (config_file) {
@@ -164,7 +164,7 @@ int main (int argc, char** argv)
     for (const auto file : attachments) {
         zmsg_addstr (mail, file.c_str());
     }
-    
+
     if (verbose)
         zmsg_print (mail);
     r = mlm_client_sendto (client, smtp_address, "SENDMAIL", NULL, 2000, &mail);
@@ -173,7 +173,7 @@ int main (int argc, char** argv)
         zsys_error ("Failed to send the email (mlm_client_sendto returned -1).");
         zmsg_destroy (&mail);
         mlm_client_destroy (&client);
-        
+
         exit (EXIT_FAILURE);
     }
 
@@ -188,7 +188,7 @@ int main (int argc, char** argv)
 
     if (exit_code == EXIT_FAILURE || verbose)
         zsys_debug ("subject: %s, \ncode: %s \nreason: %s", mlm_client_subject (client), code, reason);
-        
+
     zstr_free(&code);
     zstr_free(&reason);
     zstr_free(&uuid);
