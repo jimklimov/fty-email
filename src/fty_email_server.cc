@@ -49,6 +49,8 @@ int agent_smtp_verbose = true;
 #include <malamute.h>
 #include <fty_proto.h>
 #include <math.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <functional>
 #include <cxxtools/split.h>
 
@@ -927,6 +929,16 @@ static zactor_t* create_smtp_server (
     bool clear_alerts
     )
 {
+    // Note: mkstemp fixes up contents of this array
+    char temp_config_file[PATH_MAX] = {"/tmp/.fty-email-tempcfg.XXXXXX"};
+    int config_fd =  mkstemp(temp_config_file);
+    if (config_fd < 0) {
+        zsys_error("create_smtp_server(): could not create a temporary config file");
+// FIXME : is NULL a valid return here? or should we assert() to die on FS errors?
+        return NULL;
+    }
+    close(config_fd);
+
     if ( clear_assets )
         std::remove (assets_file);
     if ( clear_alerts )
@@ -940,12 +952,15 @@ static zactor_t* create_smtp_server (
     zconfig_put (config, "malamute/address", agent_name);
     zconfig_put (config, "malamute/consumers/ASSETS", ".*");
     zconfig_put (config, "malamute/consumers/ALERTS", ".*");
-    zconfig_save (config, "src/smtp.cfg");
+    zconfig_save (config, temp_config_file);
     zconfig_destroy (&config);
     if ( verbose )
         zstr_send (smtp_server, "VERBOSE");
-    zstr_sendx (smtp_server, "LOAD", "src/smtp.cfg", NULL);
+    zstr_sendx (smtp_server, "LOAD", temp_config_file, NULL);
+// FIXME : perhaps better ack via protocol that the actor is ready to work?
     zclock_sleep (1500);
+// FIXME : should we remove this file? Did not do so in other code locations...
+    unlink(temp_config_file);
     if ( verbose )
         zsys_info ("smtp server started");
     return smtp_server;
