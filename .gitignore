@@ -54,6 +54,7 @@ config.log
 config.status
 config/
 configure
+configure.lineno
 libtool
 src/platform.h
 src/platform.h.in
@@ -61,10 +62,6 @@ src/platform.h.in~
 src/stamp-h1
 src/test-suite.log
 src/.dirstamp
-
-# All cmake files, we don't use cmake
-*.cmake
-CMakeLists.txt
 
 # CMake cache
 CMakeCache.txt
@@ -146,5 +143,3 @@ kkk_alerts.xtx
 kkk_assets.xtx
 test10_alerts.txt
 test10_assets_file.txt
-
-
