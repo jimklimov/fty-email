@@ -97,6 +97,7 @@ matrix:
   - env: BUILD_TYPE=valgrind
     os: linux
     dist: trusty
+    sudo: required
     addons:
       apt:
         sources: *pkg_src_zeromq_ubuntu14
@@ -117,7 +118,9 @@ before_install:
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "valgrind" ] ; then brew install valgrind ; fi
 
 # Hand off to generated script for each BUILD_TYPE
-script: ./ci_build.sh
+# NOTE: manual edit: self-tests take a while to pass through sleeps and
+# emulated email posts, so bump the allotted build time for Travis CI
+script: travis_wait 30 ./ci_build.sh
 before_deploy: . ./ci_deploy.sh && ./ci_deploy_obs.sh
 deploy:
   provider: releases
