@@ -917,7 +917,7 @@ fty_email_server (zsock_t *pipe, void* args)
  *                      smtp agent will start
  *  \return smtp gent actor
  */
-static zactor_t* create_smtp_server (
+static zactor_t* create_test_smtp_server (
     bool verbose,
     const char *endpoint,
     const char *assets_file,
@@ -1030,7 +1030,7 @@ test9 (bool verbose, const char *endpoint)
     assert (alerts_file!=NULL);
     char *assets_file = zsys_sprintf ("%s/test9_assets.xtx", SELFTEST_DIR_RW);
     assert (assets_file!=NULL);
-    zactor_t *smtp_server = create_smtp_server (
+    zactor_t *smtp_server = create_test_smtp_server (
         verbose, endpoint, assets_file, alerts_file, "agent-smtp-test9", true, true);
 
     // alert producer
@@ -1124,7 +1124,7 @@ void test10 (
     ElementList elements; // element list to load
     Element element; // one particular element to check
 
-    zactor_t *smtp_server = create_smtp_server
+    zactor_t *smtp_server = create_test_smtp_server
         (verbose, endpoint, assets_file, alerts_file, "smtp-10", true, true);
 
     // test10-1 (create NOT known asset)
@@ -1427,7 +1427,7 @@ fty_email_server_test (bool verbose)
     if ( verbose )
         zsys_info ("malamute started");
 
-    // smtp server
+    // similar to create_test_smtp_server
     zactor_t *smtp_server = zactor_new (fty_email_server, NULL);
     assert ( smtp_server != NULL );
 
