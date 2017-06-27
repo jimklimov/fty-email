@@ -1,21 +1,21 @@
 /*  =========================================================================
     fty_email_server - Email actor
 
-    Copyright (C) 2014 - 2017 Eaton                                        
-                                                                           
-    This program is free software; you can redistribute it and/or modify   
-    it under the terms of the GNU General Public License as published by   
-    the Free Software Foundation; either version 2 of the License, or      
-    (at your option) any later version.                                    
-                                                                           
-    This program is distributed in the hope that it will be useful,        
-    but WITHOUT ANY WARRANTY; without even the implied warranty of         
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
-    GNU General Public License for more details.                           
-                                                                           
+    Copyright (C) 2014 - 2017 Eaton
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
     =========================================================================
 */
 
@@ -274,16 +274,18 @@ s_onAlertReceive (
 
     // do we know this alert from past?
     alerts_map_iterator search = alerts.find (std::make_pair (rule_name, asset));
-    if (search == alerts.end ()) {
-        // this is new alert
-        if ( (strcasestr (actions, "EMAIL") == NULL)
-              && (strcasestr (actions, "SMS") == NULL )) {
-            // this means, that for this alert no "SMS/EMAIL" action
-            // -> we are not interested in it;
-            zsys_debug1 ("Email action (%s) is not specified -> smtp agent is not interested in this alert", actions);
-            fty_proto_destroy (p_message);
-            return;
+    if ( (strcasestr (actions, "EMAIL") == NULL)
+         && (strcasestr (actions, "SMS") == NULL )) {
+        // this means, that for this alert no "SMS/EMAIL" action
+        // -> we are not interested in it;
+        if (search != alerts.end ()) {
+            // alert is in list but action is not email/sms anymore
+            alerts.erase (search);
         }
+        // this is alert not in list now
+        zsys_debug1 ("Email action (%s) is not specified -> smtp agent is not interested in this alert", actions);
+        fty_proto_destroy (p_message);
+        return;
     }
     // add alert to the list of alerts
     // so, EMAIL is (or was) in action -> add to the list of alerts
