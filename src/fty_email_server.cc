@@ -372,7 +372,7 @@ void onAssetReceive (
         Element newAsset;
         newAsset.priority = std::stoul (priority);
         newAsset.name = name;
-        newAsset.extname = extname;
+        newAsset.extname = (extname == NULL ? name : extname);
         newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
         newAsset.email = ( contact_email == NULL ? "" : contact_email );
         newAsset.phone = ( contact_phone == NULL ? "" : contact_phone );
@@ -392,6 +392,10 @@ void onAssetReceive (
         if ( contact_name ) {
             zsys_debug1 ("to update: contact_name = %s", contact_name);
             elements.updateContactName (name, contact_name);
+        }
+        if ( extname ) {
+            zsys_debug1 ("to update: extname = %s", extname);
+            elements.updateExtName (name, extname);
         }
         if ( contact_email ) {
             zsys_debug1 ("to update: contact_email = %s", contact_email);
@@ -988,6 +992,7 @@ static void s_send_asset_message (
     mlm_client_t *producer,
     const char *priority,
     const char *email,
+    const char *extname,
     const char *contact,
     const char *operation,
     const char *asset_name,
@@ -1005,6 +1010,9 @@ static void s_send_asset_message (
         zhash_insert (ext, "contact_name", (void *)contact);
     if ( phone )
         zhash_insert (ext, "contact_phone", (void *)phone);
+    if ( extname )
+        zhash_insert (ext, "extname", (void *)extname);
+
     zmsg_t *msg = fty_proto_encode_asset (aux, asset_name, operation, ext);
     assert (msg);
     int rv = mlm_client_send(producer, asset_name, &msg);
@@ -1149,7 +1157,8 @@ void test10 (
 
     // test10-1 (create NOT known asset)
     s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com",
-        "scenario10 Support Eaton", "create", "ASSET_10_1", "somephone");
+                          "assetik_10_1", "scenario10 Support Eaton", "create", "ASSET_10_1",
+                          "somephone");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
     elements.load("notimportant");
@@ -1163,7 +1172,7 @@ void test10 (
 
     // test10-2 (update known asset )
     s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com",
-        "scenario10 Support Eaton", "update", "ASSET_10_1");
+                          "assetik_10_1", "scenario10 Support Eaton", "update", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
     elements.load("notimportant");
@@ -1175,7 +1184,7 @@ void test10 (
     assert ( element.contactName == "scenario10 Support Eaton");
 
     // test10-3 (inventory known asset (without email))
-    s_send_asset_message (verbose, asset_producer, NULL, NULL,
+    s_send_asset_message (verbose, asset_producer, NULL, NULL, "assetik_10_1",
         "scenario102 Support Eaton", "inventory", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
@@ -1190,7 +1199,7 @@ void test10 (
     // test10-4 (create ALREADY known asset)
     if ( verbose )
         zsys_info ("___________________________Test10-4_________________________________");
-    s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com",
+    s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com", "assetik_10_1",
         "scenario10 Support Eaton", "create", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
@@ -1205,7 +1214,7 @@ void test10 (
     // test10-5 (update NOT known asset)
     if ( verbose )
         zsys_info ("___________________________Test10-5_________________________________");
-    s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com",
+    s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com", "assetik_10_1",
         "scenario10 Support Eaton", "update", "ASSET_10_2");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
@@ -1227,7 +1236,7 @@ void test10 (
     // inventory doesn't update priority even if it is provided
     if ( verbose )
         zsys_info ("___________________________Test10-6_________________________________");
-    s_send_asset_message (verbose, asset_producer, "3", "scenario10.email@eaton.com",
+    s_send_asset_message (verbose, asset_producer, "3", "scenario10.email@eaton.com","assetik_10_1",
         "scenario103 Support Eaton", "inventory", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
@@ -1249,7 +1258,7 @@ void test10 (
     // test10-7 (inventory NOT known asset (WITH email))
     if ( verbose )
         zsys_info ("___________________________Test10-7_________________________________");
-    s_send_asset_message (verbose, asset_producer, "3", "scenario103.email@eaton.com",
+    s_send_asset_message (verbose, asset_producer, "3", "scenario103.email@eaton.com","assetik_10_1",
         "scenario103 Support Eaton", "inventory", "ASSET_10_3");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
@@ -1276,7 +1285,7 @@ void test10 (
     // test10-8 (inventory NOT known asset (WITHOUT email))
     if ( verbose )
         zsys_info ("___________________________Test10-8_________________________________");
-    s_send_asset_message (verbose, asset_producer, NULL, NULL,
+    s_send_asset_message (verbose, asset_producer, NULL, NULL,"assetik_10_1",
         "scenario104 Support Eaton", "inventory", "ASSET_10_4");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
@@ -1302,7 +1311,7 @@ void test10 (
     // test10-9 (unknown operation on asset: XXX))
     if ( verbose )
         zsys_info ("___________________________Test10-9_________________________________");
-    s_send_asset_message (verbose, asset_producer, "5", "scenario105.email@eaton.com",
+    s_send_asset_message (verbose, asset_producer, "5", "scenario105.email@eaton.com","assetik_10_1",
         "scenario105 Support Eaton", "unknown_operation", "ASSET_10_1");
     zclock_sleep (1000); // give time to process the message
     elements.setFile (assets_file);
