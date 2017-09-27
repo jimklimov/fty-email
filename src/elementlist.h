@@ -27,6 +27,7 @@ class Element {
  public:
 
     std::string name;
+    std::string extname;
     uint8_t priority;
     std::string contactName;
     std::string email;
@@ -56,6 +57,7 @@ class ElementList
     int     load (const std::string &sms_gateway); // TODO prepsat, tohle je strasny
     std::string serialize_to_json () const;
     void    updateContactName (const std::string &elementName, const std::string &contactName);
+    void    updateExtName (const std::string &elementName, const std::string &extName);
     void    updateEmail (const std::string &elementName, const std::string &email);
     void    updateSMSEmail (const std::string &elementName, const std::string &email);
     void    updatePhone (const std::string &elementName, const std::string &phone);

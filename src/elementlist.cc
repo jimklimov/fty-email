@@ -35,6 +35,7 @@ const std::string ElementList::DEFAULT_PATH_TO_FILE = "/var/lib/fty/fty-email/st
 void operator<<= (cxxtools::SerializationInfo& si, const Element& element)
 {
     si.addMember("name") <<= element.name;
+    si.addMember("extname") <<= element.extname;
     si.addMember("priority") <<= std::to_string (element.priority); // ARM workaround
     si.addMember("contact_name") <<= element.contactName;
     si.addMember("contact_email") <<= element.email;
@@ -57,6 +58,7 @@ void operator>>= (const cxxtools::SerializationInfo& si, Element& asset)
     }
 
     si.getMember("name") >>= asset.name;
+    si.getMember("extname") >>= asset.extname;
     si.getMember("contact_name") >>= asset.contactName;
     si.getMember("contact_email") >>= asset.email;
     si.getMember("contact_phone") >>= asset.phone;
@@ -96,6 +98,14 @@ void ElementList::updateContactName (const std::string &elementName, const std::
     auto search = _assets.find (elementName);
     if ( search != _assets.cend ()) {
         search->second.contactName = contactName;
+    }
+}
+
+void ElementList::updateExtName (const std::string &elementName, const std::string &extName)
+{
+    auto search = _assets.find (elementName);
+    if ( search != _assets.cend ()) {
+        search->second.extname = extName;
     }
 }
 
@@ -218,6 +228,7 @@ std::string ElementList::serialize_to_json () const
 void Element::debug_print () const
 {
     zsys_debug ("name = '%s'", name.c_str ());
+    zsys_debug ("extname = '%s'", extname.c_str ());
     zsys_debug ("priority = '%d'", priority);
     zsys_debug ("contact name = '%s'", contactName.c_str ());
     zsys_debug ("contact email = '%s'", email.c_str ());
@@ -234,5 +245,3 @@ elementlist_test (bool verbose)
     //  @end
     printf ("OK\n");
 }
-
-

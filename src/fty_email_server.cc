@@ -346,10 +346,12 @@ void onAssetReceive (
     char *contact_name = NULL;
     char *contact_email = NULL;
     char *contact_phone = NULL;
+    char *extname = NULL;
     if ( ext != NULL ) {
         contact_name = (char *) zhash_lookup (ext, "contact_name");
         contact_email = (char *) zhash_lookup (ext, "contact_email");
         contact_phone = (char *) zhash_lookup (ext, "contact_phone");
+        extname = (char *) zhash_lookup (ext, "name");
     } else {
         zsys_debug1 ("ext for asset %s is missing", name);
     }
@@ -370,6 +372,7 @@ void onAssetReceive (
         Element newAsset;
         newAsset.priority = std::stoul (priority);
         newAsset.name = name;
+        newAsset.extname = extname;
         newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
         newAsset.email = ( contact_email == NULL ? "" : contact_email );
         newAsset.phone = ( contact_phone == NULL ? "" : contact_phone );
@@ -1542,7 +1545,7 @@ fty_email_server_test (bool verbose)
     // need to erase white spaces, because newLines in "body" are not "\n"
     newBody.erase(remove_if(newBody.begin(), newBody.end(), isspace), newBody.end());
 
-    // expected string withoiut date
+    // expected string without date
     std::string expectedBody = "From:bios@eaton.com\nTo: scenario1.email@eaton.com\nSubject: CRITICAL alert on ASSET1 from the rule ny_rule is active!\n\n"
     "In the system an alert was detected.\nSource rule: ny_rule\nAsset: ASSET1\nAlert priority: P1\nAlert severity: CRITICAL\n"
     "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
@@ -1758,7 +1761,7 @@ fty_email_server_test (bool verbose)
     // need to erase white spaces, because newLines in "body" are not "\n"
     newBody.erase(remove_if(newBody.begin(), newBody.end(), isspace), newBody.end());
 
-    // expected string withoiut date
+    // expected string without date
     expectedBody = "From:bios@eaton.com\nTo: scenario6.email@eaton.com\nSubject: CRITICAL alert on asset_6 from the rule rule_name_6 is active!\n\n"
     "In the system an alert was detected.\nSource rule: rule_name_6\nAsset: asset_6\nAlert priority: P1\nAlert severity: CRITICAL\n"
     "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
