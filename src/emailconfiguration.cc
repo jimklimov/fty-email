@@ -75,7 +75,7 @@ s_generateEmailBodyResolved (const Alert& alert, const Element& asset)
 {
     std::string result (BODY_RESOLVED);
     result = replace_tokens (result, "${rulename}", alert.rule);
-    result = replace_tokens (result, "${assetname}", asset.name);
+    result = replace_tokens (result, "${assetname}", asset.extname);
     result = replace_tokens (result, "${description}", alert.description);
     return result;
 }
@@ -85,7 +85,7 @@ s_generateEmailBodyActive (const Alert& alert, const Element& asset)
 {
     std::string result = BODY_ACTIVE;
     result = replace_tokens (result, "${rulename}", alert.rule);
-    result = replace_tokens (result, "${assetname}", asset.name);
+    result = replace_tokens (result, "${assetname}", asset.extname);
     result = replace_tokens (result, "${description}", alert.description);
     result = replace_tokens (result, "${priority}", std::to_string (asset.priority));
     result = replace_tokens (result, "${severity}", alert.severity);
@@ -98,7 +98,7 @@ s_generateEmailSubjectResolved (const Alert& alert, const Element& asset)
 {
     std::string result = SUBJECT_RESOLVED;
     result = replace_tokens (result, "${rulename}", alert.rule);
-    result = replace_tokens (result, "${assetname}", asset.name);
+    result = replace_tokens (result, "${assetname}", asset.extname);
     return result;
 }
 
@@ -107,7 +107,7 @@ s_generateEmailSubjectActive (const Alert& alert, const Element& asset)
 {
     std::string result = SUBJECT_ACTIVE;
     result = replace_tokens (result, "${rulename}", alert.rule);
-    result = replace_tokens (result, "${assetname}", asset.name);
+    result = replace_tokens (result, "${assetname}", asset.extname);
     result = replace_tokens (result, "${description}", alert.description);
     result = replace_tokens (result, "${priority}", std::to_string(asset.priority));
     result = replace_tokens (result, "${severity}", alert.severity);
@@ -149,4 +149,3 @@ emailconfiguration_test (bool verbose)
     //  * generate_body
     printf ("OK\n");
 }
-
