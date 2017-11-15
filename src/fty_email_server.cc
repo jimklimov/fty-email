@@ -99,17 +99,11 @@ s_notify_base (
         return;
     }
 
-    try {
-        smtp.sendmail(
+    smtp.sendmail(
                 to,
                 generate_subject (alert, element),
                 generate_body (alert, element)
                 );
-    }
-    catch (const std::runtime_error& e) {
-        zsys_error ("Error: %s", e.what());
-        // here we'll handle the error
-    }
 }
 
 static void
@@ -599,7 +593,24 @@ fty_email_server (zsock_t *pipe, void* args)
             }
             else if (topic == "SENDMAIL_ALERT") {
                 fty_proto_t *alert = fty_proto_decode (&zmessage);
-                s_notify (smtp, elements, alert);
+                try {
+                    s_notify (smtp, elements, alert);
+                    zmsg_addstr (reply, "OK");
+                }
+                catch (const std::runtime_error &re) {
+                    zsys_error ("Sending or e-mail/SMS alert failed : %s", re.what ());
+                    zmsg_addstr (reply, "ERROR");
+                    zmsg_addstr (reply, re.what ());
+                }
+                int r = mlm_client_sendto (
+                        client,
+                        mlm_client_sender (client),
+                        "SENDMAIL_ALERT",
+                        NULL,
+                        1000,
+                        &reply);
+                if (r == -1)
+                    zsys_error ("Can't send a reply for SENDMAIL to %s", mlm_client_sender (client));
             }
             else
                 zsys_warning ("%s:\tUnknown subject %s", name, topic.c_str ());
