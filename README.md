@@ -102,7 +102,7 @@ In default configuration, agent doesn't publish any alerts.
 
 Sending of e-mails is handled by class email, which implements a wrapper for msmtp binary.
 
-NB: configuration is loaded only once at the start of the server actor.
+NB: configuration is loaded once at the start of the server actor. Agent then checks for config changes every time the timer runs.
 
 ### Mailbox requests
 
