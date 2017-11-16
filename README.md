@@ -171,8 +171,8 @@ where
 The USER peer sends the following messages using MAILBOX SEND to
 FTY-EMAIL-AGENT ("fty-email") peer:
 
-* correlation\-id/priority/extname/action/fty\_proto ALERT message
-    - send notification of a type specified by 'action' for asset 'extname' with priority 'priority',
+* correlation\-id/priority/extname/contact/fty\_proto ALERT message
+    - send notification for asset 'extname' with priority 'priority' to 'contact',
     where content of the notification is specified by the ALERT message
 
 where
@@ -180,7 +180,7 @@ where
 * 'correlation\-id' is a zuuid identifier provided by the caller
 * 'priority' MUST be valid asset priority
 * 'extname' MUST be valid user-friendly asset name
-* 'action' MUST be one of the strings: "EMAIL", "SMS", "EMAIL/SMS"
+* 'contact' MUST be empty string OR valid e-mail/phone number
 * 'fty\_proto ALERT message' must be valid fty\_proto message of the type ALERT
 * subject of the message MUST be "SENDMAIL\_ALERT".
 

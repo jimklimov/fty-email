@@ -149,8 +149,6 @@ int main (int argc, char** argv)
         zsys_info ("No config file specified, falling back to enviromental variables.\nNote this is deprecated and will be removed!");
         config = zconfig_new ("root", NULL);
         zconfig_put (config, "server/verbose", verbose? "1" : "0");
-        zconfig_put (config, "server/assets", "/var/lib/fty/fty-email/state");
-        zconfig_put (config, "server/alerts", "/var/lib/fty/fty-email/state-alerts");
 
         zconfig_put (config, "smtp/server", smtpserver);
         zconfig_put (config, "smtp/port", smtpport ? smtpport : "25");
@@ -169,8 +167,6 @@ int main (int argc, char** argv)
 
         zconfig_put (config, "malamute/endpoint", FTY_EMAIL_ENDPOINT);
         zconfig_put (config, "malamute/address", FTY_EMAIL_ADDRESS);
-        zconfig_put (config, "malamute/consumers/ALERTS", ".*");
-        zconfig_put (config, "malamute/consumer/ASSETS", ".*");
         zconfig_print (config);
 
         config_file = (char*) FTY_EMAIL_CONFIG_FILE;
