@@ -58,6 +58,7 @@ EXTRA_DIST += \
     src/email.h \
     src/elementlist.h \
     src/subprocess.h \
+    README.md \
     src/fty_email_classes.h
 
 # NOTE: this "include" syntax is not a "make" but an "autotools" keyword,

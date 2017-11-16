@@ -57,6 +57,7 @@ typedef struct _subprocess_t subprocess_t;
 #endif
 
 //  Internal API
+
 #include "alert.h"
 #include "emailconfiguration.h"
 #include "email.h"
