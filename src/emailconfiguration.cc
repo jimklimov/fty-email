@@ -71,45 +71,45 @@ replace_tokens (
 }
 
 static std::string
-s_generateEmailBodyResolved (fty_proto_t *alert, const Element& asset)
+s_generateEmailBodyResolved (fty_proto_t *alert, const std::string& extname)
 {
     std::string result (BODY_RESOLVED);
     result = replace_tokens (result, "${rulename}", fty_proto_rule (alert));
-    result = replace_tokens (result, "${assetname}", asset.extname);
+    result = replace_tokens (result, "${assetname}", extname);
     result = replace_tokens (result, "${description}", fty_proto_description (alert));
     return result;
 }
 
 static std::string
-s_generateEmailBodyActive (fty_proto_t *alert, const Element& asset)
+s_generateEmailBodyActive (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
     std::string result = BODY_ACTIVE;
     result = replace_tokens (result, "${rulename}", fty_proto_rule (alert));
-    result = replace_tokens (result, "${assetname}", asset.extname);
+    result = replace_tokens (result, "${assetname}", extname);
     result = replace_tokens (result, "${description}", fty_proto_description (alert));
-    result = replace_tokens (result, "${priority}", std::to_string (asset.priority));
+    result = replace_tokens (result, "${priority}", priority);
     result = replace_tokens (result, "${severity}", fty_proto_severity (alert));
     result = replace_tokens (result, "${state}", fty_proto_state (alert));
     return result;
 }
 
 static std::string
-s_generateEmailSubjectResolved (fty_proto_t *alert, const Element& asset)
+s_generateEmailSubjectResolved (fty_proto_t *alert, const std::string &extname)
 {
     std::string result = SUBJECT_RESOLVED;
     result = replace_tokens (result, "${rulename}", fty_proto_rule (alert));
-    result = replace_tokens (result, "${assetname}", asset.extname);
+    result = replace_tokens (result, "${assetname}", extname);
     return result;
 }
 
 static std::string
-s_generateEmailSubjectActive (fty_proto_t *alert, const Element& asset)
+s_generateEmailSubjectActive (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
     std::string result = SUBJECT_ACTIVE;
     result = replace_tokens (result, "${rulename}", fty_proto_rule (alert));
-    result = replace_tokens (result, "${assetname}", asset.extname);
+    result = replace_tokens (result, "${assetname}", extname);
     result = replace_tokens (result, "${description}", fty_proto_description (alert));
-    result = replace_tokens (result, "${priority}", std::to_string(asset.priority));
+    result = replace_tokens (result, "${priority}", priority);
     result = replace_tokens (result, "${severity}", fty_proto_severity (alert));
     result = replace_tokens (result, "${state}", fty_proto_state (alert));
     return result;
@@ -119,21 +119,21 @@ s_generateEmailSubjectActive (fty_proto_t *alert, const Element& asset)
 // header functions
 
 std::string
-generate_body (fty_proto_t *alert, const Element& asset)
+generate_body (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
     if (streq (fty_proto_state (alert), "RESOLVED")) {
-        return s_generateEmailBodyResolved (alert, asset);
+        return s_generateEmailBodyResolved (alert, extname);
     }
-    return s_generateEmailBodyActive (alert, asset);
+    return s_generateEmailBodyActive (alert, priority, extname);
 }
 
 std::string
-generate_subject (fty_proto_t *alert, const Element& asset)
+generate_subject (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
     if (streq (fty_proto_state (alert), "RESOLVED")) {
-        return s_generateEmailSubjectResolved (alert, asset);
+        return s_generateEmailSubjectResolved (alert, extname);
     }
-    return s_generateEmailSubjectActive (alert, asset);
+    return s_generateEmailSubjectActive (alert, priority, extname);
 }
 
 //  --------------------------------------------------------------------------

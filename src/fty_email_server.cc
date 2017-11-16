@@ -57,183 +57,26 @@ int agent_smtp_verbose = true;
 #include "email.h"
 #include "emailconfiguration.h"
 
-static bool isNew(const char* operation) {
-    if ( streq(operation,"create" ) )
-        return true;
-    else
-        return false;
-}
-
-static bool isUpdate(const char* operation) {
-    if ( streq(operation,"update" ) )
-        return true;
-    else
-        return false;
-}
-
-
-static bool isPartialUpdate(const char* operation) {
-    if ( streq(operation, "inventory" ) )
-        return true;
-    else
-        return false;
-}
-
-static bool isDelete(const char* operation) {
-    if ( streq(operation, "delete" ) )
-        return true;
-    else
-        return false;
-}
-
-static void
-s_notify_base (
-          Smtp& smtp,
-          const Element& element,
-          const std::string& to,
-          fty_proto_t *alert
-          )
-{
-    if (to.empty ()) {
-        zsys_debug1 ("Can't send a notification. For the asset '%s' contact email or sms_email is unknown", element.name.c_str ());
-        return;
-    }
-
-    smtp.sendmail(
-                to,
-                generate_subject (alert, element),
-                generate_body (alert, element)
-                );
-}
-
 static void
 s_notify (
           Smtp& smtp,
-          const ElementList& elements,
+          const std::string& priority,
+          const std::string& extname,
+          const std::string& contact,
           fty_proto_t *alert)
 {
-    Element element;
-    const char *asset_name = fty_proto_name (alert);
-    if (!elements.get (asset_name, element)) {
-        zsys_error ("CAN'T NOTIFY unknown asset");
-        return;
-    }
-    const char *action = fty_proto_action (alert);
-    if (streq (action, "EMAIL")) {
-        s_notify_base (smtp, element, element.email, alert);
-    }
-    else if (streq (action, "SMS")) {
-        s_notify_base (smtp, element, element.sms_email, alert);
-    }
-    else if (streq (action, "EMAIL/SMS")) {
-        s_notify_base (smtp, element, element.email, alert);
-        s_notify_base (smtp, element, element.sms_email, alert);
-    }
-}
-
-void onAssetReceive (
-    fty_proto_t **p_message,
-    ElementList& elements,
-    const char* sms_gateway,
-    bool verbose)
-{
-    if (p_message == NULL) return;
-    fty_proto_t *message = *p_message;
-    if (fty_proto_id (message) != FTY_PROTO_ASSET) {
-        zsys_error ("fty_proto_id (message) != FTY_PROTO_ASSET");
-        return;
-    }
-
-    const char *name = fty_proto_name (message); // was asset
-    if (name == NULL) {
-        zsys_error ("fty_proto_name () returned NULL");
-        return;
-    }
-
-    // now, we need to get the contact information
-    // TODO insert here a code to handle multiple contacts
-    zhash_t *ext = fty_proto_ext (message);
-    char *contact_name = NULL;
-    char *contact_email = NULL;
-    char *contact_phone = NULL;
-    char *extname = NULL;
-    if ( ext != NULL ) {
-        contact_name = (char *) zhash_lookup (ext, "contact_name");
-        contact_email = (char *) zhash_lookup (ext, "contact_email");
-        contact_phone = (char *) zhash_lookup (ext, "contact_phone");
-        extname = (char *) zhash_lookup (ext, "name");
-    } else {
-        zsys_debug1 ("ext for asset %s is missing", name);
-    }
-
-    const char *operation = fty_proto_operation (message);
-    if ( isNew (operation) || isUpdate(operation) ) {
-        zhash_t *aux = fty_proto_aux (message);
-        const char *default_priority = "5";
-        const char *priority = default_priority;
-        if ( aux != NULL ) {
-            // if we have additional information
-            priority = (char *) zhash_lookup (aux, "priority");
-            if ( priority == NULL ) {
-                // but information about priority is missing
-                priority = default_priority;
-            }
-        }
-        Element newAsset;
-        newAsset.priority = std::stoul (priority);
-        newAsset.name = name;
-        newAsset.extname = (extname == NULL ? name : extname);
-        newAsset.contactName = ( contact_name == NULL ? "" : contact_name );
-        newAsset.email = ( contact_email == NULL ? "" : contact_email );
-        newAsset.phone = ( contact_phone == NULL ? "" : contact_phone );
-        if (sms_gateway && contact_phone) {
-            try {
-                newAsset.sms_email = sms_email_address (sms_gateway, contact_phone);
-            }
-            catch ( const std::exception &e ) {
-                zsys_error (e.what());
-            }
-        }
-        elements.add (newAsset);
-        if (verbose)
-            newAsset.debug_print();
-    } else if ( isPartialUpdate(operation) ) {
-        zsys_debug1 ("asset name = %s", name);
-        if ( contact_name ) {
-            zsys_debug1 ("to update: contact_name = %s", contact_name);
-            elements.updateContactName (name, contact_name);
-        }
-        if ( extname ) {
-            zsys_debug1 ("to update: extname = %s", extname);
-            elements.updateExtName (name, extname);
-        }
-        if ( contact_email ) {
-            zsys_debug1 ("to update: contact_email = %s", contact_email);
-            elements.updateEmail (name, contact_email);
-        }
-        if ( contact_phone ) {
-            zsys_debug1 ("to update: contact_phone = %s", contact_email);
-            elements.updatePhone (name, contact_phone);
-            if (sms_gateway) {
-                try {
-                    elements.updateSMSEmail (name, sms_email_address (sms_gateway, contact_phone));
-                }
-                catch ( const std::exception &e ) {
-                   zsys_error (e.what());
-                }
-            }
-        }
-    } else if ( isDelete(operation) ) {
-        zsys_debug1 ("Asset:delete: '%s'", name);
-        elements.remove (name);
-    }
-    else {
-        zsys_error ("unsupported operation '%s' on the asset, ignore it", operation);
-    }
-
-    elements.save();
-    // destroy the message
-    fty_proto_destroy (p_message);
+    if (priority.empty ())
+        throw std::runtime_error ("Empty priority");
+    else if (extname.empty ())
+        throw std::runtime_error ("Empty asset name");
+    else if (contact.empty ())
+        throw std::runtime_error ("Empty contact");
+    else
+        smtp.sendmail(
+                contact,
+                generate_subject (alert, priority, extname),
+                generate_body (alert, priority, extname)
+                );
 }
 
 // return dfl is item is NULL or empty string!!
@@ -301,7 +144,6 @@ fty_email_encode (
     return msg;
 }
 
-
 void
 fty_email_server (zsock_t *pipe, void* args)
 {
@@ -318,7 +160,6 @@ fty_email_server (zsock_t *pipe, void* args)
 
     zpoller_t *poller = zpoller_new (pipe, mlm_client_msgpipe (client), NULL);
 
-    ElementList elements;
     Smtp smtp;
 
     std::set <std::tuple <std::string, std::string>> streams;
@@ -376,15 +217,6 @@ fty_email_server (zsock_t *pipe, void* args)
                 // MSMTP_PATH
                 if (s_get (config, "smtp/msmtppath", NULL)) {
                     smtp.msmtp_path (s_get (config, "smtp/msmtppath", NULL));
-                }
-                //STATE_FILE_PATH_ASSETS
-                if (!sendmail_only) {
-                    if (s_get (config, "server/assets", NULL)) {
-                        const char *path = s_get (config, "server/assets", NULL);
-                        elements.setFile (path);
-                        // NOTE1234: this implies, that sms_gateway should be specified before !
-                        elements.load(sms_gateway?sms_gateway : "");
-                    }
                 }
 
                 // smtp
@@ -537,6 +369,7 @@ fty_email_server (zsock_t *pipe, void* args)
         std::string topic = mlm_client_subject(client);
         zsys_debug1("%s:\tsubject='%s'", name, topic.c_str());
 
+        // TODO add SMTP settings
         if (streq (mlm_client_command (client), "MAILBOX DELIVER")) {
 
             zsys_debug1 ("%s:\tMAILBOX DELIVER, subject=%s", name, mlm_client_subject (client));
@@ -592,13 +425,16 @@ fty_email_server (zsock_t *pipe, void* args)
                     zsys_error ("Can't send a reply for SENDMAIL to %s", mlm_client_sender (client));
             }
             else if (topic == "SENDMAIL_ALERT") {
+                char *priority = zmsg_popstr (zmessage);
+                char *extname = zmsg_popstr (zmessage);
+                char *contact = zmsg_popstr (zmessage);
                 fty_proto_t *alert = fty_proto_decode (&zmessage);
                 try {
-                    s_notify (smtp, elements, alert);
+                    s_notify (smtp, priority, extname, contact, alert);
                     zmsg_addstr (reply, "OK");
                 }
                 catch (const std::runtime_error &re) {
-                    zsys_error ("Sending or e-mail/SMS alert failed : %s", re.what ());
+                    zsys_error ("Sending of e-mail/SMS alert failed : %s", re.what ());
                     zmsg_addstr (reply, "ERROR");
                     zmsg_addstr (reply, re.what ());
                 }
@@ -610,8 +446,11 @@ fty_email_server (zsock_t *pipe, void* args)
                         1000,
                         &reply);
                 if (r == -1)
-                    zsys_error ("Can't send a reply for SENDMAIL to %s", mlm_client_sender (client));
+                    zsys_error ("Can't send a reply for SENDMAIL_ALERT to %s", mlm_client_sender (client));
                 fty_proto_destroy (&alert);
+                zstr_free (&contact);
+                zstr_free (&extname);
+                zstr_free (&priority);
             }
             else
                 zsys_warning ("%s:\tUnknown subject %s", name, topic.c_str ());
@@ -620,30 +459,8 @@ fty_email_server (zsock_t *pipe, void* args)
             zmsg_destroy (&zmessage);
             continue;
         }
-
-        // There are inputs
-        //  - an asset config message
-        //  - an SMTP settings TODO
-        if (is_fty_proto (zmessage)) {
-            fty_proto_t *bmessage = fty_proto_decode (&zmessage);
-            if (!bmessage) {
-                zsys_error ("cannot decode fty_proto message, ignore it");
-                continue;
-            }
-            else if (fty_proto_id (bmessage) == FTY_PROTO_ASSET)  {
-                onAssetReceive (&bmessage, elements, sms_gateway, verbose);
-            }
-            else {
-                zsys_error ("it is not an alert message, ignore it");
-            }
-            fty_proto_destroy (&bmessage);
-        }
-        zmsg_destroy (&zmessage);
     }
 
-    // save info to persistence before I die
-    if (!sendmail_only)
-        elements.save();
     zstr_free (&name);
     zstr_free (&endpoint);
     zstr_free (&test_reader_name);
@@ -652,329 +469,6 @@ fty_email_server (zsock_t *pipe, void* args)
     mlm_client_destroy (&client);
     mlm_client_destroy (&test_client);
     zclock_sleep(1000);
-}
-
-
-//  -------------------------------------------------------------------------
-//
-
-/*
- * \brief helper function, that creates an smtp server as it would be created
- *      in the real environment
- *
- *  \param[in] verbose - if function should produce debug information or not
- *  \param[in] endpoint - endpoint of malamute where to connect
- *  \param[in] assets_file - an absolute path to the "asset" state file
- *  \param[in] agent_name - what agent name should be registred in malamute
- *  \param[in] clear_assets - do we want to clear "asset" state file before
- *                      smtp agent will start
- *                      smtp agent will start
- *  \return smtp agent actor
- */
-static zactor_t* create_test_smtp_server (
-    bool verbose,
-    const char *endpoint,
-    const char *assets_file,
-    const char *agent_name,
-    bool clear_assets
-    )
-{
-    // Note: mkstemp fixes up contents of this array
-    char temp_config_file[PATH_MAX] = {"/tmp/.fty-email-tempcfg.XXXXXX"};
-    int config_fd =  mkstemp(temp_config_file);
-    if (config_fd < 0) {
-        zsys_error("create_smtp_server(): could not create a temporary config file");
-// FIXME : is NULL a valid return here? or should we assert() to die on FS errors?
-        return NULL;
-    }
-    close(config_fd);
-
-    if ( clear_assets )
-        std::remove (assets_file);
-    zactor_t *smtp_server = zactor_new (fty_email_server, NULL);
-    assert ( smtp_server != NULL );
-    zconfig_t *config = zconfig_new ("root", NULL);
-    zconfig_put (config, "server/assets", assets_file);
-    zconfig_put (config, "malamute/endpoint", endpoint);
-    zconfig_put (config, "malamute/address", agent_name);
-    zconfig_put (config, "malamute/consumers/ASSETS", ".*");
-    zconfig_save (config, temp_config_file);
-    zconfig_destroy (&config);
-    if ( verbose )
-        zstr_send (smtp_server, "VERBOSE");
-    zstr_sendx (smtp_server, "LOAD", temp_config_file, NULL);
-// FIXME : perhaps better ack via protocol that the actor is ready to work?
-    zclock_sleep (1500);
-// FIXME : should we remove this file? Did not do so in other code locations...
-    unlink(temp_config_file);
-    if ( verbose )
-        zsys_info ("smtp server started");
-    return smtp_server;
-}
-
-/*
- * \brief Helper function for asset message sending
- *
- *  \param[in] verbose - if function should produce debug information or not
- *  \param[in] producer - a client, that is  will publish ASSET message
- *                  according parameters
- *  \param[in] email - email for this asset (or null if not specified)
- *  \param[in] priority - priprity of the asset (or null if not specified)
- *  \param[in] contact - contact name of the asset (or null if not specified)
- *  \param[in] opearion - operation on the asset (mandatory)
- *  \param[in] asset_name - name of the assset (mandatory)
- */
-static void s_send_asset_message (
-    bool verbose,
-    mlm_client_t *producer,
-    const char *priority,
-    const char *email,
-    const char *extname,
-    const char *contact,
-    const char *operation,
-    const char *asset_name,
-    const char *phone = NULL)
-{
-    assert (operation);
-    assert (asset_name);
-    zhash_t *aux = zhash_new ();
-    if ( priority )
-        zhash_insert (aux, "priority", (void *)priority);
-    zhash_t *ext = zhash_new ();
-    if ( email )
-        zhash_insert (ext, "contact_email", (void *)email);
-    if ( contact )
-        zhash_insert (ext, "contact_name", (void *)contact);
-    if ( phone )
-        zhash_insert (ext, "contact_phone", (void *)phone);
-    if ( extname )
-        zhash_insert (ext, "extname", (void *)extname);
-
-    zmsg_t *msg = fty_proto_encode_asset (aux, asset_name, operation, ext);
-    assert (msg);
-    int rv = mlm_client_send(producer, asset_name, &msg);
-    assert ( rv == 0 );
-    if ( verbose )
-        zsys_info ("asset message was sent");
-    zhash_destroy (&aux);
-    zhash_destroy (&ext);
-}
-
-void test10 (
-    bool verbose,
-    const char *endpoint,
-    zactor_t *mlm_server,
-    mlm_client_t *asset_producer
-    )
-{
-    // test, that ASSET messages are processed correctly
-    if ( verbose )
-        zsys_info ("Scenario %s", __func__);
-
-    // Note: If your selftest reads SCMed fixture data, please keep it in
-    // src/selftest-ro; if your test creates filesystem objects, please
-    // do so under src/selftest-rw. They are defined below along with a
-    // usecase for the variables (assert) to make compilers happy.
-    const char *SELFTEST_DIR_RO = "src/selftest-ro";
-    const char *SELFTEST_DIR_RW = "src/selftest-rw";
-    assert (SELFTEST_DIR_RO);
-    assert (SELFTEST_DIR_RW);
-    // Uncomment these to use C++ strings in C++ selftest code:
-    // std::string str_SELFTEST_DIR_RO = std::string(SELFTEST_DIR_RO);
-    // std::string str_SELFTEST_DIR_RW = std::string(SELFTEST_DIR_RW);
-    // assert ( (str_SELFTEST_DIR_RO != "") );
-    // assert ( (str_SELFTEST_DIR_RW != "") );
-    // NOTE that for "char*" context you need (str_SELFTEST_DIR_RO + "/myfilename").c_str()
-
-    // we want new smtp server with empty states
-    char *assets_file = zsys_sprintf ("%s/test10_assets.xtx", SELFTEST_DIR_RW);
-    assert (assets_file!=NULL);
-
-    ElementList elements; // element list to load
-    Element element; // one particular element to check
-
-    zactor_t *smtp_server = create_test_smtp_server
-        (verbose, endpoint, assets_file, "smtp-10", true);
-
-    // test10-1 (create NOT known asset)
-    s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com",
-                          "assetik_10_1", "scenario10 Support Eaton", "create", "ASSET_10_1",
-                          "somephone");
-    zclock_sleep (1000); // give time to process the message
-    elements.setFile (assets_file);
-    elements.load("notimportant");
-    assert ( elements.size() == 1 );
-    assert ( elements.get ("ASSET_10_1", element) );
-    assert ( element.name == "ASSET_10_1");
-    assert ( element.priority == 1);
-    assert ( element.email == "scenario10.email@eaton.com");
-    assert ( element.contactName == "scenario10 Support Eaton");
-    assert ( element.phone == "somephone");
-
-    // test10-2 (update known asset )
-    s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com",
-                          "assetik_10_1", "scenario10 Support Eaton", "update", "ASSET_10_1");
-    zclock_sleep (1000); // give time to process the message
-    elements.setFile (assets_file);
-    elements.load("notimportant");
-    assert ( elements.size() == 1 );
-    assert ( elements.get ("ASSET_10_1", element) );
-    assert ( element.name == "ASSET_10_1");
-    assert ( element.priority == 2);
-    assert ( element.email == "scenario10.email2@eaton.com");
-    assert ( element.contactName == "scenario10 Support Eaton");
-
-    // test10-3 (inventory known asset (without email))
-    s_send_asset_message (verbose, asset_producer, NULL, NULL, "assetik_10_1",
-        "scenario102 Support Eaton", "inventory", "ASSET_10_1");
-    zclock_sleep (1000); // give time to process the message
-    elements.setFile (assets_file);
-    elements.load("notimportant");
-    assert ( elements.size() == 1 );
-    assert ( elements.get ("ASSET_10_1", element) );
-    assert ( element.name == "ASSET_10_1");
-    assert ( element.priority == 2);
-    assert ( element.email == "scenario10.email2@eaton.com");
-    assert ( element.contactName == "scenario102 Support Eaton");
-
-    // test10-4 (create ALREADY known asset)
-    if ( verbose )
-        zsys_info ("___________________________Test10-4_________________________________");
-    s_send_asset_message (verbose, asset_producer, "1", "scenario10.email@eaton.com", "assetik_10_1",
-        "scenario10 Support Eaton", "create", "ASSET_10_1");
-    zclock_sleep (1000); // give time to process the message
-    elements.setFile (assets_file);
-    elements.load("notimportant");
-    assert ( elements.size() == 1 );
-    assert ( elements.get ("ASSET_10_1", element) );
-    assert ( element.name == "ASSET_10_1");
-    assert ( element.priority == 1);
-    assert ( element.email == "scenario10.email@eaton.com");
-    assert ( element.contactName == "scenario10 Support Eaton");
-
-    // test10-5 (update NOT known asset)
-    if ( verbose )
-        zsys_info ("___________________________Test10-5_________________________________");
-    s_send_asset_message (verbose, asset_producer, "2", "scenario10.email2@eaton.com", "assetik_10_1",
-        "scenario10 Support Eaton", "update", "ASSET_10_2");
-    zclock_sleep (1000); // give time to process the message
-    elements.setFile (assets_file);
-    elements.load("notimportant");
-    assert ( elements.size() == 2 );
-    assert ( elements.get ("ASSET_10_1", element) );
-    assert ( element.name == "ASSET_10_1");
-    assert ( element.priority == 1);
-    assert ( element.email == "scenario10.email@eaton.com");
-    assert ( element.contactName == "scenario10 Support Eaton");
-
-    assert ( elements.get ("ASSET_10_2", element) );
-    assert ( element.name == "ASSET_10_2");
-    assert ( element.priority == 2);
-    assert ( element.email == "scenario10.email2@eaton.com");
-    assert ( element.contactName == "scenario10 Support Eaton");
-
-    // test10-6 (inventory known asset (WITH email))
-    // inventory doesn't update priority even if it is provided
-    if ( verbose )
-        zsys_info ("___________________________Test10-6_________________________________");
-    s_send_asset_message (verbose, asset_producer, "3", "scenario10.email@eaton.com","assetik_10_1",
-        "scenario103 Support Eaton", "inventory", "ASSET_10_1");
-    zclock_sleep (1000); // give time to process the message
-    elements.setFile (assets_file);
-    elements.load("notimportant");
-    assert ( elements.size() == 2 );
-    assert ( elements.get ("ASSET_10_1", element) );
-    assert ( element.name == "ASSET_10_1");
-    assert ( element.priority == 1);
-    assert ( element.email == "scenario10.email@eaton.com");
-    assert ( element.contactName == "scenario103 Support Eaton");
-
-    assert ( elements.get ("ASSET_10_2", element) );
-    assert ( element.name == "ASSET_10_2");
-    assert ( element.priority == 2);
-    assert ( element.email == "scenario10.email2@eaton.com");
-    assert ( element.contactName == "scenario10 Support Eaton");
-
-
-    // test10-7 (inventory NOT known asset (WITH email))
-    if ( verbose )
-        zsys_info ("___________________________Test10-7_________________________________");
-    s_send_asset_message (verbose, asset_producer, "3", "scenario103.email@eaton.com","assetik_10_1",
-        "scenario103 Support Eaton", "inventory", "ASSET_10_3");
-    zclock_sleep (1000); // give time to process the message
-    elements.setFile (assets_file);
-    elements.load("notimportant");
-    if (elements.get ("ASSET_10_3", element)) {
-        zsys_info("ASSET FOUND! %s", element.name.c_str() );
-    } else {
-            if ( verbose )   zsys_info("ASSET_10_3 NOT FOUND - AS EXPECTED when inventoring not known asset" );
-    }
-
-    assert ( elements.size() == 2 );
-    assert ( elements.get ("ASSET_10_1", element) );
-    assert ( element.name == "ASSET_10_1");
-    assert ( element.priority == 1);
-    assert ( element.email == "scenario10.email@eaton.com");
-    assert ( element.contactName == "scenario103 Support Eaton");
-
-    assert ( elements.get ("ASSET_10_2", element) );
-    assert ( element.name == "ASSET_10_2");
-    assert ( element.priority == 2);
-    assert ( element.email == "scenario10.email2@eaton.com");
-    assert ( element.contactName == "scenario10 Support Eaton");
-
-    // test10-8 (inventory NOT known asset (WITHOUT email))
-    if ( verbose )
-        zsys_info ("___________________________Test10-8_________________________________");
-    s_send_asset_message (verbose, asset_producer, NULL, NULL,"assetik_10_1",
-        "scenario104 Support Eaton", "inventory", "ASSET_10_4");
-    zclock_sleep (1000); // give time to process the message
-    elements.setFile (assets_file);
-    elements.load("notimportant");
-    if (elements.get ("ASSET_10_4", element)) {
-        zsys_info("ASSET FOUND! %s", element.name.c_str() );
-    } else {
-            if ( verbose )   zsys_info("ASSET_10_4 NOT FOUND - AS EXPECTED when inventoring not known asset" );
-    }
-    assert ( elements.size() == 2 );
-    assert ( elements.get ("ASSET_10_1", element) );
-    assert ( element.name == "ASSET_10_1");
-    assert ( element.priority == 1);
-    assert ( element.email == "scenario10.email@eaton.com");
-    assert ( element.contactName == "scenario103 Support Eaton");
-
-    assert ( elements.get ("ASSET_10_2", element) );
-    assert ( element.name == "ASSET_10_2");
-    assert ( element.priority == 2);
-    assert ( element.email == "scenario10.email2@eaton.com");
-    assert ( element.contactName == "scenario10 Support Eaton");
-
-    // test10-9 (unknown operation on asset: XXX))
-    if ( verbose )
-        zsys_info ("___________________________Test10-9_________________________________");
-    s_send_asset_message (verbose, asset_producer, "5", "scenario105.email@eaton.com","assetik_10_1",
-        "scenario105 Support Eaton", "unknown_operation", "ASSET_10_1");
-    zclock_sleep (1000); // give time to process the message
-    elements.setFile (assets_file);
-    elements.load("notimportant");
-
-    assert ( elements.size() == 2 );
-    assert ( elements.get ("ASSET_10_1", element) );
-    assert ( element.name == "ASSET_10_1");
-    assert ( element.priority == 1);
-    assert ( element.email == "scenario10.email@eaton.com");
-    assert ( element.contactName == "scenario103 Support Eaton");
-
-    assert ( elements.get ("ASSET_10_2", element) );
-    assert ( element.name == "ASSET_10_2");
-    assert ( element.priority == 2);
-    assert ( element.email == "scenario10.email2@eaton.com");
-    assert ( element.contactName == "scenario10 Support Eaton");
-    if ( verbose )
-        zsys_info ("________________________All tests passed____________________________");
-
-    zactor_destroy (&smtp_server);
-    zstr_free (&assets_file);
 }
 
 //  Self test of this class
@@ -995,10 +489,6 @@ fty_email_server_test (bool verbose)
     // assert ( (str_SELFTEST_DIR_RO != "") );
     // assert ( (str_SELFTEST_DIR_RW != "") );
     // NOTE that for "char*" context you need (str_SELFTEST_DIR_RO + "/myfilename").c_str()
-
-    char *assets_file = zsys_sprintf ("%s/kkk_assets.xtx", SELFTEST_DIR_RW);
-    assert (assets_file!=NULL);
-    std::remove (assets_file);
 
     char *pidfile = zsys_sprintf ("%s/btest.pid", SELFTEST_DIR_RW);
     assert (pidfile!=NULL);
@@ -1023,7 +513,7 @@ fty_email_server_test (bool verbose)
     //  @selftest
 
     {
-        zsys_debug ("Test #1 - send asset + send an alert on the already known correct asset");
+        zsys_debug ("Test #1");
         zhash_t *headers = zhash_new ();
         zhash_update (headers, "Foo", (void*) "bar");
         char *file1_name = zsys_sprintf ("%s/file1", SELFTEST_DIR_RW);
@@ -1100,10 +590,8 @@ fty_email_server_test (bool verbose)
     assert ( smtp_server != NULL );
 
     zconfig_t *config = zconfig_new ("root", NULL);
-    zconfig_put (config, "server/assets", assets_file);
     zconfig_put (config, "malamute/endpoint", endpoint);
     zconfig_put (config, "malamute/address", "agent-smtp");
-    zconfig_put (config, "malamute/consumers/ASSETS", ".*");
     zconfig_save (config, smtpcfg_file);
     zconfig_destroy (&config);
 
@@ -1120,49 +608,27 @@ fty_email_server_test (bool verbose)
     if ( verbose )
         zsys_info ("alert producer started");
 
-    mlm_client_t *asset_producer = mlm_client_new ();
-    rv = mlm_client_connect (asset_producer, endpoint, 1000, "asset_producer");
-    assert( rv != -1 );
-    rv = mlm_client_set_producer (asset_producer, "ASSETS");
-    assert( rv != -1 );
-    if ( verbose )
-        zsys_info ("asset producer started");
-
     mlm_client_t *btest_reader = mlm_client_new ();
     rv = mlm_client_connect (btest_reader, endpoint, 1000, "btest-reader");
     assert( rv != -1 );
 
     {
-        zsys_debug ("Test #2 - send asset + send an alert on the already known correct asset");
-        // scenario 1: send asset + send an alert on the already known correct asset
-        //      1. send asset info
-        zhash_t *aux = zhash_new ();
-        zhash_insert (aux, "priority", (void *)"1");
-        zhash_t *ext = zhash_new ();
-        zhash_insert (ext, "contact_email", (void *)"scenario1.email@eaton.com");
-        zhash_insert (ext, "contact_name", (void *)"eaton Support team");
+        zsys_debug ("Test #2 - send an alert on correct asset");
         const char *asset_name = "ASSET1";
-        zmsg_t *msg = fty_proto_encode_asset (aux, asset_name, "create", ext);
-        assert (msg);
-        mlm_client_send (asset_producer, "Asset message1", &msg);
-        zhash_destroy (&aux);
-        zhash_destroy (&ext);
-        if (verbose)
-            zsys_info ("asset message was sent");
-        // Ensure, that malamute will deliver ASSET message before ALERT message
-        zclock_sleep (1000);
-
-        //      2. send alert message
-        msg = fty_proto_encode_alert (NULL, zclock_time ()/1000, 600, "NY_RULE", asset_name, \
+        //      1. send alert message
+        zmsg_t *msg = fty_proto_encode_alert (NULL, zclock_time ()/1000, 600, "NY_RULE", asset_name, \
                                       "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
         assert (msg);
 
         zuuid_t *zuuid = zuuid_new ();
+        zmsg_pushstr (msg, "scenario1.email@eaton.com");
+        zmsg_pushstr (msg, asset_name);
+        zmsg_pushstr (msg, "1");
         zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
 
         mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
         if (verbose)
-            zsys_info ("alert message was sent");
+            zsys_info ("SENDMAIL_ALERT message was sent");
 
         zmsg_t *reply = mlm_client_recv (alert_producer);
         assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
@@ -1175,14 +641,14 @@ fty_email_server_test (bool verbose)
         zmsg_destroy (&reply);
         zuuid_destroy (&zuuid);
 
-        //      3. read the email generated for alert
+        //      2. read the email generated for alert
         msg = mlm_client_recv (btest_reader);
         assert (msg);
         if ( verbose ) {
             zsys_debug ("parameters for the email:");
             zmsg_print (msg);
         }
-        //      4. compare the email with expected output
+        //      3. compare the email with expected output
         int fr_number = zmsg_size(msg);
         char *body = NULL;
         while ( fr_number > 0 ) {
@@ -1221,22 +687,24 @@ fty_email_server_test (bool verbose)
         zsys_debug ("Test #2 OK");
     }
     {
-        zsys_debug ("Test #3 - send an alert on the unknown asset");
-        // scenario 2: send an alert on the unknown asset
-        //      1. DO NOT send asset info
+        zsys_debug ("Test #3 - send an alert on correct asset, but with empty contact");
+        // scenario 2: send an alert on correct asset with empty contact
         const char *asset_name1 = "ASSET2";
 
-        //      2. send alert message
+        //      1. send alert message
         zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name1, \
                                       "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
         assert (msg);
 
         zuuid_t *zuuid = zuuid_new ();
+        zmsg_pushstr (msg, "");
+        zmsg_pushstr (msg, asset_name1);
+        zmsg_pushstr (msg, "1");
         zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
 
         mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
         if (verbose)
-            zsys_info ("alert message was sent");
+            zsys_info ("SENDMAIL_ALERT message was sent");
 
         zmsg_t *reply = mlm_client_recv (alert_producer);
         assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
@@ -1244,7 +712,7 @@ fty_email_server_test (bool verbose)
         assert (streq (str, zuuid_str_canonical (zuuid)));
         zstr_free (&str);
         str = zmsg_popstr (reply);
-        assert (streq (str, "OK"));
+        assert (streq (str, "ERROR"));
         zstr_free (&str);
         zmsg_destroy (&reply);
         zuuid_destroy (&zuuid);
@@ -1261,33 +729,22 @@ fty_email_server_test (bool verbose)
         zsys_debug ("Test #3 OK");
     }
     {
-        zsys_debug ("Test #4 - send asset without email + send an alert on the already known asset");
-        // scenario 3: send asset without email + send an alert on the already known asset
-        //      1. send asset info
-        zhash_t *aux = zhash_new ();
-        zhash_insert (aux, "priority", (void *)"1");
-        zhash_t *ext = zhash_new ();
-        zhash_insert (ext, "contact_name", (void *)"eaton Support team");
-        const char *asset_name3 = "ASSET2";
-        zmsg_t *msg = fty_proto_encode_asset (aux, asset_name3, "update", ext);
-        assert (msg);
-        mlm_client_send (asset_producer, "Asset message3", &msg);
-        zhash_destroy (&aux);
-        zhash_destroy (&ext);
-        if (verbose)
-            zsys_info ("asset message was sent");
-
-        //      2. send alert message
-        msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name3, \
+        zsys_debug ("Test #4 - send alert on incorrect asset - empty name");
+        //      1. send alert message
+        const char *asset_name = "ASSET3";
+        zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name, \
                                       "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
         assert (msg);
 
         zuuid_t *zuuid = zuuid_new ();
+        zmsg_pushstr (msg, "");
+        zmsg_pushstr (msg, "");
+        zmsg_pushstr (msg, "1");
         zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
 
         mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
         if (verbose)
-            zsys_info ("alert message was sent");
+            zsys_info ("SENDMAIL_ALERT message was sent");
 
         zmsg_t *reply = mlm_client_recv (alert_producer);
         assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
@@ -1295,7 +752,7 @@ fty_email_server_test (bool verbose)
         assert (streq (str, zuuid_str_canonical (zuuid)));
         zstr_free (&str);
         str = zmsg_popstr (reply);
-        assert (streq (str, "OK"));
+        assert (streq (str, "ERROR"));
         zstr_free (&str);
         zmsg_destroy (&reply);
         zuuid_destroy (&zuuid);
@@ -1311,20 +768,23 @@ fty_email_server_test (bool verbose)
         zsys_debug ("Test #4 OK");
     }
     {
-        zsys_debug ("Test #5 - alert without action EMAIL");
-        // scenario 5: alert without action "EMAIL"
-        //      1. send alert message
-        const char *asset_name3 = "ASSET2";
-        zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name3, \
-                                      "ACTIVE","CRITICAL","ASDFKLHJH", "SMS");
+        zsys_debug ("Test #5 - send an alert on incorrect asset - empty priority");
+        // scenario 3: send asset without email + send an alert on the already known asset
+        //      2. send alert message
+        const char *asset_name = "ASSET3";
+        zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name, \
+                                      "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
         assert (msg);
 
         zuuid_t *zuuid = zuuid_new ();
+        zmsg_pushstr (msg, "");
+        zmsg_pushstr (msg, asset_name);
+        zmsg_pushstr (msg, "");
         zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
 
         mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
         if (verbose)
-            zsys_info ("alert message was sent");
+            zsys_info ("SENDMAIL_ALERT message was sent");
 
         zmsg_t *reply = mlm_client_recv (alert_producer);
         assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
@@ -1332,12 +792,12 @@ fty_email_server_test (bool verbose)
         assert (streq (str, zuuid_str_canonical (zuuid)));
         zstr_free (&str);
         str = zmsg_popstr (reply);
-        assert (streq (str, "OK"));
+        assert (streq (str, "ERROR"));
         zstr_free (&str);
         zmsg_destroy (&reply);
         zuuid_destroy (&zuuid);
 
-        //      2. No mail should be generated
+        //      3. No mail should be generated
         zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
         void *which = zpoller_wait (poller, 1000);
         assert ( which == NULL );
@@ -1347,143 +807,9 @@ fty_email_server_test (bool verbose)
         zpoller_destroy (&poller);
         zsys_debug ("Test #5 OK");
     }
-    {
-        zsys_debug ("Test #6 - asset updated with e-mail");
-        // scenario 6 ===============================================
-        //
-        //------------------------------------------------------------------------------------------------> t
-        //
-        //  asset is known       alert comes    no email        asset_info        alert comes   email send
-        // (without email)                                   updated with email
-
-        const char *asset_name6 = "asset_6";
-        const char *rule_name6 = "rule_name_6";
-
-        //      1. send asset info without email
-        zhash_t *aux = zhash_new ();
-        assert (aux);
-        zhash_insert (aux, "priority", (void *)"1");
-        zhash_t *ext = zhash_new ();
-        assert (ext);
-        zmsg_t *msg = fty_proto_encode_asset (aux, asset_name6, "create", ext);
-        assert (msg);
-        rv = mlm_client_send (asset_producer, "Asset message6", &msg);
-        assert ( rv != -1 );
-        // Ensure, that malamute will deliver ASSET message before ALERT message
-        zclock_sleep (1000);
-
-        //      2. send alert message
-        msg = fty_proto_encode_alert (NULL, time (NULL), 600, rule_name6, asset_name6, \
-                                      "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
-        assert (msg);
-
-        zuuid_t *zuuid = zuuid_new ();
-        zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
-
-        mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
-        if (verbose)
-            zsys_info ("alert message was sent");
-
-        zmsg_t *reply = mlm_client_recv (alert_producer);
-        assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
-        char *str = zmsg_popstr (reply);
-        assert (streq (str, zuuid_str_canonical (zuuid)));
-        zstr_free (&str);
-        str = zmsg_popstr (reply);
-        assert (streq (str, "OK"));
-        zstr_free (&str);
-        zmsg_destroy (&reply);
-        zuuid_destroy (&zuuid);
-
-        //      3. No mail should be generated
-        zpoller_t *poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
-        void *which = zpoller_wait (poller, 1000);
-        assert ( which == NULL );
-        if ( verbose ) {
-            zsys_debug ("No email was sent: SUCCESS");
-        }
-        zpoller_destroy (&poller);
-        zclock_sleep (1000);   //now we want to ensure btest calls mlm_client_destroy
-
-        //      4. send asset info one more time, but with email
-        zhash_insert (ext, "contact_email", (void *)"scenario6.email@eaton.com");
-        msg = fty_proto_encode_asset (aux, asset_name6, "update", ext);
-        assert (msg);
-        rv = mlm_client_send (asset_producer, "Asset message6", &msg);
-        assert ( rv != -1 );
-        zhash_destroy (&aux);
-        zhash_destroy (&ext);
-        // Ensure, that malamute will deliver ASSET message before ALERT message
-        zclock_sleep (1000);
-
-        //      5. send alert message again
-        msg = fty_proto_encode_alert (NULL, time (NULL), 600, rule_name6, asset_name6, \
-                                      "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
-        assert (msg);
-
-        zuuid = zuuid_new ();
-        zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
-
-        mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
-        if (verbose)
-            zsys_info ("alert message was sent");
-
-        reply = mlm_client_recv (alert_producer);
-        assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
-        str = zmsg_popstr (reply);
-        assert (streq (str, zuuid_str_canonical (zuuid)));
-        zstr_free (&str);
-        str = zmsg_popstr (reply);
-        assert (streq (str, "OK"));
-        zstr_free (&str);
-        zmsg_destroy (&reply);
-        zuuid_destroy (&zuuid);
-
-        //      6. Email SHOULD be generated
-        poller = zpoller_new (mlm_client_msgpipe (btest_reader), NULL);
-        which = zpoller_wait (poller, 1000);
-        assert ( which != NULL );
-        if ( verbose ) {
-            zsys_debug ("Email was sent: SUCCESS");
-        }
-        msg = mlm_client_recv (btest_reader);
-        zpoller_destroy (&poller);
-        assert (msg);
-
-        //      7. compare the email with expected output
-        int fr_number = zmsg_size(msg);
-        char *body = NULL;
-        while ( fr_number > 0 ) {
-            zstr_free(&body);
-            body = zmsg_popstr(msg);
-            fr_number--;
-        }
-        zmsg_destroy (&msg);
-        if ( verbose ) {
-            zsys_debug ("email itself:");
-            zsys_debug ("%s", body);
-        }
-        std::string newBody = std::string (body);
-        zstr_free(&body);
-        std::size_t  subject = newBody.find ("Subject:");
-        std::size_t date = newBody.find ("Date:");
-        // in the body there is a line with current date -> remove it
-        newBody.replace (date, subject - date, "");
-        // need to erase white spaces, because newLines in "body" are not "\n"
-        newBody.erase(remove_if(newBody.begin(), newBody.end(), isspace), newBody.end());
-
-        // expected string without date
-        std::string expectedBody = "From:bios@eaton.com\nTo: scenario6.email@eaton.com\nSubject: CRITICAL alert on asset_6 from the rule rule_name_6 is active!\n\n"
-        "In the system an alert was detected.\nSource rule: rule_name_6\nAsset: asset_6\nAlert priority: P1\nAlert severity: CRITICAL\n"
-        "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
-        expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
-        //FIXME: use cxxtools::MimeMultipart, rewrite
-        //assert ( expectedBody.compare(newBody) == 0 );
-        zsys_debug ("Test #6 OK");
-    }
     //test SENDMAIL
     {
-        zsys_debug ("Test #7 - test SENDMAIL");
+        zsys_debug ("Test #6 - test SENDMAIL");
         rv = mlm_client_sendtox (alert_producer, "agent-smtp", "SENDMAIL", "UUID", "foo@bar", "Subject", "body", NULL);
         assert (rv != -1);
         zmsg_t *msg = mlm_client_recv (alert_producer);
@@ -1509,10 +835,8 @@ fty_email_server_test (bool verbose)
         if (verbose)
             zmsg_print (msg);
         zmsg_destroy (&msg);
-        zsys_debug ("Test #7 OK");
+        zsys_debug ("Test #6 OK");
     }
-
-    test10 (verbose, endpoint, server, asset_producer);
 
     // clean up after the test
 
@@ -1529,10 +853,8 @@ fty_email_server_test (bool verbose)
     zactor_destroy(&send_mail_only_server);
     zactor_destroy (&smtp_server);
     mlm_client_destroy (&btest_reader);
-    mlm_client_destroy (&asset_producer);
     mlm_client_destroy (&alert_producer);
     zactor_destroy (&server);
-    zstr_free (&assets_file);
     zstr_free (&pidfile);
     zstr_free (&smtpcfg_file);
 
