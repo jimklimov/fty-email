@@ -41,10 +41,6 @@ To configure fty-email, a configuration file exists: fty-email.cfg
 Beside from the standard configuration directives, under the server and malamute
 sections, agent has the following configuration options:
 
-* under server section:
-    * alerts -  path to the state file with alerts cache (default value /var/lib/fty/fty-email/alerts)
-    * assets - path to the state file with assets cache (default value /var/lib/fty/fty-email/assets)
-
 * under smtp section:
     * server - SMTP server
     * port - port of SMTP server (default value 25)
@@ -112,12 +108,14 @@ It is possible to request the fty-email agent for:
 
 * sending e-mail with user-specified headers
 
+* sending e-mail/SMS notification for specified alert
+
 #### Sending e-mail with default headers
 
 The USER peer sends the following messages using MAILBOX SEND to
 FTY-EMAIL-AGENT ("fty-email") peer:
 
-* SENDMAIL/correlation\-id/body - send e-mail with default headers with the body 'body'
+* correlation\-id/body - send e-mail with default headers with the body 'body'
 
 where
 * '/' indicates a multipart string message
@@ -125,7 +123,7 @@ where
 * 'body' MUST be valid body of e-mail
 * subject of the message MUST be "SENDMAIL".
 
-The FTY-SENSOR-GPIO-AGENT peer MUST respond with one of the messages back to USER
+The FTY-EMAIL-AGENT peer MUST respond with one of the messages back to USER
 peer using MAILBOX SEND.
 
 * correlation\-id/0/OK
@@ -143,7 +141,7 @@ where
 The USER peer sends the following messages using MAILBOX SEND to
 FTY-EMAIL-AGENT ("fty-email") peer:
 
-* SENDMAIL/correlation\-id/to/subject/body/header\-1/.../header\-n/path\-1/.../path\-m - send this e-mail
+* correlation\-id/to/subject/body/header\-1/.../header\-n/path\-1/.../path\-m - send this e-mail
 
 where
 * '/' indicates a multipart string message
@@ -155,7 +153,7 @@ where
 * 'path-1',...,'path-m' MAY be present and MUST be, if present, paths to text OR binary files
 * subject of the message MUST be "SENDMAIL".
 
-The FTY-SENSOR-GPIO-AGENT peer MUST respond with one of the messages back to USER
+The FTY-EMAIL-AGENT peer MUST respond with one of the messages back to USER
 peer using MAILBOX SEND.
 
 * correlation\-id/0/OK
@@ -168,17 +166,36 @@ where
 * 'reason' is string detailing reason for error (just what() for the thrown runtime error)
 * subject of the message must be SENDMAIL-OK for OK message and SENDMAIL-ERROR for error message
 
+#### Sending e-mail/SMS notification for specified alert
+
+The USER peer sends the following messages using MAILBOX SEND to
+FTY-EMAIL-AGENT ("fty-email") peer:
+
+* correlation\-id/priority/extname/action/fty\_proto ALERT message
+    - send notification of a type specified by 'action' for asset 'extname' with priority 'priority',
+    where content of the notification is specified by the ALERT message
+
+where
+* '/' indicates a multipart string message
+* 'correlation\-id' is a zuuid identifier provided by the caller
+* 'priority' MUST be valid asset priority
+* 'extname' MUST be valid user-friendly asset name
+* 'action' MUST be one of the strings: "EMAIL", "SMS", "EMAIL/SMS"
+* 'fty\_proto ALERT message' must be valid fty\_proto message of the type ALERT
+* subject of the message MUST be "SENDMAIL\_ALERT".
+
+The FTY-EMAIL-AGENT peer MUST respond with one of the messages back to USER
+peer using MAILBOX SEND.
+
+* correlation\-id/OK
+* correlation\-id/ERROR/reason
+
+where
+* '/' indicates a multipart frame message
+* 'correlation\-id' is a zuuid identifier provided by the caller
+* 'reason' is string detailing reason for error (just what() for the thrown runtime error)
+* subject of the message must be "SENDMAIL\_ALERT"
+
 ### Stream subscriptions
 
-In default configuration, agent is subscribed to streams ALERTS and ASSETS.
-
-When it receives an alert:
-
-* it updates its local alert cache and alert state file
-* it checks whether we are supposed to send a notification for this alert
-
-When it receives an asset:
-
-* it extracts contact information (contact name, e-mail, phone number)
-* it extracts information about priority
-* it updates its local asset cache and asset state file
+In default configuration, agent isn't subscribed to any streams.
