@@ -28,10 +28,10 @@
 #include "elementlist.h"
 
 std::string
-generate_body (const Alert& alert, const Element& asset);
+generate_body (fty_proto_t *alert, const Element& asset);
 
 std::string
-generate_subject (const Alert& alert, const Element& asset);
+generate_subject (fty_proto_t *alert, const Element& asset);
 
 void
 emailconfiguration_test (bool verbose);

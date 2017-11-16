@@ -1,21 +1,21 @@
 /*  =========================================================================
     fty_email - Email transport for 42ity project
 
-    Copyright (C) 2014 - 2017 Eaton                                        
-                                                                           
-    This program is free software; you can redistribute it and/or modify   
-    it under the terms of the GNU General Public License as published by   
-    the Free Software Foundation; either version 2 of the License, or      
-    (at your option) any later version.                                    
-                                                                           
-    This program is distributed in the hope that it will be useful,        
-    but WITHOUT ANY WARRANTY; without even the implied warranty of         
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
-    GNU General Public License for more details.                           
-                                                                           
+    Copyright (C) 2014 - 2017 Eaton
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
     =========================================================================
 */
 
@@ -54,14 +54,6 @@ void usage ()
 static int
 s_timer_event (zloop_t *loop, int timer_id, void *output)
 {
-    static uint64_t last_check = zclock_mono ();
-    uint64_t now = zclock_mono ();
-
-    if ((now - last_check) > 5*60*1000) {
-        zstr_send (output, "CHECK_NOW");
-        last_check = zclock_mono ();
-    }
-
     if (zconfig_has_changed (config)) {
         zsys_info ("Content of %s have changed, reload it", config_file);
         zconfig_reload (&config);
@@ -220,13 +212,13 @@ int main (int argc, char** argv)
         zstr_sendx (send_mail_only_server, "VERBOSE", NULL);
     zstr_sendx (send_mail_only_server, "LOAD", config_file, NULL);
 
-    zloop_t *send_alert_trigger = zloop_new();
+    zloop_t *check_config = zloop_new();
     // as 5 minutes is the smallest possible reaction time
-    zloop_timer (send_alert_trigger, 1000, 0, s_timer_event, smtp_server);
-    zloop_start (send_alert_trigger);
+    zloop_timer (check_config, 1000, 0, s_timer_event, smtp_server);
+    zloop_start (check_config);
 
     zconfig_destroy (&config);
-    zloop_destroy (&send_alert_trigger);
+    zloop_destroy (&check_config);
     zactor_destroy (&smtp_server);
     zactor_destroy (&send_mail_only_server);
     return 0;
