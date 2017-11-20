@@ -601,8 +601,10 @@ fty_email_server_test (bool verbose)
         zsys_debug ("Test #2 - send an alert on correct asset");
         const char *asset_name = "ASSET1";
         //      1. send alert message
+        zlist_t *actions = zlist_new ();
+        zlist_add_end (actions, "EMAIL");
         zmsg_t *msg = fty_proto_encode_alert (NULL, zclock_time ()/1000, 600, "NY_RULE", asset_name, \
-                                      "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
+                                      "ACTIVE","CRITICAL","ASDFKLHJH", actions);
         assert (msg);
 
         zuuid_t *zuuid = zuuid_new ();
@@ -625,6 +627,7 @@ fty_email_server_test (bool verbose)
         zstr_free (&str);
         zmsg_destroy (&reply);
         zuuid_destroy (&zuuid);
+        zlist_destroy (&actions);
 
         //      2. read the email generated for alert
         msg = mlm_client_recv (btest_reader);
@@ -677,8 +680,10 @@ fty_email_server_test (bool verbose)
         const char *asset_name1 = "ASSET2";
 
         //      1. send alert message
+        zlist_t *actions = zlist_new ();
+        zlist_add_end (actions, "EMAIL");
         zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name1, \
-                                      "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
+                                      "ACTIVE","CRITICAL","ASDFKLHJH", actions);
         assert (msg);
 
         zuuid_t *zuuid = zuuid_new ();
@@ -701,6 +706,7 @@ fty_email_server_test (bool verbose)
         zstr_free (&str);
         zmsg_destroy (&reply);
         zuuid_destroy (&zuuid);
+        zlist_destroy (&actions);
 
         //      3. No mail should be generated
         zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -717,8 +723,10 @@ fty_email_server_test (bool verbose)
         zsys_debug ("Test #4 - send alert on incorrect asset - empty name");
         //      1. send alert message
         const char *asset_name = "ASSET3";
+        zlist_t *actions = zlist_new ();
+        zlist_add_end (actions, "EMAIL");
         zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name, \
-                                      "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
+                                      "ACTIVE","CRITICAL","ASDFKLHJH", actions);
         assert (msg);
 
         zuuid_t *zuuid = zuuid_new ();
@@ -741,6 +749,7 @@ fty_email_server_test (bool verbose)
         zstr_free (&str);
         zmsg_destroy (&reply);
         zuuid_destroy (&zuuid);
+        zlist_destroy (&actions);
 
         //      3. No mail should be generated
         zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
@@ -757,8 +766,10 @@ fty_email_server_test (bool verbose)
         // scenario 3: send asset without email + send an alert on the already known asset
         //      2. send alert message
         const char *asset_name = "ASSET3";
+        zlist_t *actions = zlist_new ();
+        zlist_add_end (actions, "EMAIL");
         zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name, \
-                                      "ACTIVE","CRITICAL","ASDFKLHJH", "EMAIL");
+                                      "ACTIVE","CRITICAL","ASDFKLHJH", actions);
         assert (msg);
 
         zuuid_t *zuuid = zuuid_new ();
@@ -781,6 +792,7 @@ fty_email_server_test (bool verbose)
         zstr_free (&str);
         zmsg_destroy (&reply);
         zuuid_destroy (&zuuid);
+        zlist_destroy (&actions);
 
         //      3. No mail should be generated
         zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
