@@ -602,7 +602,7 @@ fty_email_server_test (bool verbose)
         const char *asset_name = "ASSET1";
         //      1. send alert message
         zlist_t *actions = zlist_new ();
-        zlist_add_end (actions, "EMAIL");
+        zlist_append (actions, (void *) "EMAIL");
         zmsg_t *msg = fty_proto_encode_alert (NULL, zclock_time ()/1000, 600, "NY_RULE", asset_name, \
                                       "ACTIVE","CRITICAL","ASDFKLHJH", actions);
         assert (msg);
@@ -681,7 +681,7 @@ fty_email_server_test (bool verbose)
 
         //      1. send alert message
         zlist_t *actions = zlist_new ();
-        zlist_add_end (actions, "EMAIL");
+        zlist_append (actions, (void *) "EMAIL");
         zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name1, \
                                       "ACTIVE","CRITICAL","ASDFKLHJH", actions);
         assert (msg);
@@ -724,7 +724,7 @@ fty_email_server_test (bool verbose)
         //      1. send alert message
         const char *asset_name = "ASSET3";
         zlist_t *actions = zlist_new ();
-        zlist_add_end (actions, "EMAIL");
+        zlist_append (actions, (void *) "EMAIL");
         zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name, \
                                       "ACTIVE","CRITICAL","ASDFKLHJH", actions);
         assert (msg);
@@ -767,7 +767,7 @@ fty_email_server_test (bool verbose)
         //      2. send alert message
         const char *asset_name = "ASSET3";
         zlist_t *actions = zlist_new ();
-        zlist_add_end (actions, "EMAIL");
+        zlist_append (actions, (void *) "EMAIL");
         zmsg_t *msg = fty_proto_encode_alert (NULL, time (NULL), 600, "NY_RULE", asset_name, \
                                       "ACTIVE","CRITICAL","ASDFKLHJH", actions);
         assert (msg);
