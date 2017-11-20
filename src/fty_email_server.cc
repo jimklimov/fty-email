@@ -33,26 +33,11 @@ int agent_smtp_verbose = true;
 
 #include "fty_email_classes.h"
 
-#include <cxxtools/serializationinfo.h>
-#include <cxxtools/jsondeserializer.h>
-#include <cxxtools/jsonserializer.h>
-#include <cxxtools/regex.h>
-#include <iterator>
-#include <map>
 #include <set>
-#include <vector>
 #include <tuple>
 #include <string>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <malamute.h>
-#include <fty_proto.h>
-#include <math.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <functional>
-#include <cxxtools/split.h>
+#include <algorithm>
 
 #include "email.h"
 #include "emailconfiguration.h"
