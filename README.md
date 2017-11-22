@@ -55,9 +55,9 @@ sections, agent has the following configuration options:
 
 * under malamute section:
     * consumers/<stream> - subscribe fty-email to specified streams and use regular expression filtering on them.
-        Leave at default values unless you KNOW what you are doing.
-    * producer - set fty-email to publish on specified stream
-    * timeout - set timeout for connecting to Malamute broker (default value 1s)
+        Unused by default.
+    * producer - set fty-email to publish on specified stream. Unused by default.
+    * timeout - set timeout for connecting to Malamute broker (default value is 1 second)
 
 Values read from configuration file can be overwritten by setting the following environment variables:
 
@@ -82,7 +82,7 @@ Actor is a server actor: handles e-mail configuration, notification via e-mail/S
 
 This actor can be run in full, or in sendmail-only mode (when it doesn't connect to the Malamute broker).
 
-Timer is a notification timer - runs every second and checks the alerts cache to see whether we have any alerts for which we need to send e-mail/SMS notification.
+Timer runs every second and checks whether the config file changes - if it did, it issues the LOAD command to the actor.
 
 ## Protocols
 
@@ -147,7 +147,7 @@ where
 * '/' indicates a multipart string message
 * 'correlation\-id' is a zuuid identifier provided by the caller
 * 'to' MUST be valid To: header
-* 'subject' MUST be valiud Subject: header
+* 'subject' MUST be valid Subject: header
 * 'body' MUST be valid body of e-mail
 * 'header-1',...,'header-n' MAY be other headers
 * 'path-1',...,'path-m' MAY be present and MUST be, if present, paths to text OR binary files
@@ -178,7 +178,7 @@ FTY-EMAIL-AGENT ("fty-email") peer:
 where
 * '/' indicates a multipart string message
 * 'correlation\-id' is a zuuid identifier provided by the caller
-* 'priority' MUST be valid asset priority
+* 'priority' MUST be valid asset priority (1 - 5)
 * 'extname' MUST be valid user-friendly asset name
 * 'contact' MUST be empty string OR valid e-mail/phone number
 * 'fty\_proto ALERT message' must be valid fty\_proto message of the type ALERT
