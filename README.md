@@ -108,7 +108,9 @@ It is possible to request the fty-email agent for:
 
 * sending e-mail with user-specified headers
 
-* sending e-mail/SMS notification for specified alert
+* sending e-mail notification for specified alert
+
+* sending SMS notification for specified alert
 
 #### Sending e-mail with default headers
 
@@ -166,7 +168,7 @@ where
 * 'reason' is string detailing reason for error (just what() for the thrown runtime error)
 * subject of the message must be SENDMAIL-OK for OK message and SENDMAIL-ERROR for error message
 
-#### Sending e-mail/SMS notification for specified alert
+#### Sending e-mail notification for specified alert
 
 The USER peer sends the following messages using MAILBOX SEND to
 FTY-EMAIL-AGENT ("fty-email") peer:
@@ -180,7 +182,7 @@ where
 * 'correlation\-id' is a zuuid identifier provided by the caller
 * 'priority' MUST be valid asset priority (1 - 5)
 * 'extname' MUST be valid user-friendly asset name
-* 'contact' MUST be empty string OR valid e-mail/phone number
+* 'contact' MUST be empty string OR valid e-mail
 * 'fty\_proto ALERT message' must be valid fty\_proto message of the type ALERT
 * subject of the message MUST be "SENDMAIL\_ALERT".
 
@@ -195,6 +197,36 @@ where
 * 'correlation\-id' is a zuuid identifier provided by the caller
 * 'reason' is string detailing reason for error (just what() for the thrown runtime error)
 * subject of the message must be "SENDMAIL\_ALERT"
+
+#### Sending SMS notification for specified alert
+
+The USER peer sends the following messages using MAILBOX SEND to
+FTY-EMAIL-AGENT ("fty-email") peer:
+
+* correlation\-id/priority/extname/contact/fty\_proto ALERT message
+    - send notification for asset 'extname' with priority 'priority' to 'contact',
+    where content of the notification is specified by the ALERT message
+
+where
+* '/' indicates a multipart string message
+* 'correlation\-id' is a zuuid identifier provided by the caller
+* 'priority' MUST be valid asset priority (1 - 5)
+* 'extname' MUST be valid user-friendly asset name
+* 'contact' MUST be empty string OR valid phone number
+* 'fty\_proto ALERT message' must be valid fty\_proto message of the type ALERT
+* subject of the message MUST be "SENDSMS\_ALERT".
+
+The FTY-EMAIL-AGENT peer MUST respond with one of the messages back to USER
+peer using MAILBOX SEND.
+
+* correlation\-id/OK
+* correlation\-id/ERROR/reason
+
+where
+* '/' indicates a multipart frame message
+* 'correlation\-id' is a zuuid identifier provided by the caller
+* 'reason' is string detailing reason for error (just what() for the thrown runtime error)
+* subject of the message must be "SENDSMS\_ALERT"
 
 ### Stream subscriptions
 
