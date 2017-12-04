@@ -32,7 +32,7 @@
 //  External dependencies
 #include <czmq.h>
 #include <malamute.h>
-#include <fty_proto.h>
+#include <ftyproto.h>
 #include <magic.h>
 #include <cxxtools/allocator.h>
 
@@ -60,6 +60,9 @@
 #   else
 #       define FTY_EMAIL_EXPORT __declspec(dllimport)
 #   endif
+#   define FTY_EMAIL_PRIVATE
+#elif defined (__CYGWIN__)
+#   define FTY_EMAIL_EXPORT
 #   define FTY_EMAIL_PRIVATE
 #else
 #   define FTY_EMAIL_EXPORT
