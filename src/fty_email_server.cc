@@ -419,19 +419,22 @@ fty_email_server (zsock_t *pipe, void* args)
                 char *extname = zmsg_popstr (zmessage);
                 char *contact = zmsg_popstr (zmessage);
                 fty_proto_t *alert = fty_proto_decode (&zmessage);
+                std::string gateway = gw_template == NULL ? "" : gw_template;
+                std::string converted_contact = contact == NULL ? "" : contact;
+
                 try {
                     if (topic == "SENDSMS_ALERT") {
                         zsys_debug ("gw_template = %s", gw_template);
                         zsys_debug ("contact = %s", contact);
-                        std::string converted_contact = sms_email_address (gw_template, contact);
-                        s_notify (smtp, priority, extname, converted_contact, alert);
+                        std::string _contact = sms_email_address (gateway, converted_contact);
+                        s_notify (smtp, priority, extname, _contact, alert);
                     }
                     else {
-                        s_notify (smtp, priority, extname, contact, alert);
+                        s_notify (smtp, priority, extname, converted_contact, alert);
                     }
                     zmsg_addstr (reply, "OK");
                 }
-                catch (const std::runtime_error &re) {
+                catch (const std::exception &re) {
                     zsys_error ("Sending of e-mail/SMS alert failed : %s", re.what ());
                     zmsg_addstr (reply, "ERROR");
                     zmsg_addstr (reply, re.what ());
