@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2016 - 2017 Eaton
+# Copyright (C) 2016 - 2018 Eaton
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #  \brief   Helper script to scan an SNMP-capable power device and
 #           report the scan results via e-mail
 #  \author  Tomas Halman <TomasHalman@Eaton.com>
+#  \author  Arnaud Quette <ArnaudQuette@Eaton.com>
 
 MAIL="EatonProductFeedback@eaton.com"
 IP=""
@@ -79,7 +80,7 @@ getCommunities | while read community; do
     for version in "1" "2c" ; do
         if snmpgetnext -v "${version}" -c "${community}" "${IP}" .1 2> /dev/null ; then
             echo "Community ${community}/v${version} works, scanning mib..."
-            snmpwalk -v "${version}" -c "${community}" "${IP}" .1 2>/dev/null | gzip > "${TMPFILE}"
+            snmpwalk -On -v "${version}" -c "${community}" "${IP}" .1 2>/dev/null | gzip > "${TMPFILE}"
             break 2
         fi
     done
