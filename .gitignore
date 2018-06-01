@@ -30,10 +30,10 @@ src/fty_email_selftest
 *.app
 core
 
- # Distcheck workspace and archives
-fty-email-1.0.0/
-fty-email-1.0.0.tar.gz
-fty-email-1.0.0.zip
+# Distcheck workspace and archives
+fty-email-*/
+fty-email-*.tar.gz
+fty-email-*.zip
 
 # Man pages
 doc/*.1
@@ -77,6 +77,7 @@ builds/cmake/
 CMake*
 
 # Repositories downloaded by CI integration scripts
+libsodium/
 libzmq/
 czmq/
 malamute/
@@ -111,7 +112,7 @@ src/app/gen/
 src/app/obj/
 src/app/local.properties
 
-# Android -dependencies
+# Android - dependencies
 src/app/jni/output
 
 # Python build directory
@@ -132,6 +133,9 @@ bindings/qt/selftest/selftest
 *.swp
 *.bak
 .test*
+
+# Netbeans directory
+nbproject/
 
 # editor backups
 *~

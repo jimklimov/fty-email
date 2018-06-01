@@ -35,12 +35,15 @@
 //
 
 void
-fty_email_private_selftest (bool verbose)
+fty_email_private_selftest (bool verbose, const char *subtest)
 {
 // Tests for stable private classes:
-    emailconfiguration_test (verbose);
-    email_test (verbose);
-    subprocess_test (verbose);
+    if (streq (subtest, "$ALL") || streq (subtest, "emailconfiguration_test"))
+        emailconfiguration_test (verbose);
+    if (streq (subtest, "$ALL") || streq (subtest, "email_test"))
+        email_test (verbose);
+    if (streq (subtest, "$ALL") || streq (subtest, "subprocess_test"))
+        subprocess_test (verbose);
 }
 /*
 ################################################################################

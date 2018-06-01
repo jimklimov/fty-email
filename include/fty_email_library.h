@@ -65,11 +65,12 @@
 #   define FTY_EMAIL_EXPORT
 #   define FTY_EMAIL_PRIVATE
 #else
-#   define FTY_EMAIL_EXPORT
 #   if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER
 #       define FTY_EMAIL_PRIVATE __attribute__ ((visibility ("hidden")))
+#       define FTY_EMAIL_EXPORT __attribute__ ((visibility ("default")))
 #   else
 #       define FTY_EMAIL_PRIVATE
+#       define FTY_EMAIL_EXPORT
 #   endif
 #endif
 
@@ -83,9 +84,18 @@ typedef struct _fty_email_server_t fty_email_server_t;
 #include "fty_email_server.h"
 
 #ifdef FTY_EMAIL_BUILD_DRAFT_API
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //  Self test for private classes
 FTY_EMAIL_EXPORT void
-    fty_email_private_selftest (bool verbose);
+    fty_email_private_selftest (bool verbose, const char *subtest);
+
+#ifdef __cplusplus
+}
+#endif
 #endif // FTY_EMAIL_BUILD_DRAFT_API
 
 #endif
