@@ -74,7 +74,7 @@ FTY_EMAIL_PRIVATE void
 
 //  Self test for private classes
 FTY_EMAIL_PRIVATE void
-    fty_email_private_selftest (bool verbose);
+    fty_email_private_selftest (bool verbose, const char *subtest);
 
 #endif // FTY_EMAIL_BUILD_DRAFT_API
 
