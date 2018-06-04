@@ -113,6 +113,7 @@ matrix:
   - env: BUILD_TYPE=valgrind
     os: linux
     dist: trusty
+# Note: was uncommented in earlier builds (TODO: Check if needed)
 #    sudo: required
     addons:
       apt:
