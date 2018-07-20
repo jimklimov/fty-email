@@ -105,9 +105,9 @@ std::string Smtp::createConfigFile() const
     line += "from " + _from + "\n";
     ssize_t r = write (handle,  line.c_str(), line.size());
     if (r > 0 && (size_t) r != line.size ())
-        zsys_error ("write to %s was truncated, expected %zu, written %zd", filename, line.size(), r);
+        log_error ("write to %s was truncated, expected %zu, written %zd", filename, line.size(), r);
     if (r == -1)
-        zsys_error ("write to %s failed: %s", filename, strerror (errno));
+        log_error ("write to %s failed: %s", filename, strerror (errno));
     close (handle);
     return std::string(filename);
 }
@@ -190,7 +190,7 @@ void Smtp::sendmail(
 
     ssize_t wr = ::write(proc.getStdin(), data.c_str(), data.size());
     if (wr != static_cast<ssize_t>(data.size())) {
-        zsys_warning("Email truncated, exp '%zu', piped '%zd'", data.size(), wr);
+        log_warning("Email truncated, exp '%zu', piped '%zd'", data.size(), wr);
     }
     ::close(proc.getStdin()); //EOF
 
@@ -270,7 +270,7 @@ Smtp::msg2email (zmsg_t **msg_p) const
             char* path = zmsg_popstr (msg);
             const char* mime_type = magic_file (_magic, path);
             if (!mime_type) {
-                zsys_warning ("Can't guess type for %s, using application/octet-stream", path);
+                log_warning ("Can't guess type for %s, using application/octet-stream", path);
                 mime_type = "application/octet-stream; charset=binary";
             }
 
@@ -437,7 +437,7 @@ email_test (bool verbose)
     Smtp smtp {};
     char* uuid = zmsg_popstr (email_msg); zstr_free (&uuid);
     std::string email = smtp.msg2email (&email_msg);
-    zsys_debug ("E M A I L:=\n%s\n", email.c_str ());
+    log_debug ("E M A I L:=\n%s\n", email.c_str ());
 
     //  @end
     printf ("OK\n");

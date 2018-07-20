@@ -17,3 +17,5 @@ malamute
     verbose = false                                 #   To setup verbose mlm_client
     endpoint = ipc://@/malamute                     #   Malamute endpoint
     address = fty-email                             #   Agent mailbox address
+log
+    config = /etc/fty/ftylog.cfg                    # configuration file for fty-common-logging

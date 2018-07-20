@@ -26,11 +26,6 @@
 @end
 */
 
-int agent_smtp_verbose = true;
-
-#define zsys_debug1(...) \
-    do { if (agent_smtp_verbose) zsys_debug (__VA_ARGS__); } while (0);
-
 #include "fty_email_classes.h"
 
 #include <set>
@@ -133,7 +128,6 @@ void
 fty_email_server (zsock_t *pipe, void* args)
 {
     bool sendmail_only = (args && streq ((char*) args, "sendmail-only"));
-    bool verbose = false;
     char* name = NULL;
     char *endpoint = NULL;
     char *test_reader_name = NULL;
@@ -157,45 +151,30 @@ fty_email_server (zsock_t *pipe, void* args)
         void *which = zpoller_wait (poller, -1);
 
         if (which == pipe) {
-            zsys_debug1 ("%s:\twhich == pipe", name);
+            log_debug ("%s:\twhich == pipe", name);
             zmsg_t *msg = zmsg_recv (pipe);
             char *cmd = zmsg_popstr (msg);
-            zsys_debug1 ("%s:\tactor command=%s", name, cmd);
+            log_debug ("%s:\tactor command=%s", name, cmd);
 
             if (streq (cmd, "$TERM")) {
-                zsys_info ("Got $TERM");
+                log_info ("Got $TERM");
                 zstr_free (&cmd);
                 zmsg_destroy (&msg);
                 break;
             }
             else
-            if (streq (cmd, "VERBOSE")) {
-                verbose = true;
-                agent_smtp_verbose = true;
-                zstr_free (&cmd);
-            }
-            else
             if (streq (cmd, "LOAD")) {
                 char * config_file = zmsg_popstr (msg);
-                zsys_debug1 ("(agent-smtp):\tLOAD: %s", config_file);
+                log_debug ("(agent-smtp):\tLOAD: %s", config_file);
 
                 zconfig_t *config = zconfig_load (config_file);
                 if (!config) {
-                    zsys_error ("Failed to load config file %s", config_file);
+                    log_error ("Failed to load config file %s", config_file);
                     zstr_free (&config_file);
                     zstr_free (&cmd);
                     break;
                 }
 
-                // VERBOSE
-                if (streq (zconfig_get (config, "server/verbose", "false"), "true")) {
-                    verbose = true;
-                    agent_smtp_verbose = true;
-                }
-                else {
-                    verbose = false;
-                    agent_smtp_verbose = false;
-                }
                 // SMS_GATEWAY
                 if (s_get (config, "smtp/smsgateway", NULL)) {
                     sms_gateway = strdup (s_get (config, "smtp/smsgateway", NULL));
@@ -223,7 +202,7 @@ fty_email_server (zsock_t *pipe, void* args)
                     || strcasecmp (encryption, "starttls") == 0)
                     smtp.encryption (encryption);
                 else
-                    zsys_warning ("(agent-smtp): smtp/encryption has unknown value, got %s, expected (NONE|TLS|STARTTLS)", encryption);
+                    log_warning ("(agent-smtp): smtp/encryption has unknown value, got %s, expected (NONE|TLS|STARTTLS)", encryption);
 
                 if (streq (s_get (config, "smtp/use_auth", "false"), "true")) {
                     if (s_get (config, "smtp/user", NULL)) {
@@ -263,15 +242,15 @@ fty_email_server (zsock_t *pipe, void* args)
                         uint32_t timeout = 1000;
                         sscanf ("%" SCNu32, zconfig_get (config, "malamute/timeout", "1000"), &timeout);
 
-                        zsys_debug1 ("%s: mlm_client_connect (%s, %" PRIu32 ", %s)", name, endpoint, timeout, name);
+                        log_debug ("%s: mlm_client_connect (%s, %" PRIu32 ", %s)", name, endpoint, timeout, name);
                         int r = mlm_client_connect (client, endpoint, timeout, name);
                         if (r == -1)
-                            zsys_error ("%s: mlm_client_connect (%s, %" PRIu32 ", %s) = %d FAILED", name, endpoint, timeout, name, r);
+                            log_error ("%s: mlm_client_connect (%s, %" PRIu32 ", %s) = %d FAILED", name, endpoint, timeout, name, r);
                         else
                             client_connected = true;
                     }
                     else
-                        zsys_warning ("(agent-smtp): malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
+                        log_warning ("(agent-smtp): malamute/endpoint or malamute/address not in configuration, NOT connected to the broker!");
                 }
 
                 // skip if sendmail_only
@@ -288,7 +267,7 @@ fty_email_server (zsock_t *pipe, void* args)
                             {
                                 const char* stream = zconfig_name (child);
                                 const char* pattern = zconfig_value (child);
-                                zsys_debug1 ("%s:\tstream/pattern=%s/%s", name, stream, pattern);
+                                log_debug ("%s:\tstream/pattern=%s/%s", name, stream, pattern);
 
                                 // check if we're already connected to not let replay log to explode :)
                                 if (streams.count (std::make_tuple (stream, pattern)) == 1)
@@ -296,19 +275,19 @@ fty_email_server (zsock_t *pipe, void* args)
 
                                 int r = mlm_client_set_consumer (client, stream, pattern);
                                 if (r == -1)
-                                    zsys_warning ("%s:\tcannot subscribe on %s/%s", name, stream, pattern);
+                                    log_warning ("%s:\tcannot subscribe on %s/%s", name, stream, pattern);
                                 else
                                     streams.insert (std::make_tuple (stream, pattern));
                             }
                         }
                         else
-                            zsys_warning ("(agent-smtp): client is not connected to broker, can't subscribe to the stream!");
+                            log_warning ("(agent-smtp): client is not connected to broker, can't subscribe to the stream!");
                     }
                 }
 
                 if (zconfig_get (config, "malamute/producer", NULL)) {
                     if (!mlm_client_connected (client))
-                        zsys_warning ("(agent-smtp): client is not connected to broker, can't publish on the stream!");
+                        log_warning ("(agent-smtp): client is not connected to broker, can't publish on the stream!");
                     else
                     if (!producer) {
                         const char* stream = zconfig_get (config, "malamute/producer", NULL);
@@ -316,7 +295,7 @@ fty_email_server (zsock_t *pipe, void* args)
                                 client,
                                 stream);
                         if (r == -1)
-                            zsys_warning ("%s:\tcannot publish on %s", name, stream);
+                            log_warning ("%s:\tcannot publish on %s", name, stream);
                         else
                             producer = true;
                     }
@@ -333,7 +312,7 @@ fty_email_server (zsock_t *pipe, void* args)
                 assert (endpoint);
                 int rv = mlm_client_connect (test_client, endpoint, 1000, "smtp-test-client");
                 if (rv == -1) {
-                    zsys_error ("%s\t:can't connect on test_client, endpoint=%s", name, endpoint);
+                    log_error ("%s\t:can't connect on test_client, endpoint=%s", name, endpoint);
                 }
                 std::function <void (const std::string &)> cb = \
                     [test_client, test_reader_name] (const std::string &data) {
@@ -343,30 +322,30 @@ fty_email_server (zsock_t *pipe, void* args)
             }
             else
             {
-                zsys_error ("unhandled command %s", cmd);
+                log_error ("unhandled command %s", cmd);
             }
             zstr_free (&cmd);
             zmsg_destroy (&msg);
             continue;
         }
 
-        zsys_debug1 ("%s:\twhich == mlm_client", name);
+        log_debug ("%s:\twhich == mlm_client", name);
         zmsg_t *zmessage = mlm_client_recv (client);
         if ( zmessage == NULL ) {
-            zsys_debug1 ("%s:\tzmessage is NULL", name);
+            log_debug ("%s:\tzmessage is NULL", name);
             continue;
         }
         std::string topic = mlm_client_subject(client);
-        zsys_debug1("%s:\tsubject='%s'", name, topic.c_str());
+        log_debug("%s:\tsubject='%s'", name, topic.c_str());
 
         // TODO add SMTP settings
         if (streq (mlm_client_command (client), "MAILBOX DELIVER")) {
 
-            zsys_debug1 ("%s:\tMAILBOX DELIVER, subject=%s", name, mlm_client_subject (client));
+            log_debug ("%s:\tMAILBOX DELIVER, subject=%s", name, mlm_client_subject (client));
 
             char *uuid = zmsg_popstr (zmessage);
             if (!uuid) {
-                zsys_error ("UUID frame is missing from zmessage, ignoring");
+                log_error ("UUID frame is missing from zmessage, ignoring");
                 zmsg_destroy (&zmessage);
                 continue;
             }
@@ -380,16 +359,14 @@ fty_email_server (zsock_t *pipe, void* args)
                 try {
                     if (zmsg_size (zmessage) == 1) {
                         char *body = zmsg_popstr (zmessage);
-                        zsys_debug1 ("%s:\tsmtp.sendmail (%s)", name, body);
+                        log_debug ("%s:\tsmtp.sendmail (%s)", name, body);
                         smtp.sendmail (body);
                         zstr_free (&body);
                     }
                     else {
-                        if (verbose)
-                            zmsg_print (zmessage);
+                        zmsg_print (zmessage);
                         auto mail = smtp.msg2email (&zmessage);
-                        if (verbose)
-                            zsys_debug (mail.c_str ());
+                        log_debug (mail.c_str ());
                         smtp.sendmail (mail);
                     }
                     zmsg_addstr (reply, "0");
@@ -397,7 +374,7 @@ fty_email_server (zsock_t *pipe, void* args)
                     sent_ok = true;
                 }
                 catch (const std::runtime_error &re) {
-                    zsys_debug1 ("%s:\tgot std::runtime_error, e.what ()=%s", name, re.what ());
+                    log_debug ("%s:\tgot std::runtime_error, e.what ()=%s", name, re.what ());
                     sent_ok = false;
                     uint32_t code = static_cast <uint32_t> (msmtp_stderr2code (re.what ()));
                     zmsg_addstrf (reply, "%" PRIu32, code);
@@ -412,7 +389,7 @@ fty_email_server (zsock_t *pipe, void* args)
                         1000,
                         &reply);
                 if (r == -1)
-                    zsys_error ("Can't send a reply for SENDMAIL to %s", mlm_client_sender (client));
+                    log_error ("Can't send a reply for SENDMAIL to %s", mlm_client_sender (client));
             }
             else if (topic == "SENDMAIL_ALERT" || topic == "SENDSMS_ALERT") {
                 char *priority = zmsg_popstr (zmessage);
@@ -424,8 +401,8 @@ fty_email_server (zsock_t *pipe, void* args)
 
                 try {
                     if (topic == "SENDSMS_ALERT") {
-                        zsys_debug ("gw_template = %s", gw_template);
-                        zsys_debug ("contact = %s", contact);
+                        log_debug ("gw_template = %s", gw_template);
+                        log_debug ("contact = %s", contact);
                         std::string _contact = sms_email_address (gateway, converted_contact);
                         s_notify (smtp, priority, extname, _contact, alert);
                     }
@@ -435,7 +412,7 @@ fty_email_server (zsock_t *pipe, void* args)
                     zmsg_addstr (reply, "OK");
                 }
                 catch (const std::exception &re) {
-                    zsys_error ("Sending of e-mail/SMS alert failed : %s", re.what ());
+                    log_error ("Sending of e-mail/SMS alert failed : %s", re.what ());
                     zmsg_addstr (reply, "ERROR");
                     zmsg_addstr (reply, re.what ());
                 }
@@ -447,14 +424,14 @@ fty_email_server (zsock_t *pipe, void* args)
                         1000,
                         &reply);
                 if (r == -1)
-                    zsys_error ("Can't send a reply for SENDMAIL_ALERT to %s", mlm_client_sender (client));
+                    log_error ("Can't send a reply for SENDMAIL_ALERT to %s", mlm_client_sender (client));
                 fty_proto_destroy (&alert);
                 zstr_free (&contact);
                 zstr_free (&extname);
                 zstr_free (&priority);
             }
             else
-                zsys_warning ("%s:\tUnknown subject %s", name, topic.c_str ());
+                log_warning ("%s:\tUnknown subject %s", name, topic.c_str ());
 
             zmsg_destroy (&reply);
             zmsg_destroy (&zmessage);
@@ -507,7 +484,7 @@ fty_email_server_test (bool verbose)
         int r = fscanf (fp, "%d", &pid);
         assert (r > 0); // make picky compilers happy
         fclose (fp);
-        zsys_info ("about to kill -9 %d", pid);
+        log_info ("about to kill -9 %d", pid);
         kill (pid, SIGKILL);
         unlink (pidfile);
     }
@@ -515,7 +492,7 @@ fty_email_server_test (bool verbose)
     //  @selftest
 
     {
-        zsys_debug ("Test #1");
+        log_debug ("Test #1");
         zhash_t *headers = zhash_new ();
         zhash_update (headers, "Foo", (void*) "bar");
         char *file1_name = zsys_sprintf ("%s/file1", SELFTEST_DIR_RW);
@@ -562,8 +539,8 @@ fty_email_server_test (bool verbose)
         char *file2 = zmsg_popstr (email_msg);
         char *file3 = zmsg_popstr (email_msg);
 
-        zsys_debug("Got file1='%s'\nExpected ='%s'", file1, file1_name );
-        zsys_debug("Got file2='%s'\nExpected ='%s'", file2, file2_name );
+        log_debug("Got file1='%s'\nExpected ='%s'", file1, file1_name );
+        log_debug("Got file2='%s'\nExpected ='%s'", file2, file2_name );
 
         assert (streq (file1, file1_name ));
         assert (streq (file2, file2_name ));
@@ -575,7 +552,7 @@ fty_email_server_test (bool verbose)
         zstr_free (&file2_name);
         zmsg_destroy (&email_msg);
 
-        zsys_debug ("Test #1 OK");
+        log_debug ("Test #1 OK");
     }
 
     static const char* endpoint = "inproc://fty-smtp-server-test";
@@ -584,8 +561,7 @@ fty_email_server_test (bool verbose)
     zactor_t *server = zactor_new (mlm_server, (void*) "Malamute");
     assert ( server != NULL );
     zstr_sendx (server, "BIND", endpoint, NULL);
-    if ( verbose )
-        zsys_info ("malamute started");
+    log_info ("malamute started");
 
     // similar to create_test_smtp_server
     zactor_t *smtp_server = zactor_new (fty_email_server, NULL);
@@ -598,25 +574,20 @@ fty_email_server_test (bool verbose)
     zconfig_save (config, smtpcfg_file);
     zconfig_destroy (&config);
 
-    if (verbose)
-        zstr_send (smtp_server, "VERBOSE");
     zstr_sendx (smtp_server, "LOAD", smtpcfg_file, NULL);
     zstr_sendx (smtp_server, "_MSMTP_TEST", "btest-reader", NULL);
-    if ( verbose )
-        zsys_info ("smtp server started");
 
     mlm_client_t *alert_producer = mlm_client_new ();
     int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
     assert( rv != -1 );
-    if ( verbose )
-        zsys_info ("alert producer started");
+    log_info ("alert producer started");
 
     mlm_client_t *btest_reader = mlm_client_new ();
     rv = mlm_client_connect (btest_reader, endpoint, 1000, "btest-reader");
     assert( rv != -1 );
 
     {
-        zsys_debug ("Test #2 - send an alert on correct asset");
+        log_debug ("Test #2 - send an alert on correct asset");
         const char *asset_name = "ASSET1";
         //      1. send alert message
         zlist_t *actions = zlist_new ();
@@ -632,8 +603,7 @@ fty_email_server_test (bool verbose)
         zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
 
         mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
-        if (verbose)
-            zsys_info ("SENDMAIL_ALERT message was sent");
+        log_info ("SENDMAIL_ALERT message was sent");
 
         zmsg_t *reply = mlm_client_recv (alert_producer);
         assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
@@ -650,10 +620,9 @@ fty_email_server_test (bool verbose)
         //      2. read the email generated for alert
         msg = mlm_client_recv (btest_reader);
         assert (msg);
-        if ( verbose ) {
-            zsys_debug ("parameters for the email:");
-            zmsg_print (msg);
-        }
+        log_debug ("parameters for the email:");
+        zmsg_print (msg);
+
         //      3. compare the email with expected output
         int fr_number = zmsg_size(msg);
         char *body = NULL;
@@ -663,10 +632,8 @@ fty_email_server_test (bool verbose)
             fr_number--;
         }
         zmsg_destroy (&msg);
-        if ( verbose ) {
-            zsys_debug ("email itself:");
-            zsys_debug ("%s", body);
-        }
+        log_debug ("email itself:");
+        log_debug ("%s", body);
         std::string newBody = std::string (body);
         zstr_free(&body);
         std::size_t subject = newBody.find ("Subject:");
@@ -682,18 +649,18 @@ fty_email_server_test (bool verbose)
         "Alert description: ASDFKLHJH\nAlert state: ACTIVE\n";
         expectedBody.erase(remove_if(expectedBody.begin(), expectedBody.end(), isspace), expectedBody.end());
 
-        if (verbose) {
-            zsys_debug ("expectedBody =\n%s", expectedBody.c_str ());
-            zsys_debug ("\n");
-            zsys_debug ("newBody =\n%s", newBody.c_str ());
-        }
+
+        log_debug ("expectedBody =\n%s", expectedBody.c_str ());
+        log_debug ("\n");
+        log_debug ("newBody =\n%s", newBody.c_str ());
+
         //FIXME: email body is created by cxxtools::MimeMultipart class - do we need to test it?
         //assert ( expectedBody.compare(newBody) == 0 );
 
-        zsys_debug ("Test #2 OK");
+        log_debug ("Test #2 OK");
     }
     {
-        zsys_debug ("Test #3 - send an alert on correct asset, but with empty contact");
+        log_debug ("Test #3 - send an alert on correct asset, but with empty contact");
         // scenario 2: send an alert on correct asset with empty contact
         const char *asset_name1 = "ASSET2";
 
@@ -711,8 +678,8 @@ fty_email_server_test (bool verbose)
         zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
 
         mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
-        if (verbose)
-            zsys_info ("SENDMAIL_ALERT message was sent");
+
+        log_info ("SENDMAIL_ALERT message was sent");
 
         zmsg_t *reply = mlm_client_recv (alert_producer);
         assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
@@ -730,15 +697,14 @@ fty_email_server_test (bool verbose)
         zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
         void *which = zpoller_wait (poller, 1000);
         assert ( which == NULL );
-        if ( verbose ) {
-            zsys_debug ("No email was sent: SUCCESS");
-        }
+
+        log_debug ("No email was sent: SUCCESS");
         zpoller_destroy (&poller);
 
-        zsys_debug ("Test #3 OK");
+        log_debug ("Test #3 OK");
     }
     {
-        zsys_debug ("Test #4 - send alert on incorrect asset - empty name");
+        log_debug ("Test #4 - send alert on incorrect asset - empty name");
         //      1. send alert message
         const char *asset_name = "ASSET3";
         zlist_t *actions = zlist_new ();
@@ -754,8 +720,7 @@ fty_email_server_test (bool verbose)
         zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
 
         mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
-        if (verbose)
-            zsys_info ("SENDMAIL_ALERT message was sent");
+        log_info ("SENDMAIL_ALERT message was sent");
 
         zmsg_t *reply = mlm_client_recv (alert_producer);
         assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
@@ -773,14 +738,12 @@ fty_email_server_test (bool verbose)
         zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
         void *which = zpoller_wait (poller, 1000);
         assert ( which == NULL );
-        if ( verbose ) {
-            zsys_debug ("No email was sent: SUCCESS");
-        }
+        log_debug ("No email was sent: SUCCESS");
         zpoller_destroy (&poller);
-        zsys_debug ("Test #4 OK");
+        log_debug ("Test #4 OK");
     }
     {
-        zsys_debug ("Test #5 - send an alert on incorrect asset - empty priority");
+        log_debug ("Test #5 - send an alert on incorrect asset - empty priority");
         // scenario 3: send asset without email + send an alert on the already known asset
         //      2. send alert message
         const char *asset_name = "ASSET3";
@@ -797,8 +760,8 @@ fty_email_server_test (bool verbose)
         zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
 
         mlm_client_sendto (alert_producer, "agent-smtp", "SENDMAIL_ALERT", NULL, 1000, &msg);
-        if (verbose)
-            zsys_info ("SENDMAIL_ALERT message was sent");
+
+        log_info ("SENDMAIL_ALERT message was sent");
 
         zmsg_t *reply = mlm_client_recv (alert_producer);
         assert (streq (mlm_client_subject (alert_producer), "SENDMAIL_ALERT"));
@@ -816,15 +779,14 @@ fty_email_server_test (bool verbose)
         zpoller_t *poller = zpoller_new (mlm_client_msgpipe(btest_reader), NULL);
         void *which = zpoller_wait (poller, 1000);
         assert ( which == NULL );
-        if ( verbose ) {
-            zsys_debug ("No email was sent: SUCCESS");
-        }
+        log_debug ("No email was sent: SUCCESS");
+
         zpoller_destroy (&poller);
-        zsys_debug ("Test #5 OK");
+        log_debug ("Test #5 OK");
     }
     // test SENDSMS_ALERT
     {
-        zsys_debug ("Test #6 - send an alert on correct asset");
+        log_debug ("Test #6 - send an alert on correct asset");
         const char *asset_name = "ASSET1";
         //      1. send alert message
         zlist_t *actions = zlist_new ();
@@ -840,8 +802,7 @@ fty_email_server_test (bool verbose)
         zmsg_pushstr (msg, zuuid_str_canonical (zuuid));
 
         mlm_client_sendto (alert_producer, "agent-smtp", "SENDSMS_ALERT", NULL, 1000, &msg);
-        if (verbose)
-            zsys_info ("SENDSMS_ALERT message was sent");
+        log_info ("SENDSMS_ALERT message was sent");
 
         zmsg_t *reply = mlm_client_recv (alert_producer);
         assert (streq (mlm_client_subject (alert_producer), "SENDSMS_ALERT"));
@@ -858,24 +819,23 @@ fty_email_server_test (bool verbose)
         //      2. read the email generated for alert
         msg = mlm_client_recv (btest_reader);
         assert (msg);
-        if ( verbose ) {
-            zsys_debug ("parameters for the email:");
-            zmsg_print (msg);
-        }
+        log_debug ("parameters for the email:");
+        zmsg_print (msg);
+
         //      3. compare the email with expected output
         char *body = NULL;
         do {
             body = zmsg_popstr (msg);
-            zsys_debug ("%s", body);
+            log_debug ("%s", body);
             zstr_free(&body);
         } while (body != NULL);
 
         zmsg_destroy (&msg);
-        zsys_debug ("Test #6 OK");
+        log_debug ("Test #6 OK");
     }
     //test SENDMAIL
     {
-        zsys_debug ("Test #7 - test SENDMAIL");
+        log_debug ("Test #7 - test SENDMAIL");
         rv = mlm_client_sendtox (alert_producer, "agent-smtp", "SENDMAIL", "UUID", "foo@bar", "Subject", "body", NULL);
         assert (rv != -1);
         zmsg_t *msg = mlm_client_recv (alert_producer);
@@ -898,10 +858,10 @@ fty_email_server_test (bool verbose)
 
         //  this fixes the reported memcheck error
         msg = mlm_client_recv (btest_reader);
-        if (verbose)
-            zmsg_print (msg);
+
+        zmsg_print (msg);
         zmsg_destroy (&msg);
-        zsys_debug ("Test #7 OK");
+        log_debug ("Test #7 OK");
     }
 
     // clean up after the test
@@ -909,12 +869,6 @@ fty_email_server_test (bool verbose)
     // smtp server send mail only
     zactor_t *send_mail_only_server = zactor_new (fty_email_server, (void*) "sendmail-only");
     assert ( send_mail_only_server != NULL );
-
-    if (verbose)
-    {
-        zsys_info ("smtp-sedmail-only server started");
-        zstr_send (send_mail_only_server, "VERBOSE");
-    }
 
     zactor_destroy(&send_mail_only_server);
     zactor_destroy (&smtp_server);
