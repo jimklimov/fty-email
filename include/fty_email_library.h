@@ -35,6 +35,7 @@
 #include <ftyproto.h>
 #include <magic.h>
 #include <cxxtools/allocator.h>
+#include <fty_log.h>
 
 //  FTY_EMAIL version macros for compile-time API detection
 #define FTY_EMAIL_VERSION_MAJOR 1

@@ -58,6 +58,8 @@ BuildRequires:  malamute-devel
 BuildRequires:  fty-proto-devel
 BuildRequires:  file-devel
 BuildRequires:  cxxtools-devel
+BuildRequires:  log4cplus-devel
+BuildRequires:  fty-common-logging-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
@@ -88,6 +90,8 @@ Requires:       malamute-devel
 Requires:       fty-proto-devel
 Requires:       file-devel
 Requires:       cxxtools-devel
+Requires:       log4cplus-devel
+Requires:       fty-common-logging-devel
 
 %description devel
 email transport for 42ity (based on msmtp) development tools

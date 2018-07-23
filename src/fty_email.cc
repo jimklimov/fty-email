@@ -32,11 +32,11 @@
 // hack to allow reload of config file w/o the need to rewrite server to zloop and reactors
 char *config_file = NULL;
 zconfig_t *config = NULL;
-
+char *log_config = NULL;
 void usage ()
 {
     puts ("fty-email [options]\n"
-          "  -v|--verbose          verbose test output\n"
+          "  -v|--verbose          verbose output\n"
           "  -s|--server           smtp server name or address\n"
           "  -p|--port             smtp server port [25]\n"
           "  -u|--user             user for smtp authentication\n"
@@ -55,7 +55,7 @@ static int
 s_timer_event (zloop_t *loop, int timer_id, void *output)
 {
     if (zconfig_has_changed (config)) {
-        zsys_info ("Content of %s have changed, reload it", config_file);
+        log_info ("Content of %s have changed, reload it", config_file);
         zconfig_reload (&config);
         zstr_sendx (output, "LOAD", config_file, NULL);
     }
@@ -67,11 +67,6 @@ int main (int argc, char** argv)
     int verbose = 0;
     int help = 0;
 
-    // set defauts
-    char* bios_log_level = getenv ("BIOS_LOG_LEVEL");
-    if (bios_log_level && streq (bios_log_level, "LOG_DEBUG")) {
-        verbose = 1;
-    }
     char *smtpserver   = getenv("BIOS_SMTP_SERVER");
     char *smtpport     = getenv("BIOS_SMTP_PORT");
     char *smtpuser     = getenv("BIOS_SMTP_USER");
@@ -81,6 +76,7 @@ int main (int argc, char** argv)
     char *msmtp_path   = getenv("_MSMTP_PATH_");
     char *smsgateway   = getenv("BIOS_SMTP_SMS_GATEWAY");
     char *smtpverify   = getenv ("BIOS_SMTP_VERIFY_CA");
+    ManageFtyLog::setInstanceFtylog(FTY_EMAIL_ADDRESS);
 
     // get options
     int c;
@@ -146,7 +142,7 @@ int main (int argc, char** argv)
     // end of the options
 
     if (!config_file) {
-        zsys_info ("No config file specified, falling back to enviromental variables.\nNote this is deprecated and will be removed!");
+        log_info ("No config file specified, falling back to enviromental variables.\nNote this is deprecated and will be removed!");
         config = zconfig_new ("root", NULL);
         zconfig_put (config, "server/verbose", verbose? "1" : "0");
 
@@ -167,45 +163,50 @@ int main (int argc, char** argv)
 
         zconfig_put (config, "malamute/endpoint", FTY_EMAIL_ENDPOINT);
         zconfig_put (config, "malamute/address", FTY_EMAIL_ADDRESS);
+        zconfig_put (config, "log/config", DEFAULT_LOG_CONFIG);
+        log_config = (char *)DEFAULT_LOG_CONFIG;
         zconfig_print (config);
 
         config_file = (char*) FTY_EMAIL_CONFIG_FILE;
         int r = zconfig_save (config, config_file);
         if (r == -1) {
-            zsys_error ("Error while saving config file %s: %m", config_file);
+            log_error ("Error while saving config file %s: %m", config_file);
             exit (EXIT_FAILURE);
         }
     }
     else {
         config = zconfig_load (config_file);
         if (!config) {
-            zsys_error ("Failed to load config file %s: %m", config_file);
+            log_error ("Failed to load config file %s: %m", config_file);
             exit (EXIT_FAILURE);
+        }
+        else {
+            log_config = zconfig_get (config, "log/config", DEFAULT_LOG_CONFIG);
         }
     }
 
+    if (log_config)
+        ManageFtyLog::getInstanceFtylog()->setConfigFile(std::string(log_config));
+
     if (verbose)
-        puts ("START fty-email - Daemon that is responsible for email notification about alerts");
+        ManageFtyLog::getInstanceFtylog()->setVeboseMode();
+
+    puts ("START fty-email - Daemon that is responsible for email notification about alerts");
 
     zactor_t *smtp_server = zactor_new (fty_email_server, (void *) NULL);
     if ( !smtp_server ) {
-        zsys_error ("smtp_server: cannot start the daemon");
+        log_error ("smtp_server: cannot start the daemon");
         return -1;
     }
 
     // new actor with "sendmail-only"
     zactor_t *send_mail_only_server = zactor_new (fty_email_server, (void *) "sendmail-only");
     if ( !send_mail_only_server ) {
-        zsys_error ("send_mail_only_server: cannot start the daemon");
+        log_error ("send_mail_only_server: cannot start the daemon");
         return -1;
     }
 
-    if (verbose)
-        zstr_sendx (smtp_server, "VERBOSE", NULL);
     zstr_sendx (smtp_server, "LOAD", config_file, NULL);
-
-    if (verbose)
-        zstr_sendx (send_mail_only_server, "VERBOSE", NULL);
     zstr_sendx (send_mail_only_server, "LOAD", config_file, NULL);
 
     zloop_t *check_config = zloop_new();

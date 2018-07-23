@@ -1,21 +1,21 @@
 /*  =========================================================================
     fty_sendmail - Sendmail-like interface for 42ity
 
-    Copyright (C) 2014 - 2017 Eaton                                        
-                                                                           
-    This program is free software; you can redistribute it and/or modify   
-    it under the terms of the GNU General Public License as published by   
-    the Free Software Foundation; either version 2 of the License, or      
-    (at your option) any later version.                                    
-                                                                           
-    This program is distributed in the hope that it will be useful,        
-    but WITHOUT ANY WARRANTY; without even the implied warranty of         
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          
-    GNU General Public License for more details.                           
-                                                                           
+    Copyright (C) 2014 - 2017 Eaton
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.            
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
     =========================================================================
 */
 
@@ -56,6 +56,8 @@ int main (int argc, char** argv)
     std::vector<std::string> attachments;
     const char *recipient = NULL;
     std::string subj;
+    char *log_config = NULL;
+    ManageFtyLog::setInstanceFtylog(FTY_EMAIL_ADDRESS_SENDMAIL_ONLY);
 
     // get options
     int c;
@@ -97,7 +99,7 @@ int main (int argc, char** argv)
             char path [PATH_MAX + 1];
             p = realpath (optarg, path);
             if (!p) {
-                zsys_error ("Can't get absolute path for %s: %s", optarg, strerror (errno));
+                log_error ("Can't get absolute path for %s: %s", optarg, strerror (errno));
                 exit (EXIT_FAILURE);
             }
             attachments.push_back (path);
@@ -126,7 +128,7 @@ int main (int argc, char** argv)
     if (config_file) {
         zconfig_t *config = zconfig_load (config_file);
         if (!config) {
-            zsys_error ("Failed to load %s: %m", config_file);
+            log_error ("Failed to load %s: %m", config_file);
             exit (EXIT_FAILURE);
         }
 
@@ -137,16 +139,21 @@ int main (int argc, char** argv)
         if (zconfig_get (config, "malamute/address", NULL)) {
             zstr_free (&smtp_address);
             smtp_address = strdup (zconfig_get (config, "malamute/address", NULL));
+
+            log_config = zconfig_get (config, "log/config", DEFAULT_LOG_CONFIG);
         }
 
         zconfig_destroy (&config);
     }
+    ManageFtyLog::getInstanceFtylog()->setConfigFile(std::string(log_config));
+    if (verbose)
+        ManageFtyLog::getInstanceFtylog()->setVeboseMode();
+
     mlm_client_t *client = mlm_client_new ();
     char *address = zsys_sprintf ("fty-sendmail.%d", getpid ());
     int r = mlm_client_connect (client, endpoint, 1000, address);
     assert (r != -1);
-    if (verbose)
-        zsys_debug ("fty-sendmail:\tendpoint=%s, address=%s, smtp_address=%s", endpoint, address, smtp_address);
+    log_debug ("fty-sendmail:\tendpoint=%s, address=%s, smtp_address=%s", endpoint, address, smtp_address);
     zstr_free (&address);
     zstr_free (&endpoint);
     assert (r != -1);
@@ -165,12 +172,11 @@ int main (int argc, char** argv)
         zmsg_addstr (mail, file.c_str());
     }
 
-    if (verbose)
-        zmsg_print (mail);
+    zmsg_print (mail);
     r = mlm_client_sendto (client, smtp_address, "SENDMAIL", NULL, 2000, &mail);
     zstr_free (&smtp_address);
     if (r == -1) {
-        zsys_error ("Failed to send the email (mlm_client_sendto returned -1).");
+        log_error ("Failed to send the email (mlm_client_sendto returned -1).");
         zmsg_destroy (&mail);
         mlm_client_destroy (&client);
 
@@ -186,8 +192,8 @@ int main (int argc, char** argv)
     if (code[0] != '0')
         exit_code = EXIT_FAILURE;
 
-    if (exit_code == EXIT_FAILURE || verbose)
-        zsys_debug ("subject: %s, \ncode: %s \nreason: %s", mlm_client_subject (client), code, reason);
+    if (exit_code == EXIT_FAILURE)
+        log_debug ("subject: %s, \ncode: %s \nreason: %s", mlm_client_subject (client), code, reason);
 
     zstr_free(&code);
     zstr_free(&reason);

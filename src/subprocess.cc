@@ -329,7 +329,7 @@ int output(const Argv& args, std::string& o, std::string& e, const std::string& 
     p.run();
     int r = ::write(p.getStdin(), i.c_str(), i.size());
     if (r == -1) {
-        zsys_error ("Can't write %zu to stdin, broken pipe: %s", i.size (), strerror (errno));
+        log_error ("Can't write %zu to stdin, broken pipe: %s", i.size (), strerror (errno));
         p.terminate ();
         zclock_sleep (2000);
         p.kill (SIGKILL);

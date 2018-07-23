@@ -63,6 +63,18 @@
         release = "2.2-FTY-master"
         />
 
+    <use project = "fty-common-logging" libname = "libfty_common_logging" header="fty_log.h"
+        repository = "https://github.com/42ity/fty-common-logging.git"
+        release = "master"
+        test = "fty_log_selftest" >
+
+        <use project = "log4cplus" header = "log4cplus/logger.h" test = "appender_test"
+            repository = "https://github.com/42ity/log4cplus.git"
+            release = "1.1.2-FTY-master"
+            />
+
+    </use>
+
     <class name = "emailconfiguration" private="1">Class that is responsible for email configuration</class>
     <class name = "email" private="1">Smtp</class>
     <class name = "subprocess" private="1">Subprocess</class>
