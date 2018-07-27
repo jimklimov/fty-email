@@ -66,6 +66,8 @@ pkg_deps_prereqs_source: &pkg_deps_prereqs_source
     - libzmq3-dev
     - libczmq-dev
     - libmlm-dev
+    - log4cplus-dev
+    - libfty-common-logging-dev
     - libfty-proto-dev
     - libmagic-dev
     - cxxtools-dev
@@ -113,8 +115,6 @@ matrix:
   - env: BUILD_TYPE=valgrind
     os: linux
     dist: trusty
-# Note: was uncommented in earlier builds (TODO: Check if needed)
-#    sudo: required
     addons:
       apt:
         sources: *pkg_src_zeromq_ubuntu14
