@@ -151,7 +151,6 @@ fty_email_server (zsock_t *pipe, void* args)
         void *which = zpoller_wait (poller, -1);
 
         if (which == pipe) {
-            log_debug ("%s:\twhich == pipe", name);
             zmsg_t *msg = zmsg_recv (pipe);
             char *cmd = zmsg_popstr (msg);
             log_debug ("%s:\tactor command=%s", name, cmd);
@@ -329,14 +328,12 @@ fty_email_server (zsock_t *pipe, void* args)
             continue;
         }
 
-        log_debug ("%s:\twhich == mlm_client", name);
         zmsg_t *zmessage = mlm_client_recv (client);
         if ( zmessage == NULL ) {
             log_debug ("%s:\tzmessage is NULL", name);
             continue;
         }
         std::string topic = mlm_client_subject(client);
-        log_debug("%s:\tsubject='%s'", name, topic.c_str());
 
         // TODO add SMTP settings
         if (streq (mlm_client_command (client), "MAILBOX DELIVER")) {
