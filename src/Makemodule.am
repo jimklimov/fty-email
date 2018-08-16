@@ -15,7 +15,6 @@ pkgconfig_DATA = src/libfty_email.pc
 src_libfty_email_la_SOURCES = \
     src/emailconfiguration.cc \
     src/email.cc \
-    src/subprocess.cc \
     src/fty_email_server.cc \
     src/platform.h
 

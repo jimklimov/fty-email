@@ -57,7 +57,6 @@ all_tests [] = {
 // Now built only with --enable-drafts, so even stable builds are hidden behind the flag
     { "emailconfiguration", NULL, true, false, "emailconfiguration_test" },
     { "email", NULL, true, false, "email_test" },
-    { "subprocess", NULL, true, false, "subprocess_test" },
     { "private_classes", NULL, false, false, "$ALL" }, // compat option for older projects
 #endif // FTY_EMAIL_BUILD_DRAFT_API
     {NULL, NULL, 0, 0, NULL}          //  Sentinel
