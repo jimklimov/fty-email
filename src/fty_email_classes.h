@@ -43,16 +43,11 @@ typedef struct _emailconfiguration_t emailconfiguration_t;
 typedef struct _email_t email_t;
 #define EMAIL_T_DEFINED
 #endif
-#ifndef SUBPROCESS_T_DEFINED
-typedef struct _subprocess_t subprocess_t;
-#define SUBPROCESS_T_DEFINED
-#endif
 
 //  Internal API
 
 #include "emailconfiguration.h"
 #include "email.h"
-#include "subprocess.h"
 
 //  *** To avoid double-definitions, only define if building without draft ***
 #ifndef FTY_EMAIL_BUILD_DRAFT_API
@@ -66,11 +61,6 @@ FTY_EMAIL_PRIVATE void
 //  Self test of this class.
 FTY_EMAIL_PRIVATE void
     email_test (bool verbose);
-
-//  *** Draft method, defined for internal use only ***
-//  Self test of this class.
-FTY_EMAIL_PRIVATE void
-    subprocess_test (bool verbose);
 
 //  Self test for private classes
 FTY_EMAIL_PRIVATE void

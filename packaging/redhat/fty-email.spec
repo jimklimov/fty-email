@@ -57,9 +57,11 @@ BuildRequires:  czmq-devel
 BuildRequires:  malamute-devel
 BuildRequires:  log4cplus-devel
 BuildRequires:  fty-common-logging-devel
+BuildRequires:  fty-common-devel
+BuildRequires:  cxxtools-devel
+BuildRequires:  fty-common-mlm-devel
 BuildRequires:  fty-proto-devel
 BuildRequires:  file-devel
-BuildRequires:  cxxtools-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
@@ -89,9 +91,11 @@ Requires:       czmq-devel
 Requires:       malamute-devel
 Requires:       log4cplus-devel
 Requires:       fty-common-logging-devel
+Requires:       fty-common-devel
+Requires:       cxxtools-devel
+Requires:       fty-common-mlm-devel
 Requires:       fty-proto-devel
 Requires:       file-devel
-Requires:       cxxtools-devel
 
 %description devel
 email transport for 42ity (based on msmtp) development tools
