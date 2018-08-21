@@ -177,15 +177,17 @@ void Smtp::sendmail(
     if (_host.empty()) {
         return;
     }
-    Argv argv = { _msmtp, "-t", "-C", cfg };
-    SubProcess proc{argv, SubProcess::STDIN_PIPE | SubProcess::STDOUT_PIPE | SubProcess::STDERR_PIPE};
+    MlmSubprocess::Argv argv = { _msmtp, "-t", "-C", cfg };
+    MlmSubprocess::SubProcess proc{argv, MlmSubprocess::SubProcess::STDIN_PIPE |
+            MlmSubprocess::SubProcess::STDOUT_PIPE |
+            MlmSubprocess::SubProcess::STDERR_PIPE};
 
     bool bret = proc.run();
     if (!bret) {
         throw std::runtime_error( \
                 _msmtp + " failed with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
-                read_all(proc.getStderr()));
+                MlmSubprocess::read_all(proc.getStderr()));
     }
 
     ssize_t wr = ::write(proc.getStdin(), data.c_str(), data.size());
@@ -200,7 +202,7 @@ void Smtp::sendmail(
         throw std::runtime_error( \
                 _msmtp + " wait with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
-                read_all(proc.getStderr()));
+                MlmSubprocess::read_all(proc.getStderr()));
     }
 
     ret = proc.getReturnCode();
@@ -208,7 +210,7 @@ void Smtp::sendmail(
         throw std::runtime_error( \
                 _msmtp + " failed with exit code '" + \
                 std::to_string(proc.getReturnCode()) + "'\nstderr:\n" + \
-                read_all(proc.getStderr()));
+                MlmSubprocess::read_all(proc.getStderr()));
     }
 
 }

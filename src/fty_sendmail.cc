@@ -158,7 +158,7 @@ int main (int argc, char** argv)
     zstr_free (&endpoint);
     assert (r != -1);
 
-    std::string body = read_all (STDIN_FILENO);
+    std::string body = MlmSubprocess::read_all (STDIN_FILENO);
     zmsg_t *mail = fty_email_encode (
         "UUID",
         recipient,
