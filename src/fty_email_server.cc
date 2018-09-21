@@ -33,6 +33,7 @@
 #include <string>
 #include <functional>
 #include <algorithm>
+#include <fty_common_macros.h>
 
 #include "email.h"
 #include "emailconfiguration.h"
@@ -375,7 +376,7 @@ fty_email_server (zsock_t *pipe, void* args)
                     sent_ok = false;
                     uint32_t code = static_cast <uint32_t> (msmtp_stderr2code (re.what ()));
                     zmsg_addstrf (reply, "%" PRIu32, code);
-                    zmsg_addstr (reply, re.what ());
+                    zmsg_addstr (reply, JSONIFY(re.what ()));
                 }
 
                 int r = mlm_client_sendto (
