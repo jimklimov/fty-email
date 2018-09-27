@@ -26,30 +26,31 @@
 @end
 */
 
+#include <fty_common_macros.h>
 #include "fty_email_classes.h"
 
 #define BODY_ACTIVE \
-"In the system an alert was detected.\n\
-Source rule: ${rulename}\n\
-Asset: ${assetname}\n\
-Alert priority: P${priority}\n\
-Alert severity: ${severity}\n\
-Alert description: ${description}\n\
-Alert state: ${state}"
+TRANSLATE_ME ("In the system an alert was detected.\n\
+Source rule: $rulename$\n\
+Asset: $assetname$\n\
+Alert priority: P$priority$\n\
+Alert severity: $severity$\n\
+Alert description: $description$\n\
+Alert state: $state$")
 
 #define SUBJECT_ACTIVE \
-"${severity} alert on ${assetname}\n\
-from the rule ${rulename} is active!"
+TRANSLATE_ME ("$severity$ alert on $assetname$\n\
+from the rule $rulename$ is active!")
 
 #define BODY_RESOLVED \
-"In the system an alert was resolved.\n\
-Source rule: ${rulename}\n\
-Asset: ${assetname}\n\
-Alert description: ${description}"
+TRANSLATE_ME ("In the system an alert was resolved.\n\
+Source rule: $rulename$\n\
+Asset: $assetname$\n\
+Alert description: $description$")
 
 #define SUBJECT_RESOLVED \
-"Alert on ${assetname} \n\
-from the rule ${rulename} was resolved"
+TRANSLATE_ME ("Alert on $assetname$ \n\
+from the rule $rulename$ was resolved")
 
 
 // ----------------------------------------------------------------------------
@@ -74,9 +75,9 @@ static std::string
 s_generateEmailBodyResolved (fty_proto_t *alert, const std::string& extname)
 {
     std::string result (BODY_RESOLVED);
-    result = replace_tokens (result, "${rulename}", fty_proto_rule (alert));
-    result = replace_tokens (result, "${assetname}", extname);
-    result = replace_tokens (result, "${description}", fty_proto_description (alert));
+    result = replace_tokens (result, "$rulename$", fty_proto_rule (alert));
+    result = replace_tokens (result, "$assetname$", extname);
+    result = replace_tokens (result, "$description$", fty_proto_description (alert));
     return result;
 }
 
@@ -84,12 +85,12 @@ static std::string
 s_generateEmailBodyActive (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
     std::string result = BODY_ACTIVE;
-    result = replace_tokens (result, "${rulename}", fty_proto_rule (alert));
-    result = replace_tokens (result, "${assetname}", extname);
-    result = replace_tokens (result, "${description}", fty_proto_description (alert));
-    result = replace_tokens (result, "${priority}", priority);
-    result = replace_tokens (result, "${severity}", fty_proto_severity (alert));
-    result = replace_tokens (result, "${state}", fty_proto_state (alert));
+    result = replace_tokens (result, "$rulename$", fty_proto_rule (alert));
+    result = replace_tokens (result, "$assetname$", extname);
+    result = replace_tokens (result, "$description$", fty_proto_description (alert));
+    result = replace_tokens (result, "$priority$", priority);
+    result = replace_tokens (result, "$severity$", fty_proto_severity (alert));
+    result = replace_tokens (result, "$state$", fty_proto_state (alert));
     return result;
 }
 
@@ -97,8 +98,8 @@ static std::string
 s_generateEmailSubjectResolved (fty_proto_t *alert, const std::string &extname)
 {
     std::string result = SUBJECT_RESOLVED;
-    result = replace_tokens (result, "${rulename}", fty_proto_rule (alert));
-    result = replace_tokens (result, "${assetname}", extname);
+    result = replace_tokens (result, "$rulename$", fty_proto_rule (alert));
+    result = replace_tokens (result, "$assetname$", extname);
     return result;
 }
 
@@ -106,12 +107,12 @@ static std::string
 s_generateEmailSubjectActive (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
     std::string result = SUBJECT_ACTIVE;
-    result = replace_tokens (result, "${rulename}", fty_proto_rule (alert));
-    result = replace_tokens (result, "${assetname}", extname);
-    result = replace_tokens (result, "${description}", fty_proto_description (alert));
-    result = replace_tokens (result, "${priority}", priority);
-    result = replace_tokens (result, "${severity}", fty_proto_severity (alert));
-    result = replace_tokens (result, "${state}", fty_proto_state (alert));
+    result = replace_tokens (result, "$rulename$", fty_proto_rule (alert));
+    result = replace_tokens (result, "$assetname$", extname);
+    result = replace_tokens (result, "$description$", fty_proto_description (alert));
+    result = replace_tokens (result, "$priority$", priority);
+    result = replace_tokens (result, "$severity$", fty_proto_severity (alert));
+    result = replace_tokens (result, "$state$", fty_proto_state (alert));
     return result;
 }
 
