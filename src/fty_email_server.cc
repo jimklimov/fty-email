@@ -376,7 +376,8 @@ fty_email_server (zsock_t *pipe, void* args)
                     sent_ok = false;
                     uint32_t code = static_cast <uint32_t> (msmtp_stderr2code (re.what ()));
                     zmsg_addstrf (reply, "%" PRIu32, code);
-                    zmsg_addstr (reply, JSONIFY(re.what ()));
+                    std::string err = JSONIFY(re.what ());
+                    zmsg_addstr (reply, err.c_str ());
                 }
 
                 int r = mlm_client_sendto (
