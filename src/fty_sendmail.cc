@@ -56,7 +56,6 @@ int main (int argc, char** argv)
     std::vector<std::string> attachments;
     const char *recipient = NULL;
     std::string subj;
-    char *log_config = NULL;
     ManageFtyLog::setInstanceFtylog(FTY_EMAIL_ADDRESS_SENDMAIL_ONLY);
 
     // get options
@@ -125,6 +124,7 @@ int main (int argc, char** argv)
 
     char *endpoint = strdup (FTY_EMAIL_ENDPOINT);
     char *smtp_address = strdup (FTY_EMAIL_ADDRESS);
+    char *log_config = strdup(DEFAULT_LOG_CONFIG);
     if (config_file) {
         zconfig_t *config = zconfig_load (config_file);
         if (!config) {
@@ -139,13 +139,16 @@ int main (int argc, char** argv)
         if (zconfig_get (config, "malamute/address", NULL)) {
             zstr_free (&smtp_address);
             smtp_address = strdup (zconfig_get (config, "malamute/address", NULL));
-
-            log_config = zconfig_get (config, "log/config", DEFAULT_LOG_CONFIG);
+        }
+        if (zconfig_get (config, "log/config", NULL)) {
+            zstr_free (&log_config);
+            log_config = strdup (zconfig_get (config, "log/config", NULL));
         }
 
         zconfig_destroy (&config);
     }
     ManageFtyLog::getInstanceFtylog()->setConfigFile(std::string(log_config));
+    zstr_free (&log_config);
     if (verbose)
         ManageFtyLog::getInstanceFtylog()->setVeboseMode();
 

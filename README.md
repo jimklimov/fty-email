@@ -2,6 +2,8 @@
 
 fty-email is an agent which sends e-mail/SMS notifications about alarms.
 
+fty-sendmail ia a command line tool to send email through fty-email to given recipients in email body.
+
 ## How to build
 
 To build fty-email project run:
@@ -71,6 +73,19 @@ Values read from configuration file can be overwritten by setting the following 
 * BIOS\_SMTP\_ENCRYPT for smtp/encryption
 * BIOS\_SMTP\_SMS\_GATEWAY for smtp/smsgateway
 * BIOS\_SMTP\_VERIFY\_CA for smtp/verify\_ca
+
+## fty-sendmail cli tool
+
+```bash
+Usage: fty-sendmail [options] addr < message
+  -c|--config           path to fty-email config file
+  -s|--subject          mail subject
+  -a|--attachment       path to file to be attached to email
+Send email through fty-email to given recipients in email body.
+Email body is read from stdin
+
+echo -e "This is a testing email.\n\nyour team" | fty-sendmail -s text -a ./myfile.tgz joe@example.com
+```
 
 ## Architecture
 
