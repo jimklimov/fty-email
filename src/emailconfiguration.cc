@@ -27,30 +27,43 @@
 */
 
 #include <fty_common_macros.h>
+#include <fty_common_translation.h>
 #include "fty_email_classes.h"
+
+/* This is what this code is intended to do:
+ * - calling TRANSLATE_ME on template returns this kind of JSON:
+ *   { "key" : "{{var1}} alert on {{var2}}\nfrom the rule {{var3}} is active!", "variables" : {"var1" : "__severity__", "var2" : "__assetname__", "var3" : "__rulename__"}}
+ * - this JSON is fed into translation_get_translated_text(), which returns (for English language):
+ *   "__severity__ alert on __assetname__\nfrom the rule __rulename__ is active!"
+ * - replace_tokens() then replaces __string__ patterns with corresponding values
+ */
 
 #define BODY_ACTIVE \
 TRANSLATE_ME ("In the system an alert was detected.\n\
-Source rule: {{rulename}}\n\
-Asset: {{assetname}}\n\
-Alert priority: P{{priority}}\n\
-Alert severity: {{severity}}\n\
-Alert description: {{description}}\n\
-Alert state: {{state}}")
+Source rule: %s\n\
+Asset: %s\n\
+Alert priority: P%s\n\
+Alert severity: %s\n\
+Alert description: %s\n\
+Alert state: %s", \
+"__rulename__", "__assetname__", "__priority__", "__severity__", "__description__", "__state__")
 
 #define SUBJECT_ACTIVE \
-TRANSLATE_ME ("{{severity}} alert on {{assetname}}\n\
-from the rule {{rulename}} is active!")
+TRANSLATE_ME ("%s alert on %s\n\
+from the rule %s is active!", \
+"__severity__", "__assetname__", "__rulename__")
 
 #define BODY_RESOLVED \
 TRANSLATE_ME ("In the system an alert was resolved.\n\
-Source rule: {{rulename}}\n\
-Asset: {{assetname}}\n\
-Alert description: {{description}}")
+Source rule: %sn\
+Asset: %s\n\
+Alert description: %s", \
+"__rulename__", "__assetname__", "__description__")
 
 #define SUBJECT_RESOLVED \
-TRANSLATE_ME ("Alert on {{assetname}} \n\
-from the rule {{rulename}} was resolved")
+TRANSLATE_ME ("Alert on %s \n\
+from the rule %s was resolved", \
+"__assetname__", "__rulename__")
 
 
 // ----------------------------------------------------------------------------
@@ -74,45 +87,53 @@ replace_tokens (
 static std::string
 s_generateEmailBodyResolved (fty_proto_t *alert, const std::string& extname)
 {
-    std::string result (BODY_RESOLVED);
-    result = replace_tokens (result, "{{rulename}}", fty_proto_rule (alert));
-    result = replace_tokens (result, "{{assetname}}", extname);
-    result = replace_tokens (result, "{{description}}", fty_proto_description (alert));
+    char *result_char = translation_get_translated_text (BODY_RESOLVED.c_str ());
+    std::string result (result_char);
+    zstr_free (&result_char);
+    result = replace_tokens (result, "__rulename__", fty_proto_rule (alert));
+    result = replace_tokens (result, "__assetname__", extname);
+    result = replace_tokens (result, "__description__", fty_proto_description (alert));
     return result;
 }
 
 static std::string
 s_generateEmailBodyActive (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
-    std::string result = BODY_ACTIVE;
-    result = replace_tokens (result, "{{rulename}}", fty_proto_rule (alert));
-    result = replace_tokens (result, "{{assetname}}", extname);
-    result = replace_tokens (result, "{{description}}", fty_proto_description (alert));
-    result = replace_tokens (result, "{{priority}}", priority);
-    result = replace_tokens (result, "{{severity}}", fty_proto_severity (alert));
-    result = replace_tokens (result, "{{state}}", fty_proto_state (alert));
+    char *result_char = translation_get_translated_text (BODY_ACTIVE.c_str ());
+    std::string result (result_char);
+    zstr_free (&result_char);
+    result = replace_tokens (result, "__rulename__", fty_proto_rule (alert));
+    result = replace_tokens (result, "__assetname__", extname);
+    result = replace_tokens (result, "__description__", fty_proto_description (alert));
+    result = replace_tokens (result, "__priority__", priority);
+    result = replace_tokens (result, "__severity__", fty_proto_severity (alert));
+    result = replace_tokens (result, "__state__", fty_proto_state (alert));
     return result;
 }
 
 static std::string
 s_generateEmailSubjectResolved (fty_proto_t *alert, const std::string &extname)
 {
-    std::string result = SUBJECT_RESOLVED;
-    result = replace_tokens (result, "{{rulename}}", fty_proto_rule (alert));
-    result = replace_tokens (result, "{{assetname}}", extname);
+    char *result_char = translation_get_translated_text (SUBJECT_RESOLVED.c_str ());
+    std::string result (result_char);
+    zstr_free (&result_char);
+    result = replace_tokens (result, "__rulename__", fty_proto_rule (alert));
+    result = replace_tokens (result, "__assetname__", extname);
     return result;
 }
 
 static std::string
 s_generateEmailSubjectActive (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
-    std::string result = SUBJECT_ACTIVE;
-    result = replace_tokens (result, "{{rulename}}", fty_proto_rule (alert));
-    result = replace_tokens (result, "{{assetname}}", extname);
-    result = replace_tokens (result, "{{description}}", fty_proto_description (alert));
-    result = replace_tokens (result, "{{priority}}", priority);
-    result = replace_tokens (result, "{{severity}}", fty_proto_severity (alert));
-    result = replace_tokens (result, "{{state}}", fty_proto_state (alert));
+    char *result_char = translation_get_translated_text (SUBJECT_ACTIVE.c_str ());
+    std::string result (result_char);
+    zstr_free (&result_char);
+    result = replace_tokens (result, "__rulename__", fty_proto_rule (alert));
+    result = replace_tokens (result, "__assetname__", extname);
+    result = replace_tokens (result, "__description__", fty_proto_description (alert));
+    result = replace_tokens (result, "__priority__", priority);
+    result = replace_tokens (result, "__severity__", fty_proto_severity (alert));
+    result = replace_tokens (result, "__state__", fty_proto_state (alert));
     return result;
 }
 

@@ -10,7 +10,13 @@
 
     <target name = "debian" />
     <target name = "redhat" />
-    <target name = "travis" />
+    <target name = "travis" >
+        <!-- option name = "clangformat_implem" value = "autotools" / -->
+        <option name = "use_cmake" value = "0" />
+        <!-- option name = "clangformat_require_good" value = "1" / -->
+        <option name = "clangformat_allow_failures" value = "1" />
+        <option name = "use_pkg_deps_prereqs_source" value = "0" />
+    </target>
     <target name = "jenkins" >
         <option name = "agent_label" value = "devel-image &amp;&amp; x86_64" />
         <option name = "triggers_pollSCM" value = "H/2 * * * *" />
@@ -70,6 +76,12 @@
            repository = "https://github.com/42ity/libsodium.git"
            release = "1.0.5-FTY-master"
            test = "sodium_init" />
+    </use>
+
+    <use project = "fty-common-translation" libname = "libfty_common_translation" header="fty_common_translation.h"
+        repository = "https://github.com/42ity/fty-common-translation.git"
+        release = "master"
+        test = "fty_common_translation_selftest" >
     </use>
 
     <use project = "fty-proto" libname = "libfty_proto" header="ftyproto.h" prefix="fty_proto"

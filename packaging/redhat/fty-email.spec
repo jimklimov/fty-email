@@ -60,6 +60,7 @@ BuildRequires:  fty-common-logging-devel
 BuildRequires:  fty-common-devel
 BuildRequires:  cxxtools-devel
 BuildRequires:  fty-common-mlm-devel
+BuildRequires:  fty-common-translation-devel
 BuildRequires:  fty-proto-devel
 BuildRequires:  file-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
@@ -94,6 +95,7 @@ Requires:       fty-common-logging-devel
 Requires:       fty-common-devel
 Requires:       cxxtools-devel
 Requires:       fty-common-mlm-devel
+Requires:       fty-common-translation-devel
 Requires:       fty-proto-devel
 Requires:       file-devel
 
