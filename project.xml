@@ -72,6 +72,12 @@
            test = "sodium_init" />
     </use>
 
+    <use project = "fty-common-translation" libname = "libfty_common_translation" header="fty_common_translation.h"
+        repository = "https://github.com/42ity/fty-common-translation.git"
+        release = "master"
+        test = "fty_common_translation_selftest" >
+    </use>
+
     <use project = "fty-proto" libname = "libfty_proto" header="ftyproto.h" prefix="fty_proto"
         min_major = "1" min_minor = "0" min_patch = "0"
         repository = "https://github.com/42ity/fty-proto.git"

@@ -21,12 +21,13 @@ AM_CPPFLAGS = \
     ${fty_common_CFLAGS} \
     ${cxxtools_CFLAGS} \
     ${fty_common_mlm_CFLAGS} \
+    ${fty_common_translation_CFLAGS} \
     ${fty_proto_CFLAGS} \
     ${magic_CFLAGS} \
     -D__STDC_FORMAT_MACROS \
     -I$(srcdir)/include
 
-project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${log4cplus_LIBS} ${fty_common_logging_LIBS} ${fty_common_LIBS} ${cxxtools_LIBS} ${fty_common_mlm_LIBS} ${fty_proto_LIBS} ${magic_LIBS}
+project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${log4cplus_LIBS} ${fty_common_logging_LIBS} ${fty_common_LIBS} ${cxxtools_LIBS} ${fty_common_mlm_LIBS} ${fty_common_translation_LIBS} ${fty_proto_LIBS} ${magic_LIBS}
 
 SUBDIRS = doc
 SUBDIRS += include
@@ -56,6 +57,7 @@ EXTRA_DIST += \
     Findfty_common.cmake \
     Findcxxtools.cmake \
     Findfty_common_mlm.cmake \
+    Findfty_common_translation.cmake \
     Findfty_proto.cmake \
     Findmagic.cmake \
     builds/cmake/Modules/ClangFormat.cmake \

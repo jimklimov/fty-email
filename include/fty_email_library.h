@@ -34,6 +34,7 @@
 #include <malamute.h>
 #include <fty_log.h>
 #include <fty_common_mlm_guards.h>
+#include <fty_common_translation.h>
 #include <ftyproto.h>
 #include <magic.h>
 

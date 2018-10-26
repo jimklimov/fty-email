@@ -27,7 +27,11 @@
 */
 
 #include <getopt.h>
+#include <fty_common_translation.h>
 #include "fty_email_classes.h"
+
+#define TRANSLATION_PATH    "/usr/share/etn-translations/en_US/"
+#define TRANSLATION_PREFIX  "locale_"
 
 // hack to allow reload of config file w/o the need to rewrite server to zloop and reactors
 char *config_file = NULL;
@@ -77,6 +81,10 @@ int main (int argc, char** argv)
     char *smsgateway   = getenv("BIOS_SMTP_SMS_GATEWAY");
     char *smtpverify   = getenv ("BIOS_SMTP_VERIFY_CA");
     ManageFtyLog::setInstanceFtylog(FTY_EMAIL_ADDRESS);
+
+    int rv = translation_initialize (FTY_EMAIL_ADDRESS, TRANSLATION_PATH, TRANSLATION_PREFIX);
+    if (rv != TE_OK)
+        log_warning ("Translation not initialized");
 
     // get options
     int c;

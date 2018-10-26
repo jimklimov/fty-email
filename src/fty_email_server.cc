@@ -468,6 +468,10 @@ fty_email_server_test (bool verbose)
     // assert ( (str_SELFTEST_DIR_RW != "") );
     // NOTE that for "char*" context you need (str_SELFTEST_DIR_RO + "/myfilename").c_str()
 
+    int rv = translation_initialize (FTY_EMAIL_ADDRESS, SELFTEST_DIR_RO, "test_");
+    if (rv != TE_OK)
+        log_warning ("Translation not initialized");
+
     char *pidfile = zsys_sprintf ("%s/btest.pid", SELFTEST_DIR_RW);
     assert (pidfile!=NULL);
 
@@ -577,7 +581,7 @@ fty_email_server_test (bool verbose)
     zstr_sendx (smtp_server, "_MSMTP_TEST", "btest-reader", NULL);
 
     mlm_client_t *alert_producer = mlm_client_new ();
-    int rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
+    rv = mlm_client_connect (alert_producer, endpoint, 1000, "alert_producer");
     assert( rv != -1 );
     log_info ("alert producer started");
 
