@@ -30,12 +30,15 @@
 #include <fty_common_translation.h>
 #include "fty_email_classes.h"
 
-#define TRANSLATION_PATH    "/usr/share/etn-translations/en_US/"
+#define TRANSLATION_ROOT    "/usr/share/etn-translations"
 #define TRANSLATION_PREFIX  "locale_"
+#define DEFAULT_LANGUAGE    "en_US"
 
 // hack to allow reload of config file w/o the need to rewrite server to zloop and reactors
 char *config_file = NULL;
 zconfig_t *config = NULL;
+char *language = NULL;
+char *translation_path = NULL;
 char *log_config = NULL;
 void usage ()
 {
@@ -81,10 +84,6 @@ int main (int argc, char** argv)
     char *smsgateway   = getenv("BIOS_SMTP_SMS_GATEWAY");
     char *smtpverify   = getenv ("BIOS_SMTP_VERIFY_CA");
     ManageFtyLog::setInstanceFtylog(FTY_EMAIL_ADDRESS);
-
-    int rv = translation_initialize (FTY_EMAIL_ADDRESS, TRANSLATION_PATH, TRANSLATION_PREFIX);
-    if (rv != TE_OK)
-        log_warning ("Translation not initialized");
 
     // get options
     int c;
@@ -153,6 +152,7 @@ int main (int argc, char** argv)
         log_info ("No config file specified, falling back to enviromental variables.\nNote this is deprecated and will be removed!");
         config = zconfig_new ("root", NULL);
         zconfig_put (config, "server/verbose", verbose? "1" : "0");
+        zconfig_put (config, "server/language", DEFAULT_LANGUAGE);
 
         zconfig_put (config, "smtp/server", smtpserver);
         zconfig_put (config, "smtp/port", smtpport ? smtpport : "25");
@@ -189,10 +189,16 @@ int main (int argc, char** argv)
             exit (EXIT_FAILURE);
         }
         else {
-            log_config = zconfig_get (config, "log/config", DEFAULT_LOG_CONFIG);
+            language = zconfig_get (config, "server/language", DEFAULT_LANGUAGE);
+            // path looks like /usr/share/etn-translations/<language>/
+            translation_path = zsys_sprintf ("%s/%s/", TRANSLATION_ROOT, language);
+            int rv = translation_initialize (FTY_EMAIL_ADDRESS, translation_path, TRANSLATION_PREFIX);
+            if (rv != TE_OK)
+                log_warning ("Translation not initialized");
         }
     }
-
+    if (language)
+            log_config = zconfig_get (config, "log/config", DEFAULT_LOG_CONFIG);
     if (log_config)
         ManageFtyLog::getInstanceFtylog()->setConfigFile(std::string(log_config));
 
@@ -226,5 +232,11 @@ int main (int argc, char** argv)
     zloop_destroy (&check_config);
     zactor_destroy (&smtp_server);
     zactor_destroy (&send_mail_only_server);
+    zstr_free (&log_config);
+    zstr_free (&translation_path);
+    zstr_free (&language);
+    if (config)
+        zconfig_destroy (&config);
+    zstr_free (&config_file);
     return 0;
 }

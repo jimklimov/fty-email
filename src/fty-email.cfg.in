@@ -2,6 +2,7 @@
 
 server
     verbose = false                                 #   Do verbose logging of activity?
+    language = en_US                                #   Default language
 smtp
     server = mail.example.com                       #   SMTP server
     port   = 25                                     #   SMTP server port
