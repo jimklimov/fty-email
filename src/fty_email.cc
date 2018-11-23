@@ -85,6 +85,10 @@ int main (int argc, char** argv)
     char *smtpverify   = getenv ("BIOS_SMTP_VERIFY_CA");
     ManageFtyLog::setInstanceFtylog(FTY_EMAIL_ADDRESS);
 
+    int rv = translation_initialize (FTY_EMAIL_ADDRESS, TRANSLATION_ROOT, TRANSLATION_PREFIX);
+    if (rv != TE_OK)
+        log_warning ("Translation not initialized");
+
     // get options
     int c;
 // Some systems define struct option with non-"const" "char *"
@@ -190,11 +194,9 @@ int main (int argc, char** argv)
         }
         else {
             language = zconfig_get (config, "server/language", DEFAULT_LANGUAGE);
-            // path looks like /usr/share/etn-translations/<language>/
-            translation_path = zsys_sprintf ("%s/%s/", TRANSLATION_ROOT, language);
-            int rv = translation_initialize (FTY_EMAIL_ADDRESS, translation_path, TRANSLATION_PREFIX);
+            int rv = translation_change_language (language);
             if (rv != TE_OK)
-                log_warning ("Translation not initialized");
+                log_warning ("Language not changed to %s, continuing in %s", language, DEFAULT_LANGUAGE);
         }
     }
     if (language)
