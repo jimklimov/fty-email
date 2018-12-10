@@ -17,7 +17,7 @@ git clone --quiet --depth 1 -b 5.18-FTY-master https://github.com/42ity/libmagic
 git clone --quiet --depth 1 -b 1.1.2-FTY-master https://github.com/42ity/log4cplus.git log4cplus
 git clone --quiet --depth 1 -b master https://github.com/42ity/fty-common-logging.git fty-common-logging
 git clone --quiet --depth 1 -b 2.2-FTY-master https://github.com/42ity/cxxtools.git cxxtools
-git clone --quiet --depth 1 https://github.com/42ity/fty-common.git fty-common
+git clone --quiet --depth 1 -b master https://github.com/42ity/fty-common.git fty-common
 git clone --quiet --depth 1 -b master https://github.com/42ity/fty-common-mlm.git fty-common-mlm
 git clone --quiet --depth 1 -b master https://github.com/42ity/fty-common-translation.git fty-common-translation
 git clone --quiet --depth 1 -b master https://github.com/42ity/fty-proto.git fty-proto
