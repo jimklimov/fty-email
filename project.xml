@@ -66,7 +66,6 @@
         release = "5.18-FTY-master"
         />
 
-
     <!-- Note: pure C projects should use fty-log/fty_logger.h, C++ use fty_log.h -->
     <use project = "fty-common-logging" libname = "libfty_common_logging"
         header = "fty_log.h"
