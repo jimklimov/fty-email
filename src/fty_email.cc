@@ -234,5 +234,11 @@ int main (int argc, char** argv)
     zloop_destroy (&check_config);
     zactor_destroy (&smtp_server);
     zactor_destroy (&send_mail_only_server);
+    zstr_free (&log_config);
+    zstr_free (&translation_path);
+    zstr_free (&language);
+    if (config)
+        zconfig_destroy (&config);
+    zstr_free (&config_file);
     return 0;
 }
