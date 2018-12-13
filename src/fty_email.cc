@@ -138,7 +138,7 @@ int main (int argc, char** argv)
             smtpencrypt = optarg;
             break;
         case 'c':
-            config_file = optarg;
+            config_file = strdup (optarg);
             break;
         case 0:
             // just now walking trough some long opt
@@ -176,10 +176,10 @@ int main (int argc, char** argv)
         zconfig_put (config, "malamute/endpoint", FTY_EMAIL_ENDPOINT);
         zconfig_put (config, "malamute/address", FTY_EMAIL_ADDRESS);
         zconfig_put (config, "log/config", DEFAULT_LOG_CONFIG);
-        log_config = (char *)DEFAULT_LOG_CONFIG;
+        log_config = (char *) DEFAULT_LOG_CONFIG;
         zconfig_print (config);
 
-        config_file = (char*) FTY_EMAIL_CONFIG_FILE;
+        config_file = strdup (FTY_EMAIL_CONFIG_FILE);
         int r = zconfig_save (config, config_file);
         if (r == -1) {
             log_error ("Error while saving config file %s: %m", config_file);
@@ -230,15 +230,11 @@ int main (int argc, char** argv)
     zloop_timer (check_config, 1000, 0, s_timer_event, smtp_server);
     zloop_start (check_config);
 
-    zconfig_destroy (&config);
     zloop_destroy (&check_config);
     zactor_destroy (&smtp_server);
     zactor_destroy (&send_mail_only_server);
-    zstr_free (&log_config);
     zstr_free (&translation_path);
-    zstr_free (&language);
-    if (config)
-        zconfig_destroy (&config);
+    zconfig_destroy (&config);
     zstr_free (&config_file);
     return 0;
 }
