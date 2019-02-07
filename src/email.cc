@@ -102,6 +102,7 @@ std::string Smtp::createConfigFile() const
 
     line += "account default\n";
     line += "host " + _host +"\n";
+    line += "port " + _port +"\n";
     line += "from " + _from + "\n";
     ssize_t r = write (handle,  line.c_str(), line.size());
     if (r > 0 && (size_t) r != line.size ())
