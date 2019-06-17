@@ -235,7 +235,8 @@ Smtp::msg2email (zmsg_t **msg_p) const
     char *to = zmsg_popstr (msg);
     char *subject = zmsg_popstr (msg);
     std::string body = getIpAddr();
-    body += zmsg_popstr (msg);
+    ZstrGuard bodyTemp (zmsg_popstr (msg));
+    body += bodyTemp.get();
 
     mime.setHeader ("To", to);
     mime.setHeader ("Subject", subject);

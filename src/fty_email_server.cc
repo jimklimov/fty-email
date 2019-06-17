@@ -125,9 +125,6 @@ fty_email_encode (
     return msg;
 }
 
-
-
-
 void
 fty_email_server (zsock_t *pipe, void* args)
 {
@@ -367,7 +364,8 @@ fty_email_server (zsock_t *pipe, void* args)
                 try {
                     if (zmsg_size (zmessage) == 1) {
                         std::string body = getIpAddr();
-                        body += zmsg_popstr (zmessage);
+                        ZstrGuard bodyTemp (zmsg_popstr (zmessage));
+                        body += bodyTemp.get();
                         log_debug ("%s:\tsmtp.sendmail (%s)", name, body.c_str());
                         smtp.sendmail (body);
                     }

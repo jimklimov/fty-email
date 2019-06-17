@@ -182,12 +182,12 @@ std::string getIpAddr()
         if (!ifa->ifa_addr) {
             continue;
         }
-        // Check IP4 adress
+        // Check IP4 address
         if (ifa->ifa_addr->sa_family == AF_INET) { 
             tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
             char addressBuffer[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
-            if (ifa->ifa_name == "eth0")
+            if (strcmp(ifa->ifa_name, "eth0") == 0 || strcmp(ifa->ifa_name, "LAN1") == 0 )
             {
                 ret = addressBuffer;
                 break;
@@ -195,10 +195,12 @@ std::string getIpAddr()
         }
         
     }
-    if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
-    if (ifa!=NULL) freeifaddrs(ifa);
-    ipAddr += ret;
+    if (ret) 
+    {
+        ipAddr += ret;
+    }
     ipAddr += "\r\n";
+    if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
 
     return  ipAddr;
 }
