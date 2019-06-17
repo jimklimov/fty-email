@@ -234,15 +234,15 @@ Smtp::msg2email (zmsg_t **msg_p) const
 
     char *to = zmsg_popstr (msg);
     char *subject = zmsg_popstr (msg);
-    char *body = zmsg_popstr (msg);
+    std::string body = getIpAddr();
+    body += zmsg_popstr (msg);
 
     mime.setHeader ("To", to);
     mime.setHeader ("Subject", subject);
-    mime.addObject (body);
+    mime.addObject (body.c_str());
 
     zstr_free (&to);
     zstr_free (&subject);
-    zstr_free (&body);
 
     // new protocol have more frames
     if (zmsg_size (msg) != 0) {
