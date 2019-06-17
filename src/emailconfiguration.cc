@@ -171,7 +171,6 @@ generate_subject (fty_proto_t *alert, const std::string& priority, const std::st
 std::string getIpAddr()
 {
     std::string ipAddr = "From: ";
-    char * ret;
     struct ifaddrs * ifAddrStruct = NULL;
     struct ifaddrs * ifa = NULL;
     void * tmpAddrPtr = NULL;
@@ -189,15 +188,11 @@ std::string getIpAddr()
             inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
             if (strcmp(ifa->ifa_name, "eth0") == 0 || strcmp(ifa->ifa_name, "LAN1") == 0 )
             {
-                ret = addressBuffer;
+                ipAddr.append(addressBuffer);
                 break;
             }
         }
         
-    }
-    if (ret) 
-    {
-        ipAddr += ret;
     }
     ipAddr += "\r\n";
     if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
