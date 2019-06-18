@@ -88,7 +88,9 @@ static std::string
 s_generateEmailBodyResolved (fty_proto_t *alert, const std::string& extname)
 {
     std::string result = getIpAddr();
-    result += translation_get_translated_text (BODY_RESOLVED.c_str ());
+    char *result_char = translation_get_translated_text (BODY_RESOLVED.c_str ());
+    result.append(result_char);
+    zstr_free (&result_char); 
 
     result = replace_tokens (result, "__rulename__", fty_proto_rule (alert));
     result = replace_tokens (result, "__assetname__", extname);
@@ -103,7 +105,9 @@ static std::string
 s_generateEmailBodyActive (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
     std::string result = getIpAddr();
-    result += translation_get_translated_text (BODY_ACTIVE.c_str ());
+    char *result_char = translation_get_translated_text (BODY_ACTIVE.c_str ());
+    result.append(result_char);
+    zstr_free (&result_char); 
 
     result = replace_tokens (result, "__rulename__", fty_proto_rule (alert));
     result = replace_tokens (result, "__assetname__", extname);
