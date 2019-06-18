@@ -297,3 +297,38 @@
    fun:bios_smtp_server
    obj:/usr/lib64/libczmq.so.3.0.0
 }
+
+{
+   <cxxtools_locale_new>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:_Znwm
+   ...
+   fun:_ZN8cxxtools10InitLocaleC1Ev
+   ...
+}
+{
+   <cxxtools_locale_new_array>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:_Znam
+   ...
+   fun:_ZN8cxxtools10InitLocaleC1Ev
+   ...
+}
+{
+   <cxxtools_locale_appender>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:_Znam
+   ...
+   fun:_ZNK9log4cplus7helpers22AppenderAttachableImpl21appendLoopOnAppendersERKNS_3spi20InternalLoggingEventE
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:_Znwm
+   ...
+   fun:_ZN9log4cplus3spi10LoggerImpl13callAppendersERKNS0_20InternalLoggingEventE
+}

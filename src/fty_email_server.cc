@@ -363,10 +363,11 @@ fty_email_server (zsock_t *pipe, void* args)
                 bool sent_ok = false;
                 try {
                     if (zmsg_size (zmessage) == 1) {
-                        char *body = zmsg_popstr (zmessage);
-                        log_debug ("%s:\tsmtp.sendmail (%s)", name, body);
+                        std::string body = getIpAddr();
+                        ZstrGuard bodyTemp (zmsg_popstr (zmessage));
+                        body += bodyTemp.get();
+                        log_debug ("%s:\tsmtp.sendmail (%s)", name, body.c_str());
                         smtp.sendmail (body);
-                        zstr_free (&body);
                     }
                     else {
                         zmsg_print (zmessage);

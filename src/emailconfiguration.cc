@@ -87,9 +87,11 @@ replace_tokens (
 static std::string
 s_generateEmailBodyResolved (fty_proto_t *alert, const std::string& extname)
 {
+    std::string result = getIpAddr();
     char *result_char = translation_get_translated_text (BODY_RESOLVED.c_str ());
-    std::string result (result_char);
-    zstr_free (&result_char);
+    result.append(result_char);
+    zstr_free (&result_char); 
+
     result = replace_tokens (result, "__rulename__", fty_proto_rule (alert));
     result = replace_tokens (result, "__assetname__", extname);
     char *description_char = translation_get_translated_text (fty_proto_description (alert));
@@ -102,9 +104,11 @@ s_generateEmailBodyResolved (fty_proto_t *alert, const std::string& extname)
 static std::string
 s_generateEmailBodyActive (fty_proto_t *alert, const std::string& priority, const std::string& extname)
 {
+    std::string result = getIpAddr();
     char *result_char = translation_get_translated_text (BODY_ACTIVE.c_str ());
-    std::string result (result_char);
-    zstr_free (&result_char);
+    result.append(result_char);
+    zstr_free (&result_char); 
+
     result = replace_tokens (result, "__rulename__", fty_proto_rule (alert));
     result = replace_tokens (result, "__assetname__", extname);
     char *description_char = translation_get_translated_text (fty_proto_description (alert));
@@ -165,6 +169,39 @@ generate_subject (fty_proto_t *alert, const std::string& priority, const std::st
         return s_generateEmailSubjectResolved (alert, extname);
     }
     return s_generateEmailSubjectActive (alert, priority, extname);
+}
+
+
+std::string getIpAddr()
+{
+    std::string ipAddr = "From: ";
+    struct ifaddrs * ifAddrStruct = NULL;
+    struct ifaddrs * ifa = NULL;
+    void * tmpAddrPtr = NULL;
+
+    getifaddrs(&ifAddrStruct);
+
+    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+        if (!ifa->ifa_addr) {
+            continue;
+        }
+        // Check IP4 address
+        if (ifa->ifa_addr->sa_family == AF_INET) { 
+            tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+            char addressBuffer[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+            if (strcmp(ifa->ifa_name, "eth0") == 0 || strcmp(ifa->ifa_name, "LAN1") == 0 )
+            {
+                ipAddr.append(addressBuffer);
+                break;
+            }
+        }
+        
+    }
+    ipAddr += "\r\n";
+    if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
+
+    return  ipAddr;
 }
 
 //  --------------------------------------------------------------------------
