@@ -32,8 +32,6 @@
 //  External API
 #include "../include/fty_email.h"
 
-//  Extra headers
-
 //  Opaque class structures to allow forward references
 #ifndef EMAILCONFIGURATION_T_DEFINED
 typedef struct _emailconfiguration_t emailconfiguration_t;
@@ -43,6 +41,8 @@ typedef struct _emailconfiguration_t emailconfiguration_t;
 typedef struct _email_t email_t;
 #define EMAIL_T_DEFINED
 #endif
+
+//  Extra headers
 
 //  Internal API
 
