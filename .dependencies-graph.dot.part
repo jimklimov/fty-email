@@ -2,6 +2,7 @@
    fty-email -> libzmq;
    fty-email -> czmq;
    fty-email -> malamute;
+   fty-email -> cxxtools;
    fty-email -> magic;
    fty-email -> fty-common-logging;
    fty-email -> fty-common-mlm;

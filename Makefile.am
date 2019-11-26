@@ -16,6 +16,7 @@ AM_CPPFLAGS = \
     ${libzmq_CFLAGS} \
     ${czmq_CFLAGS} \
     ${malamute_CFLAGS} \
+    ${cxxtools_CFLAGS} \
     ${magic_CFLAGS} \
     ${fty_common_logging_CFLAGS} \
     ${fty_common_mlm_CFLAGS} \
@@ -24,7 +25,7 @@ AM_CPPFLAGS = \
     -D__STDC_FORMAT_MACROS \
     -I$(srcdir)/include
 
-project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${magic_LIBS} ${fty_common_logging_LIBS} ${fty_common_mlm_LIBS} ${fty_common_translation_LIBS} ${fty_proto_LIBS}
+project_libs = ${libsodium_LIBS} ${libzmq_LIBS} ${czmq_LIBS} ${malamute_LIBS} ${cxxtools_LIBS} ${magic_LIBS} ${fty_common_logging_LIBS} ${fty_common_mlm_LIBS} ${fty_common_translation_LIBS} ${fty_proto_LIBS}
 
 SUBDIRS = doc
 SUBDIRS += include
@@ -49,6 +50,7 @@ EXTRA_DIST += \
     Findlibzmq.cmake \
     Findczmq.cmake \
     Findmalamute.cmake \
+    Findcxxtools.cmake \
     Findmagic.cmake \
     Findfty_common_logging.cmake \
     Findfty_common_mlm.cmake \

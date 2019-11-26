@@ -55,6 +55,7 @@ BuildRequires:  libsodium-devel
 BuildRequires:  zeromq-devel
 BuildRequires:  czmq-devel >= 3.0.2
 BuildRequires:  malamute-devel >= 1.0.0
+BuildRequires:  cxxtools-devel
 BuildRequires:  file-devel
 BuildRequires:  fty-common-logging-devel
 BuildRequires:  fty-common-mlm-devel
@@ -87,6 +88,7 @@ Requires:       libsodium-devel
 Requires:       zeromq-devel
 Requires:       czmq-devel >= 3.0.2
 Requires:       malamute-devel >= 1.0.0
+Requires:       cxxtools-devel
 Requires:       file-devel
 Requires:       fty-common-logging-devel
 Requires:       fty-common-mlm-devel
