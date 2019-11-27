@@ -32,6 +32,7 @@
 //  External dependencies
 #include <czmq.h>
 #include <malamute.h>
+#include <cxxtools/allocator.h>
 #include <magic.h>
 #include <fty_log.h>
 #include <fty_common_mlm.h>
